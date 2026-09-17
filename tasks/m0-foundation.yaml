@@ -732,7 +732,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       The seam has seven calls, the four the design names and three the first users need: Accept, so
       the host learns the ids it assigned; Close; IsOpen. A client end talks to HOST_CONNECTION (1)
@@ -750,6 +750,9 @@ tasks:
       three ticks of settings and two remembered ticks; Lost is sticky because a peer that answers
       after the grace has to rejoin through the join path (TechnicalDesign.md §5.4), not slide back
       in. Nineteen tests, run natively on Linux before the push.
+
+      Landed in CI run 30 (35270610275) at the first attempt, with the nineteen new tests green on
+      MSVC and the console logger now printing test output.
 
   - id: T15
     title: Sim skeleton - the tick, seats, the order queue, the hash, the snapshot, and the three determinism tests
@@ -926,6 +929,21 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      The port is operation for operation from the tool: the same loops in the same order, the base
+      draw before the noise draw, the three products the tool marks widened to int64, every division
+      on non-negative operands, and the final >> 8 arithmetic. The tables come from the tool's
+      --fractal-table and the header says so. Sim generates from a definition and never from the
+      recipe, so the test feeds it the twenty definition fixtures the tool wrote (small-0001.json to
+      small-0020.json, read through Core's JSON reader by the test) and holds seed 1 to the golden
+      field sample for sample and the rest to the hash list. SizeClass moved from
+      Sim/MatchSettings.h down to Content/LandscapeDefinition.h, since the definition needs it and
+      Content sits below Sim. The cell grids are one 4-byte record a cell (slope percent, flags with
+      the water bit, the obstruction byte), re-derived only under a delta's rectangle. The hash and
+      the snapshot carry the definition and the delta list rather than the samples, which determine
+      them, because hashing a Frontier field every tick would not fit the budget; ADR-002's hash
+      order and ADR-003's table gained the landscape row and the snapshot is version 2. The fixture
+      path is taken from __FILE__, because a test DLL's module path is the test host's, not its own.
 
   - id: T18
     title: Client Direct3D 12 foundation - window, device with WARP, swap chain, scene target, present pass, capture; the shader pipeline; the renderer ADR
