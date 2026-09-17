@@ -268,9 +268,9 @@ The host is the truth; a client is a view and a source of requests. What a clien
 
 ### 6.1 Shape
 
-Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK that R14 admits (owner, 2026-09-17), vendored under `Client/` with its MIT notice and pinned in the renderer ADR: device, command queue, one command allocator per frame in flight, a flip-model swap chain of three back buffers, descriptor heaps managed by hand, barriers and heap and pipeline descriptions through the helper's structures, three frames in flight with a fence per frame. **A WARP device is a launch option** — `FrontierCommander --capture <match> <ticks> <directory>` replays a scripted match headless on the software rasteriser and writes a BMP of the scene target every hundred ticks — because CI is the agent's compiler and its eyes (§10). A capture is a screenshot the agent reads back, not a texture, which is why it is BMP where every texture is DDS (§8). The scene target at the authored resolution (R12) and the present pass that scales it, with the 1:1, integer and bilinear cases `AGENTS.md` §5 lists.
+Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK that R14 admits (owner, 2026-09-17), vendored under `Client/` with its MIT notice and pinned in ADR-004: device, command queue, one command allocator per frame in flight, a flip-model swap chain of three back buffers, descriptor heaps managed by hand, barriers and heap and pipeline descriptions through the helper's structures, three frames in flight with a fence per frame. **A WARP device is a launch option** — `FrontierCommander --capture <match> <ticks> <directory>` replays a scripted match headless on the software rasteriser and writes a BMP of the scene target every hundred ticks — because CI is the agent's compiler and its eyes (§10). A capture is a screenshot the agent reads back, not a texture, which is why it is BMP where every texture is DDS (§8). The scene target at the authored resolution (R12) and the present pass that scales it, with the 1:1, integer and bilinear cases `AGENTS.md` §5 lists.
 
-**The first client ADR** settles the authored resolution, the window style and whether the scene target is multisampled. This design assumes 1920×1080, a borderless window covering the primary monitor with Escape and Alt+F4 owned by the game, and a 4× multisampled scene target — flat-shaded geometry with hard silhouettes is exactly the content that aliases worst and that multisampling fixes best, and the back buffer cannot be multisampled, which is the reason the scene target exists.
+**ADR-004, the first client ADR,** settles the authored resolution, the window style and whether the scene target is multisampled (2026-09-17), as this design assumed: 1920×1080, a borderless window covering the primary monitor with Escape and Alt+F4 owned by the game, and a 4× multisampled scene target — flat-shaded geometry with hard silhouettes is exactly the content that aliases worst and that multisampling fixes best, and the back buffer cannot be multisampled, which is the reason the scene target exists.
 
 ### 6.2 Passes
 
@@ -284,7 +284,7 @@ Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK
 | UI | Windows, text, icons, the minimap | One PSO, orthographic, alpha blended |
 | Present | The scene target into the back buffer, scaled | One PSO |
 
-Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `Client/Shaders/`, compiled by `FXCompile` into `Client/CompiledShaders/` (`AGENTS.md` §2). Shader model 6 through the SDK's `dxc` is the target; whether `FXCompile` drives it cleanly on the pinned toolset is one of the first things M0 finds out.
+Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `Client/Shaders/`, compiled by `FXCompile` into `Client/CompiledShaders/` (`AGENTS.md` §2). Shader model 6 through the SDK's `dxc`, which `FXCompile` drives on the pinned toolset when the model is 6.x (ADR-004, 2026-09-17).
 
 **The terrain mesh is the one place the numbers bite.** A Large landscape at four samples per cell edge is 2,049 × 2,049 samples: 8.4 million triangles and 67 MB of vertices at full resolution, which is not drawn whole. Chunks are 32 × 32 cells — 129 × 129 samples, 16,641 vertices, inside 16-bit indices — with four levels of detail by sample stride (1, 2, 4, 8) and a skirt on each chunk to hide the cracks between levels; a Large landscape is 256 chunks, of which the ones in the near band draw at full detail and the rest at a stride that keeps the visible count near a million triangles. The fog of `SpeciesLook.md` §5 either scales with the landscape or becomes distance desaturation (owner, 2026-09-17), and which of the two decides how much of the far field is drawn at all; the fog-and-lighting ADR picks with a frame to look at.
 
@@ -371,6 +371,7 @@ Under the user directory:
 | `Saves\*.fcsave` | host | a snapshot (§4.9) plus settings, versioned |
 | `Replays\*.fcreplay` | host | settings, seed, order stream, versioned; always recorded, the oldest pruned |
 | `Logs\Host.log` | host | what the host did and why a client was refused; rotated |
+| `Logs\Client.log` | client | what the client did: the adapter, the scene target, every debug-layer message; rotated (ADR-004) |
 
 The headless host, run as a service or by another user, uses the same layout under its own profile. Nothing resolves against the working directory. The preferences ADR records the preferences schema and ADR-003 the save and replay formats.
 
@@ -414,7 +415,7 @@ The ADRs the first tasks will write, in the order the work meets them. Where the
 | 001 | The solution and project layout of §2, the eight projects and their edges, the two namespaces | The first project (written 2026-09-17) |
 | 002 | The 20 Hz tick; the position unit and the fixed-point formats of §4.1; the hash's order and the order record; the empty tick measured, and a dated section for the full tick when the slice has one | The first `Sim` task (`m0-foundation/T15`, written 2026-09-17); the full-tick measurements by `m1-vertical-slice/G3` |
 | 003 | The snapshot and replay formats | The first snapshot (`m0-foundation/T15`, written 2026-09-17), because the determinism tests need the format from M0; the save file of M2 and the replay file of M3 cite it |
-| — | The renderer: authored resolution, window style, scene target multisampling; the `d3dx12.h` exception and its pinned version; which shader compiler `FXCompile` drives on the pinned toolset | The first renderer task (`m0-foundation/T18`), numbered when written |
+| 004 | The renderer: authored resolution, window style, scene target multisampling; the `d3dx12.h` exception and its pinned version; which shader compiler `FXCompile` drives on the pinned toolset | The first renderer task (`m0-foundation/T18`, written 2026-09-17) |
 | — | The fog's form and the unlit team-colour slots, ruled on captured frames | The terrain pass (`m0-foundation/T20`), numbered when written |
 | — | The network model — host-authoritative replication, as decided — and the measured protocol numbers: publish rate, history length, quantisation, interest cost, and the leak posture of §5.2 | The first `Net` task, numbered when written |
 | — | The content directory, the JSON schemas and their versioning, the DDS formats a texture may use, the overlay rule for mods, the content hash | The first loader, numbered when written |

@@ -76,6 +76,16 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
+    <FxCompile>
+      <!--
+        Shader model 6 through the SDK's dxc, which the toolset drives itself when the model is 6.x
+        (ADR-004): one header per shader under CompiledShaders\, declaring g_<Shader> (AGENTS.md §2).
+      -->
+      <ShaderModel>6.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+      <HeaderFileOutput>$(ProjectDir)CompiledShaders\%(Filename).h</HeaderFileOutput>
+      <VariableName>g_%(Filename)</VariableName>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <ClCompile>
@@ -98,12 +108,37 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DescriptorHeap.cpp" />
+    <ClCompile Include="FrameCapture.cpp" />
+    <ClCompile Include="GraphicsDevice.cpp" />
+    <ClCompile Include="PresentPass.cpp" />
+    <ClCompile Include="ScaleMode.cpp" />
+    <ClCompile Include="SceneTarget.cpp" />
+    <ClCompile Include="SwapChain.cpp" />
+    <ClCompile Include="Window.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="DescriptorHeap.h" />
+    <ClInclude Include="FrameCapture.h" />
+    <ClInclude Include="GraphicsDevice.h" />
+    <ClInclude Include="PresentPass.h" />
+    <ClInclude Include="ScaleMode.h" />
+    <ClInclude Include="SceneTarget.h" />
+    <ClInclude Include="SwapChain.h" />
+    <ClInclude Include="Window.h" />
+    <ClInclude Include="d3dx12.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\PresentPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\PresentVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.vcxproj">
@@ -116,4 +151,11 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
+  <!--
+    Neither dxc nor fxc creates the directory its /Fh names, and CompiledShaders\ is build output
+    that is not in the tree (AGENTS.md §2), so the build makes it before the shaders compile.
+  -->
+  <Target Name="MakeCompiledShadersDirectory" AfterTargets="PrepareForBuild">
+    <MakeDir Directories="$(ProjectDir)CompiledShaders" />
+  </Target>
 </Project>

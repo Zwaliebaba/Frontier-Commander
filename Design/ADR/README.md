@@ -7,6 +7,7 @@ One file per engineering decision, numbered from `ADR-001` in this repository (`
 | [`ADR-001`](ADR-001-solution-layout.md) | The solution and project layout: the eight projects, their edges and namespaces, the settings every project carries, the test-project shape | 2026-09-17 |
 | [`ADR-002`](ADR-002-tick-and-numbers.md) | The 20 Hz tick, the 1/256 position unit and the fixed-point formats, the state hash's order, the order record; the empty tick measured | 2026-09-17 |
 | [`ADR-003`](ADR-003-snapshot-and-replay-formats.md) | The snapshot and replay formats: the stream layout, its digest, and the one-version rule until the first save ships | 2026-09-17 |
+| [`ADR-004`](ADR-004-renderer-foundation.md) | The renderer foundation: 1920×1080 authored, a borderless window over the primary monitor, a 4× multisampled scene target resolved and presented scaled; the `HRESULT` policy; `d3dx12.h` pinned at DirectX-Headers v1.606.3; shader model 6.0 through `FXCompile` and `dxc` | 2026-09-17 |
 
 ## When to write one
 

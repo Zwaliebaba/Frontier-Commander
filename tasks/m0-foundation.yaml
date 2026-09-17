@@ -930,7 +930,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       The port is operation for operation from the tool: the same loops in the same order, the base
       draw before the noise draw, the three products the tool marks widened to int64, every division
@@ -945,7 +945,8 @@ tasks:
       the snapshot carry the definition and the delta list rather than the samples, which determine
       them, because hashing a Frontier field every tick would not fit the budget; ADR-002's hash
       order and ADR-003's table gained the landscape row and the snapshot is version 2. The fixture
-      path is taken from __FILE__, because a test DLL's module path is the test host's, not its own.
+      path is taken from __FILE__, because a test DLL's module path is the test host's, not its own. CI run 31 (88a76fd) was green: the twenty
+      fields hash to the tool's list under MSVC too.
 
   - id: T18
     title: Client Direct3D 12 foundation - window, device with WARP, swap chain, scene target, present pass, capture; the shader pipeline; the renderer ADR
@@ -1012,11 +1013,23 @@ tasks:
     parallel_safe: true
     status: in_progress
     notes: >
-      winrt/base.h throws on a failed check_hresult and on as<T>(); decide the HRESULT policy
-      here (check_hresult everywhere in Client is the simple answer, with the exception caught
-      once at the frame loop and turned into a device-removed or fatal path) and write it into
-      the renderer ADR. A capture that cannot show a window is the only way this project's agent ever
-      sees a frame, so treat --capture as a first-class path, not a test hook.
+      ADR-004 records the decisions. Client/pch.h precompiles the platform (WindowsHeader.h, then
+      d3d12.h, d3d12sdklayers.h, dxgi1_6.h, unknwn.h before winrt/base.h, then d3dx12.h with the
+      state-object helpers and the feature-support class compiled out), and every Client header
+      still includes what it names, because the executable's pch.h is the standard library alone.
+      The HRESULT policy is winrt::check_hresult everywhere and one catch in App::Run; the executable
+      links runtimeobject.lib for the RoOriginateLanguageException that hresult_error's constructor
+      calls. The window attaches its instance as a window property rather than through the creation
+      parameters, so that no integer message parameter is ever cast to a pointer. The debug layer's
+      absence (DXGI_ERROR_SDK_COMPONENT_MISSING on a machine without the SDK layers) is tolerated and
+      logged, so a capture's log says whether it was validated. The acceptance grep for ComPtr,
+      AddRef( and Release( is read excluding the vendored header, which mentions all three in the
+      parts that are compiled out. D3D12_GRAPHICS_PIPELINE_STATE_DESC is filled member by member:
+      clang-tidy 22 refuses a {} of a struct holding enumerations with no zero enumerator, and it is
+      right that a zero D3D12_CULL_MODE is not a value. Verified in the session with clang against
+      DirectX-Headers' d3d12.h over its WSL stubs, mingw-w64's DXGI headers and hand-written stand-ins
+      for windows.h, winrt/base.h and shellapi.h, for syntax and with the pinned clang-tidy; only CI
+      compiles the real thing, and the shaders only compile there.
 
   - id: T19
     title: Client input - the event system from the Species input-native-events design
