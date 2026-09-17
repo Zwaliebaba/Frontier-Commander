@@ -925,7 +925,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T18
     title: Client Direct3D 12 foundation - window, device with WARP, swap chain, scene target, present pass, capture; the shader pipeline; the renderer ADR
