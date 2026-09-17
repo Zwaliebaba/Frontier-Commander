@@ -20,6 +20,9 @@ mono_crash.*
 # <Library>/Shaders/*.hlsl in, <Library>/CompiledShaders/*.h out. Build output; the .vcxproj regenerates it.
 CompiledShaders/
 
+# What FrontierCommander --capture writes when run from the repository root (TechnicalDesign.md §6.1).
+Captures/
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/

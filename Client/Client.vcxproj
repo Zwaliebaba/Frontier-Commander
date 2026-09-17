@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!--
+    Written by hand from the MSBuild schema (ADR-001; AGENTS.md §2, §3). Everything that is not
+    about optimisation sits in the unconditional groups below and is therefore identical in
+    Debug and Release by construction; the conditional groups hold only the differences
+    AGENTS.md §3 enumerates. Build/CheckProjectFiles.py holds the projects to this shape.
+  -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{B25D3EA2-610F-4632-B1E5-4C4739D51E36}</ProjectGuid>
+    <RootNamespace>Client</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <OutDir>$(SolutionDir)x64\$(Configuration)\</OutDir>
+    <IntDir>$(SolutionDir)x64\$(Configuration)\Intermediate\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
+    <LinkIncremental>true</LinkIncremental>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'">
+    <LinkIncremental>false</LinkIncremental>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <WarningLevel>Level4</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <SDLCheck>true</SDLCheck>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpplatest</LanguageStandard>
+      <FloatingPointModel>Precise</FloatingPointModel>
+      <EnableEnhancedInstructionSet>AdvancedVectorExtensions2</EnableEnhancedInstructionSet>
+      <ExceptionHandling>Sync</ExceptionHandling>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <DiagnosticsFormat>Caret</DiagnosticsFormat>
+      <AdditionalIncludeDirectories>$(SolutionDir)Core;$(SolutionDir)Content;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+    <FxCompile>
+      <!--
+        Shader model 6 through the SDK's dxc, which the toolset drives itself when the model is 6.x
+        (ADR-004): one header per shader under CompiledShaders\, declaring g_<Shader> (AGENTS.md §2).
+      -->
+      <ShaderModel>6.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+      <HeaderFileOutput>$(ProjectDir)CompiledShaders\%(Filename).h</HeaderFileOutput>
+      <VariableName>g_%(Filename)</VariableName>
+      <!--
+        Debug information in both configurations, embedded in the container: dxc warns when /Zi
+        has nowhere to write a PDB, and /warnaserror makes the warning fatal; the toolset would
+        otherwise pass /Zi in Debug alone, and a shader step that differs between the two
+        configurations is what AGENTS.md §3 rules out.
+      -->
+      <EnableDebuggingInformation>true</EnableDebuggingInformation>
+      <AdditionalOptions>-Qembed_debug %(AdditionalOptions)</AdditionalOptions>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="DescriptorHeap.cpp" />
+    <ClCompile Include="FrameCapture.cpp" />
+    <ClCompile Include="GraphicsDevice.cpp" />
+    <ClCompile Include="PresentPass.cpp" />
+    <ClCompile Include="ScaleMode.cpp" />
+    <ClCompile Include="SceneTarget.cpp" />
+    <ClCompile Include="SwapChain.cpp" />
+    <ClCompile Include="Window.cpp" />
+    <ClCompile Include="FrameInput.cpp" />
+    <ClCompile Include="InputQueue.cpp" />
+    <ClCompile Include="InputRouter.cpp" />
+    <ClCompile Include="InputSubscription.cpp" />
+    <ClCompile Include="RawMouse.cpp" />
+    <ClCompile Include="TerrainChunk.cpp" />
+    <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="TerrainPass.cpp" />
+    <ClCompile Include="WaterPass.cpp" />
+    <ClCompile Include="pch.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="pch.h" />
+    <ClInclude Include="DescriptorHeap.h" />
+    <ClInclude Include="FrameCapture.h" />
+    <ClInclude Include="GraphicsDevice.h" />
+    <ClInclude Include="PresentPass.h" />
+    <ClInclude Include="ScaleMode.h" />
+    <ClInclude Include="SceneTarget.h" />
+    <ClInclude Include="SwapChain.h" />
+    <ClInclude Include="Window.h" />
+    <ClInclude Include="d3dx12.h" />
+    <ClInclude Include="FrameInput.h" />
+    <ClInclude Include="InputEvent.h" />
+    <ClInclude Include="InputQueue.h" />
+    <ClInclude Include="InputRouter.h" />
+    <ClInclude Include="InputSubscription.h" />
+    <ClInclude Include="RawMouse.h" />
+    <ClInclude Include="Lighting.h" />
+    <ClInclude Include="TerrainChunk.h" />
+    <ClInclude Include="Camera.h" />
+    <ClInclude Include="SceneConstants.h" />
+    <ClInclude Include="TerrainPass.h" />
+    <ClInclude Include="WaterPass.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Shaders\PresentPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\PresentVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\TerrainPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\TerrainVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\WaterPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\WaterVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.vcxproj">
+      <Project>{73A1B550-9E49-4E36-9ED0-AECD1B53CFD6}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\Content\Content.vcxproj">
+      <Project>{52F4AA12-E421-4D54-843F-8356EDEBD036}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+  <!--
+    Neither dxc nor fxc creates the directory its /Fh names, and CompiledShaders\ is build output
+    that is not in the tree (AGENTS.md §2), so the build makes it before the shaders compile.
+  -->
+  <Target Name="MakeCompiledShadersDirectory" AfterTargets="PrepareForBuild">
+    <MakeDir Directories="$(ProjectDir)CompiledShaders" />
+  </Target>
+</Project>

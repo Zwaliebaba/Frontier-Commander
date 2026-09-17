@@ -4,14 +4,14 @@ Operating instructions for every agent (and human) writing code in this reposito
 
 *Frontier Commander* is a greenfield C++23 game and a hobby project with one developer: a Direct3D 12 client and an authoritative simulation, built on Windows with MSVC. This file is about **how code is written here** — naming, layout, build settings and the standing rules of the codebase. It is not the design: what the game *is* is in [`Design/`](Design/README.md) — `Design/GameDesign.md` and `Design/TechnicalDesign.md`, promoted by the owner on 2026-09-17.
 
-**The tree is empty.** This repository holds this file, the root configuration files, `.gitignore` and `.github/` — no solution, no projects, no source. Nothing below is a target to migrate towards; it describes the code as it must be written from the first line. There is no legacy here and nothing is grandfathered, so a whole-tree run of any checker comes back clean — trivially today, and by conformance from then on.
+**The tree is young.** The solution and its first project landed on 2026-09-17 ([`ADR-001`](Design/ADR/ADR-001-solution-layout.md)); what exists conforms, and nothing below is a target to migrate towards: it describes the code as it must be written from the first line. There is no legacy here and nothing is grandfathered, so a whole-tree run of any checker comes back clean — by conformance, from the first file on.
 
 **Where these rules come from.** They are carried over from two sibling repositories: `Outpost.Warzone`, where the formatter and linter settings were measured against roughly 223,000 lines, and `Nomad-Commander`. That lineage is why `.clang-format` and `.clang-tidy` are what they are, and it is why code can move between the trees without a rename or a reflow pass. **What did not come across is the other trees' design, their decisions or their plan.** A decision taken there binds nothing here.
 
 **What is authoritative, in order:**
 
 1. **This file** — conformance: naming, style, build settings, and how to work here.
-2. **`Design/ADR/`** — engineering decisions taken while building, one file per decision (§6). **There are none yet**; numbering starts at `ADR-001` in this repository and does not continue another's.
+2. **`Design/ADR/`** — engineering decisions taken while building, one file per decision (§6). Numbering starts at `ADR-001` (the solution layout, 2026-09-17) in this repository and does not continue another's.
 3. **The surrounding code** — for anything neither of the above covers, match the file you are editing.
 
 The design sits alongside rather than above: it says what is built and this file says how. A task that needs a design answer the design does not give asks the owner and gets the answer written into `Design/` before the code is.
@@ -128,16 +128,16 @@ private:
 | Rule | Enforced by |
 |---|---|
 | The naming table, R1, R3, R5, R8 | [`.clang-tidy`](.clang-tidy), gated in CI over the whole tree |
-| R2 affixes, R7 file names and project registration, R11 spellings, §2 flat directories | `Build/CheckProjectFiles.py`, gated in CI |
+| R2 affixes, R7 file names and project registration, R11 spellings, §2 flat directories, §3 no header named like a runtime or SDK header | `Build/CheckProjectFiles.py`, gated in CI |
 | R4, R6, R9, R10 | Review. Check your own diff against the table before handing it back. |
 
-**Neither checker exists yet** (§6). `.clang-tidy` is configured and gates the moment there is a translation unit to run it over; `Build/CheckProjectFiles.py` has to be written, and until it is, the four rules in its row are review's problem and nothing else. A rule nobody can run is a rule that rots, so writing that checker is early work rather than housekeeping.
+`Build/CheckProjectFiles.py` exists (2026-09-17) and gates in CI; `python Build\CheckProjectFiles.py --self-test` proves that each of its rules fires on the deliberately broken projects under `Build/Fixtures/ProjectFiles/`, and the README there says what each fixture breaks. `.clang-tidy` gates in CI through `Build/RunClangTidy.py` (2026-09-17), which runs the pinned clang-tidy over every translation unit the solution builds; `python Build\RunClangTidy.py <file>` runs it over the file you just wrote, before you push.
 
 ---
 
 ## 2. Repository shape
 
-The concrete layout — the solution, the projects and the edges between them — is settled when the first project is created, and recorded here and in an ADR at that point. Until then, these are the standing constraints any layout has to satisfy.
+The concrete layout is [`ADR-001`](Design/ADR/ADR-001-solution-layout.md) (2026-09-17): `FrontierCommander.slnx` at the root; eight projects — `Core`, `Content`, `Sim`, `Net`, `Replica` and `Client` as static libraries, `FrontierCommander` and `FrontierHost` as executables — each in a flat directory of its name, with `Tests/<Name>Tests` per library; the edges one way, as `Design/TechnicalDesign.md` §2 draws them; namespaces `Neuron` for the engine (`Core`, `Client`) and `Frontier` for the game. The constraints below are what that layout satisfies and what any change to it has to keep.
 
 **Project directories are flat, with exactly two sanctioned subdirectories.** C++ source lives directly in its project's folder. This is not taste: `.clang-tidy`'s `HeaderFilterRegex` matches headers exactly one level in, so **a header in a subdirectory is silently unchecked** — no findings, no warning, and nobody notices for months. The two exceptions are the shader pipeline:
 
@@ -176,6 +176,10 @@ msbuild <Solution>.slnx /t:<ProjectName> /p:Configuration=Debug /p:Platform=x64 
 # Release, before you claim anything about it.
 msbuild <Solution>.slnx /p:Configuration=Release /p:Platform=x64 /m /v:minimal /nologo
 ```
+
+**No header is named like a C runtime or SDK header.** The other projects' directories sit on the include path ahead of the SDK, MSVC searches them for an angled include too, and it matches the name case-insensitively: `Core/Assert.h` was what DirectXMath's `<assert.h>` found, once (2026-09-17). `Build/CheckProjectFiles.py` refuses the runtime's names and the SDK headers this tree reaches for.
+
+**No identifier is spelled like a Windows SDK macro.** `<windows.h>` is in scope on the whole Client side and in every test suite, and the preprocessor rewrites `near`, `far`, `pascal`, `cdecl`, `interface`, `small`, `hyper`, `IN`, `OUT`, `OPTIONAL`, `CONST`, `VOID`, `PURE`, `DELETE`, `IGNORE` and the upper-case twins of the first four before the compiler sees them: `const XMVECTOR near` lost its name, once (2026-09-17), and a portable layer only finds out when a test includes it. `Build/CheckProjectFiles.py` refuses the names in every project.
 
 **A project does not put its own directory on the include path.** `cl.exe` already searches the directory of the including file first for a quoted include, so `#include "FileSys.h"` from a `.cpp` in the same folder resolves without help. Only the directories of *other* projects are listed, as `$(SolutionDir)<Project>`.
 
@@ -217,13 +221,13 @@ python Build\RunClangTidy.py          # needs a Developer PowerShell (INCLUDE mu
 
 **The client draws into a scene target and presents that, scaled.** Every pass draws into an off-screen colour target at the resolution the game is authored for, and the frame ends by presenting that target into the swap chain's back buffer, fitted to the window's client area with the aspect ratio preserved: **1:1 and unfiltered when the client area already matches, point sampling at an exact integer multiple, bilinear otherwise, letterboxed.** Exactly one place asks the window how big it is, and that is it; every layout, every glyph and every integer position behind it is unconditional. A pass that branches on the window size has misunderstood this rule.
 
-**The authored resolution, the window style and whether the scene target is multisampled are not settled here.** They are the first client ADR, and the first renderer task writes it. Three things are worth having in hand before that conversation:
+**The authored resolution, the window style and whether the scene target is multisampled are not settled here.** They are the first client ADR, [`ADR-004`](Design/ADR/ADR-004-renderer-foundation.md), which the first renderer task wrote (2026-09-17): 1920×1080, a borderless window over the primary monitor, a 4× multisampled scene target. Three things were in hand for that decision and still bind whoever reopens it:
 
 - **A back buffer cannot be multisampled, and that is the API's doing rather than a policy.** D3D12 supports only the flip-model swap effects, and DXGI does not multisample a flip-model back buffer — `SampleDesc.Count` must be 1. A *scene* target has no such limit: it may be created multisampled and resolved before the present step scales it. That, beyond running on a display too small to hold the authored resolution, is the main thing the indirection buys.
 - **A scale is not free, and text is what it costs.** A glyph authored as a bit pattern, or baked to an exact pixel height, reaches the glass resampled unless the scale is exactly 1. In a dense interface full of small type that is the real cost of the whole arrangement, which is why the 1:1 path exists and why it is worth keeping common.
 - **A decorated window cannot have a client area as tall as the monitor it is on.** A caption and borders add roughly 6×37 pixels, so asking for a 1080-pixel client area on a 1080p desktop asks for a window taller than the screen. A borderless `WS_POPUP` covering the primary monitor is the usual answer, and it is not free either: with no close box, something has to own Escape and Alt+F4 as the only ways out.
 
-**R14 — No third-party dependencies and no package manager.** The Windows SDK and the MSVC standard library, and nothing else — with one named exception, decided by the owner on 2026-09-17: `d3dx12.h`, the Direct3D 12 helper header, vendored under `Client/` as a single pinned file with its MIT licence text beside it, never fetched by the build. If you believe something else is unavoidable, propose it in your report with what it buys and what it costs — do not add it. This is a closed list, not a high bar.
+**R14 — No third-party dependencies and no package manager.** The Windows SDK and the MSVC standard library, and nothing else — with one named exception, decided by the owner on 2026-09-17: `d3dx12.h`, the Direct3D 12 helper header, vendored under `Client/` as a single pinned file with its MIT licence text beside it, never fetched by the build; the release it came from and its hash are in [`ADR-004`](Design/ADR/ADR-004-renderer-foundation.md). If you believe something else is unavoidable, propose it in your report with what it buys and what it costs — do not add it. This is a closed list, not a high bar.
 
 **It binds what the executable is built from, not what a development tool needs.** Scripts under `Build/` and `Tools/` never ship and never link, so a baker that needs Pillow does not reopen this rule. **Third-party *content* is a different question and it is the owner's**: art, fonts and sound are content, not dependencies, and anything under a licence needs the owner's approval before it lands, with the licence text travelling with the bytes.
 
@@ -249,13 +253,15 @@ Inside the simulation, additionally: no `float` where a fixed-point or integer q
 
 **Record decisions as ADRs.** An engineering decision — a file format, a wire protocol, a subsystem's shape, an exception to a rule here — goes in `Design/ADR/` as one file per decision, numbered in order from `ADR-001-<slug>.md`, stating the context, the decision and what it forecloses, in the same commit as the change that implements it. Figures in an ADR are measured, not estimated — if you quote one, say how you measured it. A decision nobody wrote down gets re-litigated every few months by whoever forgot it.
 
-**Write the checkers early.** `Build/CheckFormat.py`, `Build/CheckProjectFiles.py` and `Build/RunClangTidy.py` are what §1, §2 and §3 lean on, and **none of them exists yet.** Until each one lands, the rules it would enforce are review's problem — which is exactly why they are early work rather than housekeeping.
+**Write the checkers early.** `Build/CheckFormat.py`, `Build/CheckProjectFiles.py` and `Build/RunClangTidy.py` are what §1, §2 and §3 lean on. All three exist (2026-09-17) and gate in CI, so a rule one of them enforces is never review's problem.
 
 **What CI runs.** [`.github/workflows/build.yml`](.github/workflows/build.yml) has two jobs: a Windows job that checks the build shape, builds **Debug|x64**, runs the test suites and then clang-tidy; and a Linux job that checks formatting on a pinned clang-format. **Every step that has something to run blocks; a step whose input does not exist yet is skipped, not faked.** Each gate is guarded on the file it needs — the checker script, the solution, the built test DLLs — so the workflow is honest about today's empty tree and starts gating the moment that file lands. The guards are the only concession: nothing is `continue-on-error`, and a script that exists and fails still fails the build. Remove a guard once its input is permanently there, not before, and never add one to get past a red build.
 
 **CI does not build Release.** The Windows build is the slow half of the pipeline and a second configuration roughly doubles it for a tree where the two differ only in optimisation. What stands in for it is the static alignment check on the two configurations (§3) — and, before a release, an actual `Configuration=Release` build by whoever is shipping. If you change something that could plausibly break only under optimisation, build Release yourself and say so.
 
 **Commits and PRs.** Branch off `main`; small, focused commits with an imperative subject describing the change, not the process. One change per PR. CI must be green. Never commit build output, `.vs/` or `.user` files.
+
+**Work is planned as task graphs.** Anything larger than a single-file change is a task in a plan under `tasks/`, in the format [`Design/ImplementationPlan.md`](Design/ImplementationPlan.md) §3 describes; `python Tools\CheckTaskDag.py --next tasks\<plan>.yaml` says what can start. A task is set `in_progress` in its own commit before the work and `done` in the commit that lands it, never before CI is green, and a task that turns out to be wrong is marked and replaced rather than quietly reshaped.
 
 ---
 

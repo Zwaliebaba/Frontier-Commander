@@ -1,0 +1,21 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/ClientTests/ClientTests.vcxproj" Id="8fd7f6d7-eb99-48f3-a7de-d0a809390c16" />
+    <Project Path="Tests/ContentTests/ContentTests.vcxproj" Id="3c5abb14-6eb0-4b0e-9fc1-0bbafa7e193e" />
+    <Project Path="Tests/CoreTests/CoreTests.vcxproj" Id="4ccaeb0e-a0eb-420c-a93b-bb9ee8686815" />
+    <Project Path="Tests/NetTests/NetTests.vcxproj" Id="164aaf07-598e-4af3-bae3-f3074bd64cb3" />
+    <Project Path="Tests/ReplicaTests/ReplicaTests.vcxproj" Id="b1ccfe06-0ceb-4bcf-b194-5af6de8fca7f" />
+    <Project Path="Tests/SimTests/SimTests.vcxproj" Id="f504ff47-a8a2-4ece-9373-5e6327db0048" />
+  </Folder>
+  <Project Path="Client/Client.vcxproj" Id="b25d3ea2-610f-4632-b1e5-4c4739d51e36" />
+  <Project Path="Content/Content.vcxproj" Id="52f4aa12-e421-4d54-843f-8356edebd036" />
+  <Project Path="Core/Core.vcxproj" Id="73a1b550-9e49-4e36-9ed0-aecd1b53cfd6" />
+  <Project Path="FrontierCommander/FrontierCommander.vcxproj" Id="b51052c0-c0d9-4252-ad6b-f1a63a6787c9" />
+  <Project Path="FrontierHost/FrontierHost.vcxproj" Id="8bd6f173-0166-431d-90da-d650bce502f3" />
+  <Project Path="Net/Net.vcxproj" Id="6ddfb95d-4bcf-4de4-81fc-81a48ed33911" />
+  <Project Path="Replica/Replica.vcxproj" Id="3c086e09-94bc-4ee6-95b1-03d891598eb6" />
+  <Project Path="Sim/Sim.vcxproj" Id="4b5b9938-70b1-46e7-a632-1bbede31cd6c" />
+</Solution>

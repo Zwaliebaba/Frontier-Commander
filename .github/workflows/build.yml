@@ -165,14 +165,17 @@ jobs:
             /m /nologo /v:minimal /warnaserror `
             /flp:LogFile=build.log`;Verbosity=normal
 
-      # One suite per *Tests.vcxproj in the tree, and every one of them must have produced a DLL:
+      # One suite per *Tests.vcxproj in the tree (outside Build/Fixtures, where the project-file
+      # checker keeps deliberately broken projects for its self-test), and every one of them must
+      # have produced a DLL:
       # vstest reports "no tests found" as a pass, so a suite that did not build is not a suite
       # that passed. No suites at all is a state this repository is still legitimately in.
       - name: Run the tests
         if: steps.solution.outputs.path != ''
         shell: pwsh
         run: |
-          $projects = @(Get-ChildItem -Path . -Recurse -Filter '*Tests.vcxproj' -File)
+          $projects = @(Get-ChildItem -Path . -Recurse -Filter '*Tests.vcxproj' -File |
+            Where-Object { $_.FullName -notmatch '[\\/]Build[\\/]Fixtures[\\/]' })
           if ($projects.Count -eq 0) {
             Write-Output "::notice::No *Tests.vcxproj in the tree yet. Nothing to run."
             exit 0
@@ -185,8 +188,31 @@ jobs:
           $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
           $vstest = & $vswhere -latest -products * -find '**\vstest.console.exe' | Select-Object -First 1
           if (-not $vstest) { throw "vstest.console.exe not found." }
-          & $vstest $suites /Platform:x64 /Logger:trx /ResultsDirectory:TestResults
+          # The console logger at detailed verbosity prints what a test wrote (Logger::WriteMessage)
+          # for passed tests too, which is how a measurement a test makes reaches the agent: the
+          # session cannot fetch the TestResults artefact through its egress proxy, but it can read
+          # this log.
+          & $vstest $suites /Platform:x64 /Logger:trx /Logger:"console;verbosity=detailed" /ResultsDirectory:TestResults
           if ($LASTEXITCODE -ne 0) { throw "vstest reported failures." }
+
+      # The capture (TechnicalDesign.md §6.1, §10): the game on WARP with no window, three hundred
+      # frames of the scene target and a BMP of every hundredth, so that the frames an agent cannot
+      # render on its own machine become artefacts of the pull request. The executable exits 2 when
+      # the debug layer reported anything and 1 when it could not run at all, and either fails the
+      # job. A Windows-subsystem executable starts without a console and PowerShell would not wait
+      # for it on its own, so Start-Process -Wait does; the log the run wrote is printed here,
+      # because the agent reads this job log and cannot fetch the artefact. Guarded on the
+      # executable, like every other step on its input.
+      - name: Capture frames on WARP
+        if: hashFiles('x64/Debug/FrontierCommander.exe') != ''
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath 'x64\Debug\FrontierCommander.exe' -ArgumentList '--warp', '--capture', '300', 'Captures' -Wait -PassThru -NoNewWindow
+          if (Test-Path 'Captures\capture.log') { Get-Content 'Captures\capture.log' } else { Write-Output '::warning::Captures\capture.log was not written.' }
+          Get-ChildItem 'Captures' -Filter '*.bmp' -ErrorAction SilentlyContinue | ForEach-Object { Write-Output "$($_.Name): $($_.Length) bytes" }
+          # What a glance at each frame would tell, as text: the session cannot fetch the artefact.
+          if (Test-Path 'Tools\DescribeCapture.py') { python Tools\DescribeCapture.py Captures }
+          if ($process.ExitCode -ne 0) { throw "FrontierCommander --capture exited with $($process.ExitCode)." }
 
       # After the build, so that a compile error is reported as a compile error rather than as
       # forty linter findings about a file that does not parse.
@@ -211,6 +237,15 @@ jobs:
           path: TestResults
           if-no-files-found: ignore
 
+      # Always, so that the frames of a capture that then exited non-zero are still there to look at.
+      - name: Upload the captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures
+          path: Captures/*.bmp
+          if-no-files-found: ignore
+
   format:
     name: clang-format
     runs-on: ubuntu-latest
@@ -233,3 +268,13 @@ jobs:
       - name: Check formatting
         if: hashFiles('Build/CheckFormat.py') != ''
         run: python3 Build/CheckFormat.py --clang-format clang-format-18
+
+      # The task plans under tasks/ are a graph an agent computes its next task from
+      # (Design/ImplementationPlan.md §3). A plan with a cycle, an unresolvable edge or a task
+      # marked done ahead of its dependencies would send the next session the wrong way, so the
+      # validator gates here, on the Linux job because it is seconds. Guarded like the rest.
+      - name: Validate the task plans
+        if: hashFiles('Tools/CheckTaskDag.py') != ''
+        run: |
+          python3 -m pip install --disable-pip-version-check --quiet pyyaml
+          python3 Tools/CheckTaskDag.py

@@ -1,0 +1,1071 @@
+# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/m1-vertical-slice.yaml
+#
+# Commands under `verify` that name msbuild, vstest or RunClangTidy are what CI runs on the pull
+# request; an agent session runs on Linux and reads their result off the PR (ImplementationPlan.md §2).
+
+plan: m1-vertical-slice
+title: M1 Vertical slice - two commanders on a Small landscape build, design, research and fight to annihilation over loopback
+phase: 1
+summary: >
+  What M1 proves (GameDesign.md §12): two commanders, one human and one scripted, on a Small
+  landscape build extractors, generators, a factory and a lab, design a device and fight to
+  annihilation, with a host thread and the loopback transport in one process and the client a
+  replica from the first slice (owner, 2026-09-17). Content is one landscape, five structures
+  and one defence, three chassis, three drives, four modules, thirty research items, a
+  fixed-panel interface per Design/Interface.md, Net and Replica over loopback, one scripted AI,
+  the damage and visibility models complete, and the M1 tables checked by the cost-efficiency
+  script.
+
+  Task ids carry a letter for the layer so that a reader can see the shape: D design, C content,
+  S simulation, N net, R replica, K client (engine), G game executable. Every task is blocked by
+  the M0 task that gives it its library; the checker shows those as "held by another plan" until
+  M0 lands.
+
+  What this plan deliberately leaves to M2, so that nobody adds it here: audio, the sprite
+  pass and particles, water with waves, the sky and clouds, Eclipse-shaped windows (M1 has fixed
+  panels), save and resume, a lobby, hover, walls and hardpoints, and every module not in the
+  four. Projectiles are small geometry instances and an explosion is a sound-less wreck.
+
+  Placeholders: the owner makes the models (owner, 2026-09-17), and until they exist every
+  model is a generated primitive with markers, so that composition at markers is exercised
+  rather than faked. The Species palettes, icons and the Spectrum font come across under
+  the provenance ADR.
+
+tasks:
+  - id: D1
+    title: Write Design/Interface.md - the M1 fixed-panel interface
+    intent: >
+      The slice cannot run without a specification of what the operator sees and clicks
+      (Design/README.md), and the interface is the one design document the drafts did not
+      write. It is written as fixed panels, the M2 Eclipse windows being a later restyling of
+      the same content.
+    project: Design
+    depends_on: []
+    files:
+      - Design/Interface.md
+      - Design/README.md
+    acceptance:
+      - "Specifies, with a layout sketch in text at the authored resolution: the selection panel (what is selected, its parts, health, rank, orders and stances), the production panel (factory queue from the seat's designs), the design panel (chassis, drive, modules with the derived statistics shown before commit, needing a command post), the research panel (available items with cost, time and effect; auto-research toggle), the construction panel (structure choice and placement with a footprint ghost and the slope and water rules shown), the minimap (fog states, structures, selection, camera frustum, click to move the camera), the power readout (stockpile, cap, income), the order hotkeys and mouse bindings, the end-of-match overlay, and Escape's pause menu"
+      - Every panel names the Replica data it reads (R2) and the orders it emits (S2), so K4 and G1 have nothing to invent
+      - Design/README.md's table lists it as Design, and the owner's merge of the PR is its acceptance; the PR says so
+    verify:
+      - python3 Tools/CheckTaskDag.py
+    parallel_safe: true
+    status: todo
+
+  - id: C1
+    title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
+    intent: >
+      Game data is JSON files under Content\ (TechnicalDesign.md §8) read into plain row
+      aggregates by one loader that refuses a broken tree with a location, and the same code
+      runs in CI as FrontierHost --validate, so that a table edit that would break the game
+      breaks the build first.
+    project: Content
+    depends_on: []
+    blocked_by:
+      - m0-foundation/T11
+      - m0-foundation/T13
+      - m0-foundation/T17
+    files:
+      - Content/ComponentDesc.h
+      - Content/ResearchItemDesc.h
+      - Content/StructureDesc.h
+      - Content/DamageTable.h
+      - Content/BiomeDesc.h
+      - Content/LandscapeDefinition.h
+      - Content/StampDesc.h
+      - Content/ModelDesc.h
+      - Content/SoundEventDesc.h
+      - Content/ContentTree.h
+      - Content/ContentLoader.h
+      - Content/ContentLoader.cpp
+      - Content/ContentValidator.h
+      - Content/ContentValidator.cpp
+      - Content/DesignStats.h
+      - Content/DesignStats.cpp
+      - Content/Content.vcxproj
+      - Content/Content.vcxproj.filters
+      - FrontierHost/Main.cpp
+      - Tests/ContentTests/ContentLoaderTests.cpp
+      - Tests/ContentTests/ContentValidatorTests.cpp
+      - Tests/ContentTests/DesignStatsTests.cpp
+      - Tests/ContentTests/BrokenFixtures.h
+      - Tests/ContentTests/ContentTests.vcxproj
+      - Tests/ContentTests/ContentTests.vcxproj.filters
+      - Design/ADR/README.md
+      - Design/TechnicalDesign.md
+    acceptance:
+      - "One row aggregate per table with plain camelCase fields (R8), every number an integer in the unit its name says (hundredths for factors and percentages, ticks for times, subunits for distances, power in hundredths): ChassisDesc, DriveDesc, ModuleDesc, ResearchItemDesc, StructureDesc and its module rows, DamageTable (five weapon classes by ten target classes plus armorFactor and the armour kind per weapon class), BiomeDesc (palette, water and wave bitmaps, the two lights, fog, sky), LandscapeDefinition (the schema m0-foundation/T16 wrote), StampDesc, ModelDesc (positions, colours, triangles, markers, fragments), SoundEventDesc"
+      - 'ContentLoader reads Content\ from Paths::ContentDirectory() or a directory given to it, file by file, into a ContentTree, and stops at the first file that fails with the file, line and column; ContentValidator then checks the whole tree: every research prerequisite exists and the tree has no cycle, every unlock names a real component or structure, every model, texture and sound a row names exists, no id is duplicated, every number is within the range its field declares, and every landscape''s palette names a biome'
+      - "DesignStats derives speed, hit points, armour, cost, build time and sight from a chassis, a drive and modules by the formulas of GameDesign.md §6, in integer arithmetic, and ContentTests reproduces the two worked examples (104 world units per second, 130 power, 13 seconds; 29, 490, 49) once C2's tables exist, against literal rows until then"
+      - FrontierHost --validate [directory] loads and validates with that code and exits 0 or non-zero printing every diagnostic; it is a step in CI guarded on Content\\Components.json existing, added to the workflow in this task
+      - 'ContentTests loads a tree written to a temporary directory by the test, never Content\ in place, and refuses each of a set of deliberately broken documents with the right file and line: a missing prerequisite, a cycle, an unknown model, a duplicate id, a number out of range, a malformed file'
+      - The content ADR, numbered when written, records the directory layout, every schema with a version field, the range of every numeric field, and the rule that a loader change and a content change ship together
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: C2
+    title: Author the M1 content tables
+    intent: >
+      The slice's numbers exist as files a reviewer can diff against GameDesign.md §4 to §8, so
+      that every simulation task reads content rather than literals and rebalancing is an edit.
+    project: Content
+    depends_on: [C1]
+    files:
+      - Content/Components.json
+      - Content/Structures.json
+      - Content/Research.json
+      - Content/Damage.json
+      - Content/Biomes.json
+      - Content/Landscapes/Slice.json
+      - Content/Sounds.json
+      - Tests/ContentTests/DesignStatsTests.cpp
+    acceptance:
+      - "Components.json: chassis Light I, Medium I, Heavy I; drives Wheels, Half-track, Tracks; modules Machine gun, Cannon, Mortar, Builder, every number from the GameDesign.md §6 tables"
+      - "Structures.json: Command post, Extractor, Generator, Factory, Research lab, Tower, with footprints, strength classes, costs, build times, sight radii, module slots and effects from §4 and §5; the Tower carries the Machine gun"
+      - "Research.json: thirty items whose tree lets a commander reach every M1 component and structure once, with costs and times inside the §4 ranges, and upgrades for armour, damage, extractor rate and hit points as class percentages"
+      - "Damage.json: the version-1 matrix of §8 and the armorFactor and armour kind per weapon class"
+      - "Biomes.json: the Default biome with the palette LandscapeDefault.dds, the light pair SpeciesLook.md §3 measures as typical (a near-white key at 25 degrees elevation, an orange horizontal sun at peak 3), the fog and sky per the ADR of m0-foundation/T20"
+      - "Landscapes/Slice.json: a Small landscape whose seed the landscape tool reports as passing all four guarantees, with two starts and twelve deposits placed per GameDesign.md §3 (a modest cluster at each start, the largest midway)"
+      - FrontierHost --validate passes over the tree, and the CI step runs it
+      - The DesignStats test now reads the tables and reproduces the worked examples from them
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Tools/LandscapeTool.py --report Small --seeds 100
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: C3
+    title: Write Tools/CheckBalance.py, the cost-efficiency script
+    intent: >
+      The tables are checked before the design screen exists (GameDesign.md §8): every design
+      against every design per tier and per power spent, so that a design that dominates its
+      tier is found as a table bug rather than by a player.
+    project: Tools
+    depends_on: [C2]
+    files:
+      - Tools/CheckBalance.py
+    acceptance:
+      - Reads Components.json, Damage.json, Research.json and Structures.json; enumerates every design (chassis, drive, one module set) available at each research tier; derives its statistics by the same formulas as Content/DesignStats
+      - "For each pair of designs computes the expected time to kill in both directions from damage, rate, hit chance at short range, the matrix, armorFactor and hit points, and a power-normalised score; prints per tier the designs that beat every other design of equal or lower cost, which is the dominance finding, and the best three designs per role"
+      - Exits non-zero when any tier has a dominator; the M1 tables have none, and the notes record what was changed to get there
+      - Runs on Linux on the standard library
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Tools/CheckBalance.py Content
+    parallel_safe: true
+    status: todo
+
+  - id: C4
+    title: Importers, placeholder models, the Species textures and font as DDS; the provenance ADR
+    intent: >
+      Models compose at markers (TechnicalDesign.md §8) and the owner authors them in OBJ, so
+      ImportObj.py exists first; until the owner's models exist, generated primitives with
+      markers stand in. The Species palettes, icons and Spectrum font come across as
+      SpeciesLineage.md decided, converted to DDS because textures are DDS and nothing else
+      (owner, 2026-09-17), and the provenance ADR, numbered when written, records what came and the accepted risk in terms.
+    project: Tools
+    depends_on: [C1]
+    files:
+      - Tools/ImportObj.py
+      - Tools/ImportShp.py
+      - Tools/ImportSounds.py
+      - Tools/ImportTextures.py
+      - Tools/MakePlaceholderModels.py
+      - Content/Models/ChassisLight.json
+      - Content/Models/ChassisMedium.json
+      - Content/Models/ChassisHeavy.json
+      - Content/Models/DriveWheels.json
+      - Content/Models/DriveHalfTrack.json
+      - Content/Models/DriveTracks.json
+      - Content/Models/ModuleMachineGun.json
+      - Content/Models/ModuleCannon.json
+      - Content/Models/ModuleMortar.json
+      - Content/Models/ModuleBuilder.json
+      - Content/Models/CommandPost.json
+      - Content/Models/Extractor.json
+      - Content/Models/Generator.json
+      - Content/Models/Factory.json
+      - Content/Models/ResearchLab.json
+      - Content/Models/Tower.json
+      - Content/Models/Shell.json
+      - Content/Models/Wreck.json
+      - Content/Models/Deposit.json
+      - Content/Textures/LandscapeDefault.dds
+      - Content/Textures/SpectrumFont.dds
+      - Content/Textures/Icons.dds
+      - Design/ADR/README.md
+      - Design/ADR/ADR-<next>-species-content.md
+      - Design/SpeciesLineage.md
+    acceptance:
+      - "ImportObj.py converts a Wavefront OBJ with per-face material colours into a model JSON the C1 loader accepts, with an object named Marker<Name> becoming a marker at its origin with its orientation; a test OBJ committed beside it round-trips"
+      - 'ImportShp.py parses a Species .shp with both the Triangles and Strips encodings, fragments, colours and markers (the prototype is the review tool of 2026-09-17), and its output loads; it exists for reference imports and imports nothing into Content\ in this task'
+      - "MakePlaceholderModels.py generates the M1 set as primitives: chassis boxes with MarkerMount and MarkerDrive markers scaled per class, drives as wheel cylinders or track boxes, modules with MarkerMuzzle, structures as boxes of their footprint with a team-colour slot, a shell, a wreck and a deposit; every model the tables name exists and validates"
+      - ImportSounds.py selects and copies WAVs by the names a Sounds.txt references, ready for M2, and copies nothing now
+      - "ImportTextures.py converts a Species BMP (24-bit, or 8-bit through its palette, a colour key becoming alpha where a sprite has one) to an uncompressed B8G8R8A8_UNORM DDS with no mip chain, writing the header and the pixels itself; the Species Default landscape palette, the Spectrum font atlas and the order icons come across through it under Content\\Textures, Core's TextureFile reads them, and SpeciesLineage.md §4 records them as taken"
+      - "The provenance ADR lists every Species-derived file in the tree with its source path, states that the owner accepts the provenance risk including distribution to other players in M3 and inside mods (OpenQuestions.md R5), and repeats what is excluded regardless"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Tools/MakePlaceholderModels.py Content/Models
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+    parallel_safe: true
+    status: todo
+
+  - id: S1
+    title: Sim world objects and seats
+    intent: >
+      Devices, structures, projectiles, features and wrecks exist as records in slot maps with
+      an ObjectId that never aliases (TechnicalDesign.md §4.3), and a seat holds what a
+      commander owns, so that every later system has state to act on and the hash and snapshot
+      cover all of it.
+    project: Sim
+    depends_on: [C1]
+    blocked_by:
+      - m0-foundation/T15
+      - m0-foundation/T17
+    files:
+      - Sim/ObjectId.h
+      - Sim/Device.h
+      - Sim/Structure.h
+      - Sim/Projectile.h
+      - Sim/Feature.h
+      - Sim/Wreck.h
+      - Sim/World.h
+      - Sim/World.cpp
+      - Sim/Seat.h
+      - Sim/Seat.cpp
+      - Sim/StateHash.cpp
+      - Sim/Snapshot.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/WorldTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - ObjectId is a std::uint32_t creation counter with a kind tag, issued by World in creation order, and World resolves it through the slot map's generation-checked handle; a stale id resolves to nothing
+      - Each record holds only simulation fields in the units of TechnicalDesign.md §4.1 and refers to other objects by ObjectId, never by pointer or index
+      - "Seat holds power in hundredths, the stockpile cap, the research state, the designs, the device and structure counts against the caps, the fog grid and the ghost store (S9 fills them), the victory state and the AI flag"
+      - The state hash covers every field of every record and every seat, and the snapshot round-trips a populated world
+      - "Tests: creation order and id monotonicity, resolution of a removed id, hash sensitivity to a single field, snapshot equality on a populated world"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S2
+    title: Sim orders - the twenty kinds, validation with reason codes, application at tick start
+    intent: >
+      Orders are the only input (TechnicalDesign.md §4.7) and the whole of the trust model: the
+      framework validates every order against what the seat owns, sees and can afford and drops
+      what fails with a reason, so that every later system adds its kinds' rules to one place.
+    project: Sim
+    depends_on: [S1]
+    files:
+      - Sim/Order.h
+      - Sim/OrderValidation.h
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/OrderValidationTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - Order.h documents the operand layout of every one of the twenty kinds
+      - "OrderValidation returns an accepted order or a RejectReason (NotOwned, NotVisible, CannotAfford, AtCap, InvalidTarget, InvalidPlacement, NotResearched, NoCommandPost, Malformed); stage 1 applies accepted orders in seat order then arrival order and records the rejections per seat for Net to report"
+      - "Move, AttackMove, Stop, SetStance, Group, Chat and Surrender are applied by this task; every other kind is validated for ownership and shape here and applied by the task that owns its system, which extends OrderValidation"
+      - "An Attack on a target the seat cannot see becomes an AttackMove to the target's last known position from the ghost store, or is rejected NotVisible when there is none"
+      - "Tests: each reason fires on a crafted order, an accepted Move changes the device's order, arrival order within a seat is preserved, and the rejection list is part of the hash"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S3
+    title: Sim economy - deposits, extractors served within 48 cells, the stockpile and its cap, cost and refund, the army caps
+    intent: >
+      Power comes from the ground through the chain GameDesign.md §4 describes, with the brakes
+      the review added, so that a turtled base cannot bank an army and generators are the
+      target at this game's distances.
+    project: Sim
+    depends_on: [S2]
+    files:
+      - Sim/Economy.h
+      - Sim/Economy.cpp
+      - Sim/Deposit.h
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/EconomyTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - Deposits come from the landscape definition and are simulation objects an extractor is built on and nowhere else
+      - "A generator serves the four nearest unserved extractors within 48 cells, recomputed when a generator or extractor is completed or destroyed, ties broken by ascending id; an extractor beyond every generator's reach produces nothing; a served extractor yields 5 power per second and a command post 1, credited per tick in hundredths"
+      - The stockpile is capped at 1,000 plus 500 per completed generator; cost is drawn when construction or production begins; cancelling refunds the unbuilt share and any refund above the cap is lost; cancelled research refunds nothing; demolition refunds half
+      - "The device cap (100, 200 or 300 from MatchSettings) and the structure cap of 300 are enforced: a factory at the cap pauses, a placement at the cap is rejected AtCap"
+      - "Tests reproduce the worked numbers: income over 20 ticks, the fifth extractor unserved, a generator at 49 cells serving nothing, the cap at two generators, a refund clipped by the cap, the factory pause"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S4
+    title: Sim structures - placement, plans, construction by builders, flatten, modules, demolition, wrecks
+    intent: >
+      Structures are placed by the commander and built by builders under the rules of
+      GameDesign.md §5, with the terrain flattened under the footprint at construction start,
+      so that bases grow the way the design says and the pathfinder sees only what stands.
+    project: Sim
+    depends_on: [S3]
+    files:
+      - Sim/Placement.h
+      - Sim/Placement.cpp
+      - Sim/Construction.h
+      - Sim/Construction.cpp
+      - Sim/Plan.h
+      - Sim/Landscape.cpp
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/PlacementTests.cpp
+      - Tests/SimTests/ConstructionTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - "Placement accepts a footprint where no structure, plan under construction, feature or water cell lies under it, the slope across it is under 25 percent, the seat has explored every cell, and an extractor is on a deposit; PlaceStructure, CancelStructure, Demolish and BuildModule are validated and applied"
+      - A placed plan costs nothing, obstructs nothing and counts against a limit of 64 per seat; construction begins when a builder is within its range, at which moment the cost is drawn, the terrain under the footprint is flattened to its mean height as a HeightDelta, and the obstruction grid is marked
+      - Progress advances by the sum of the attending builders' rates; hit points are proportional to progress; a structure under construction can be destroyed; a complete structure enters service and the economy recomputes
+      - Modules are built by builders onto standing structures after their research and apply their effects (generator +2 extractors, factory -25 percent per module to two, lab -30 percent)
+      - A destroyed structure becomes a wreck that obstructs nothing and expires after a stated number of ticks; demolition refunds half
+      - "Tests: every placement rule with a synthetic landscape, the plan limit, flatten writes a delta and the samples change, two builders halve the time, destruction mid-construction, the module effects"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S5
+    title: Sim devices and production - designs, derived statistics, factories, spawning, ranks
+    intent: >
+      A device is a design of chassis, drive and modules whose statistics derive from the parts
+      (GameDesign.md §6, pillar 1), built by a factory from the seat's designs, so that the game
+      the pillars describe exists in the simulation.
+    project: Sim
+    depends_on: [S3]
+    files:
+      - Sim/Design.h
+      - Sim/Production.h
+      - Sim/Production.cpp
+      - Sim/Device.h
+      - Sim/Seat.h
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/ProductionTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - "A Design is per seat: a name, a chassis, a drive and modules the seat has researched, saved by SaveDesign and validated against research; its statistics come from Content/DesignStats and are stored on the device at spawn with the class-upgrade percentages of the seat applied"
+      - SetProduction and CancelProduction manage a factory's queue; build time is cost divided by 10 per second less the factory's module reduction; a factory whose seat is at the device cap pauses; a completed device spawns at the factory's exit cell with the seat's default stances
+      - Experience and rank fields exist with eight ranks and the per-rank accuracy and damage percentages the design proposes, applied by S10
+      - "Tests: the worked examples from the tables (a light on wheels with a machine gun, a heavy on tracks with a cannon), the queue and cancel refund, the cap pause, the spawn position, that an upgrade researched later changes fielded devices"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S6
+    title: Sim research - labs in parallel, unlocks and retroactive class upgrades, auto-research
+    intent: >
+      Research unlocks parts and improves classes (GameDesign.md §7), retroactively for what is
+      already in the field, so that the tree drives the match and the AI can spend on it.
+    project: Sim
+    depends_on: [S3]
+    files:
+      - Sim/Research.h
+      - Sim/Research.cpp
+      - Sim/Seat.h
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/ResearchTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - SetResearch starts an item in an idle lab when its prerequisites are complete and the seat can pay, drawing the cost at the start; each lab researches one item; the time is the item's less the lab's module reduction; CancelResearch refunds nothing; a destroyed lab loses the progress
+      - "On completion an unlock marks the component or structure available to the seat, or an upgrade adds its percentage to the seat's class value and every fielded object of that class is updated, hit points keeping their fraction"
+      - Auto-research, a MatchSettings option per seat, has each idle lab pick the cheapest available item at the start of the tick
+      - "Tests: prerequisite enforcement, three labs in parallel, the module reduction, a retroactive armour upgrade on a damaged device, auto-research picking order"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S7
+    title: Sim pathing - cluster graph, hierarchical A*, budgeted planning and refinement
+    intent: >
+      The system that decides whether a large landscape works (TechnicalDesign.md §4.5) exists
+      in the shape the design gives, deterministic because its budget is in nodes, so that M1
+      measures it on Small and M3 on Large without a rewrite.
+    project: Sim
+    depends_on: [S1]
+    files:
+      - Sim/ClusterGraph.h
+      - Sim/ClusterGraph.cpp
+      - Sim/PathPlanner.h
+      - Sim/PathPlanner.cpp
+      - Sim/Path.h
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/PathingTests.cpp
+      - Tests/SimTests/Fixtures/Landscape/README.md
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - The landscape is divided into 16x16-cell clusters; per drive class a cell is passable by its slope class against the drive's maximum and by the water bit against the drive's water flag, and obstructed cells are impassable to every class
+      - Each cluster's boundary crossings are nodes and the paths between them inside the cluster are edges computed lazily per drive class and invalidated when the obstruction grid changes inside the cluster
+      - "RequestPath(device, destination) plans over the cluster graph with A* in integer costs, refines the first clusters to a cell path, and refines further as the device advances; planning is amortised with a per-tick budget in nodes expanded, so the result of a tick depends only on the state"
+      - "Tests: reachability agrees with a flood fill on the twenty Small landscapes of the fixture hashes for every drive class; the same request in two Sims yields the same path; the budget bounds the nodes expanded per tick; placing a structure invalidates exactly the clusters it touches; nodes expanded per request are logged for the ADR the flow-field question will need"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S8
+    title: Sim movement and steering
+    intent: >
+      Devices follow their paths at the speed their parts derive across the terrain their drive
+      can take, steering around each other in integer arithmetic, so that the crossing times the
+      design is sized by are what the slice measures.
+    project: Sim
+    depends_on: [S7, S5]
+    files:
+      - Sim/Movement.h
+      - Sim/Movement.cpp
+      - Sim/Steering.h
+      - Sim/Steering.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/MovementTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - A device advances along its path by its speed in subunits per tick, scaled by the terrain factor of its drive on the cell it is on, turns its heading toward the path at a rate in binary angle per tick, and sits at the heightfield's height
+      - Separation steering between devices within a radius in integer arithmetic, with a deterministic tie-break by id; a device that cannot make progress for a stated number of ticks re-plans
+      - "Move arrives and stops; AttackMove and Patrol advance until S10 interrupts them; Guard returns to its position; Stop clears the path"
+      - "Tests: a light on wheels with a machine gun crosses a flat 8,192-unit Small landscape in about 1,575 ticks; a tracked device refuses a 45 percent slope and a wheeled one a 30 percent slope; two devices meeting head-on pass; two Sims move identically"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S9
+    title: Sim visibility - fog grids with viewer counts, the budgeted refresh, height-extended sight, occlusion, the ghost store
+    intent: >
+      Fog of war is computed on the host and is also the replication filter (TechnicalDesign.md
+      §4.6), so this is the system that makes the fog real and the one whose cost the design
+      names first; it is built budgeted and deterministic from the start.
+    project: Sim
+    depends_on: [S1]
+    files:
+      - Sim/Visibility.h
+      - Sim/Visibility.cpp
+      - Sim/FogGrid.h
+      - Sim/FogGrid.cpp
+      - Sim/GhostStore.h
+      - Sim/GhostStore.cpp
+      - Sim/Seat.h
+      - Sim/Snapshot.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/VisibilityTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - "FogGrid per seat holds a viewer count byte and a two-bit state per cell (unexplored, explored, visible); a cell is visible while its count is positive and explored forever after"
+      - "A viewer's disc is its sight radius in cells plus one cell per 32 world units it stands above the target cell, each cell tested by an integer walk along the heightfield from the viewer, blocked by a sample above the line of sight; a moved viewer's old disc is un-counted before its new one is counted"
+      - The refresh budget is 200 viewers per tick, moved viewers first, then the oldest refresh, so every viewer refreshes at least once per second; allied seats share vision by summing counts into a shared grid or by union at read, decided and tested
+      - "GhostStore per seat records the last-seen state of every structure the seat has ever seen, updated when a structure leaves visibility and when it is seen again; the fog grid and the ghost store are in the snapshot, the grid run-length encoded"
+      - "Tests: a ridge between viewer and target blocks; a hill extends the radius; the budget bounds the reads per tick; un-seeing on move; ghost recording and update; the reads per refresh are logged for the tick-cost measurement"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S10
+    title: Sim combat - targeting, stances, hit rolls, projectiles and splash, the damage formula, destruction, experience, retreat
+    intent: >
+      The damage model of GameDesign.md §8 exists exactly as written, with direct fire decided at
+      the shot and indirect fire at the impact, so that the matrix the balance script checks is
+      the matrix the simulation applies.
+    project: Sim
+    depends_on: [S8, S9, S4]
+    files:
+      - Sim/Targeting.h
+      - Sim/Targeting.cpp
+      - Sim/Weapons.h
+      - Sim/Weapons.cpp
+      - Sim/Projectiles.cpp
+      - Sim/Damage.h
+      - Sim/Damage.cpp
+      - Sim/Experience.h
+      - Sim/Retreat.cpp
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/DamageTests.cpp
+      - Tests/SimTests/CombatTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - "A weapon acquires a target its seat can see within its long range by the stance and target-priority rules, fires at its rate, and rolls a hit from the simulation Random against the short or long hit chance plus rank and research percentages; direct fire resolves at the shot and emits a projectile event for the client; a Tower takes a target-priority stance only"
+      - "Indirect fire (the mortar) needs a spotter with the target in its own sight, has a minimum range, launches a Projectile that lands at the predicted cell after its flight ticks and damages everything within its splash radius at impact, so a moving target walks out from under it"
+      - "Damage is scaled = damage x modifier[weaponClass][targetClass] / 100 and dealt = max(scaled - armour x armorFactor[weaponClass] / 100, scaled / 3), against kinetic or thermal armour per weapon class, structures using their strength class; a device or structure at zero hit points is destroyed, a structure leaving a wreck, and the killer gains experience toward its eight ranks"
+      - "Retreat: a device under its retreat threshold breaks off and returns to the nearest repair bay or repair device only if one is within 60 cells, else holds and fights; M1 has neither structure nor module, so the rule is tested with a stub repair point and the order kind ReturnToRepair is applied"
+      - "Tests: the damage formula against hand-computed values (a cannon against tracks with 25 armour deals 47; the minimum third; the laser's half armour and artillery's zero via the table), the spotter rule, an indirect miss on a moving target, rank accrual, retreat only within 60 cells, two Sims fight identically"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S11
+    title: Sim victory and match flow - annihilation, the survival clock, surrender
+    intent: >
+      A match ends by the conditions of GameDesign.md §2 and the seats know it, so that the
+      slice has an ending and the AI test has a termination.
+    project: Sim
+    depends_on: [S4, S5]
+    files:
+      - Sim/Victory.h
+      - Sim/Victory.cpp
+      - Sim/Seat.h
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/VictoryTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - Annihilation eliminates a seat when it has no structure and no device carrying a builder module; the last side with an uneliminated seat wins; Survival ends at the clock with the side that extracted the most power winning; Surrender eliminates the seat
+      - Victory state per seat is Playing, Won, Lost or Eliminated, checked at stage 12, and the match stops advancing once decided
+      - "Tests: annihilation with a surviving builder, the last-side rule with two allied seats, survival at the clock, surrender"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: S12
+    title: Sim scripted AI seat
+    intent: >
+      The scripted opponent of the slice is the planner of TechnicalDesign.md §7 with one
+      hard-coded behaviour list, so that it is the M2 AI's skeleton rather than a throwaway, and
+      an AI-versus-AI match from a seed is the test that exercises every system at once.
+    project: Sim
+    depends_on: [S6, S10, S11]
+    files:
+      - Sim/AiSeat.h
+      - Sim/AiSeat.cpp
+      - Sim/AiBlackboard.h
+      - Sim/AiBlackboard.cpp
+      - Sim/AiDesigner.h
+      - Sim/AiDesigner.cpp
+      - Sim/Sim.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/AiTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - "The AI seat observes through its own fog grid and ghost store into a blackboard: known enemy structures, a threat map at cluster resolution, its economy and army composition; it runs at stage 11 within a budget and emits orders for tick t plus its delay through the ordinary queue"
+      - "The behaviour list is fixed for M1: claim the nearest deposits with extractors and a generator within 48 cells, build a factory and a lab, research by auto-research, design by AiDesigner (expected damage per power against the seen enemy composition through the damage matrix, best design per role), produce to a composition, attack-move with a group when its strength exceeds a threshold, rebuild what is lost"
+      - No wall time, no float, no thread; the AI's decisions are a function of the state and the tick
+      - "Tests: AI against AI on Content/Landscapes/Slice.json from a fixed seed reproduces hash for hash in two Sims; within 12,000 ticks both seats have a served extractor, a factory and a lab and have fielded a device, and first contact has occurred; a 36,000-tick run reaches a decided victory state, run in a test that CI can afford (its duration is recorded in the notes)"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      The behaviour list and the blackboard's fields are documented in the header comment of
+      AiSeat.h, not in a prose file: project directories are flat (AGENTS.md §2).
+
+  - id: N1
+    title: Net wire records and encodings
+    intent: >
+      The wire form of every replicated thing (TechnicalDesign.md §5.3) exists as fixed-width
+      integer aggregates with pinned byte layouts, including the fog delta the client needs to
+      draw its own commander's fog, so that host and replica share records and nothing else.
+    project: Net
+    depends_on: [S1]
+    blocked_by:
+      - m0-foundation/T10
+      - m0-foundation/T14
+    files:
+      - Net/Records.h
+      - Net/Records.cpp
+      - Net/Messages.h
+      - Net/Messages.cpp
+      - Net/Net.vcxproj
+      - Net/Net.vcxproj.filters
+      - Tests/NetTests/RecordsTests.cpp
+      - Tests/NetTests/NetTests.vcxproj
+      - Tests/NetTests/NetTests.vcxproj.filters
+    acceptance:
+      - "DeviceState, StructureState, WreckState, FeatureState, SeatState, Event, DesignState, FogDelta (runs of cells with their new fog state, for the commander's own grid) and OrderMessage are plain aggregates of fixed-width integers; a position on the wire is quantised to a quarter of a world unit and, in a change record, sent as a delta against the baseline under a field mask; a device change record is at most 14 bytes plus its mask by static_assert"
+      - "Messages: Join, JoinAccepted (seat, settings, landscape definition, tick), JoinRefused (reason), Frame (sequence, baseline sequence, created, changed, removed, events, fog deltas), Fragment (frame sequence, index, count, bytes), Ack, Orders (sequenced), Heartbeat"
+      - Every record writes and reads through Core's byte stream, and NetTests pins the exact bytes of one instance of each so a layout change is a visible diff, plus round trips and truncation cases
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: N2
+    title: Net host endpoint - interest sets, delta frames against acked baselines, history, fragmentation, join and rejoin; the network ADR
+    intent: >
+      The host publishes to each client exactly its commander's interest set (TechnicalDesign.md
+      §5.2 to §5.4), encoded against what the client acknowledged, so that the fog of war is
+      enforced by the host and a lost datagram costs nothing but a larger next frame. The
+      interest test is a security property and is written here.
+    project: Net
+    depends_on: [N1, S9]
+    files:
+      - Net/Host.h
+      - Net/Host.cpp
+      - Net/Interest.h
+      - Net/Interest.cpp
+      - Net/FrameEncoder.h
+      - Net/FrameEncoder.cpp
+      - Net/ClientHistory.h
+      - Net/Fragmenter.h
+      - Net/Fragmenter.cpp
+      - Net/Net.vcxproj
+      - Net/Net.vcxproj.filters
+      - Tests/NetTests/HostTests.cpp
+      - Tests/NetTests/InterestTests.cpp
+      - Tests/NetTests/FragmenterTests.cpp
+      - Tests/NetTests/NetTests.vcxproj
+      - Tests/NetTests/NetTests.vcxproj.filters
+      - Design/ADR/README.md
+      - Design/ADR/ADR-<next>-replication-protocol.md
+      - Design/TechnicalDesign.md
+    acceptance:
+      - "Interest per client per publish, from the seat's fog grid: every object in a visible cell of the seat or an ally, every object the seat owns, ghosts from the ghost store when a structure leaves or re-enters visibility, the seat's own SeatState and fog deltas, and at join the landscape definition and settings; flatten deltas travel only inside a structure's record or ghost"
+      - Host publishes a frame per client every second tick, delta-encoded against the newest frame the client acknowledged, keeps 32 frames of history per client, sends a full frame when the baseline has fallen out of history or at join, and splits any frame over 1,200 bytes of payload into numbered fragments
+      - "Join, rejoin with the same token, leave and timeout per §5.4, with the seat handed to AI control after the grace period MatchSettings gives; ReceiveOrders() hands validated-shape orders to Sim's queue for the next tick"
+      - "The interest test: in a scripted match over LoopbackTransport, for every frame to every client, no record names an object outside the seat's visibility, own objects or ghost store, and no fog delta names another seat's cells"
+      - "The conversation tests over loopback: join and full frame, deltas against an acked baseline, a lost frame recovered by the next delta, a full frame after history exhaustion, fragmentation and reassembly of a large frame, a slow client dropped to AI"
+      - The network ADR records the model as decided, the publish rate, history length, quantisation and fragment size, the leak posture of §5.2, and the bytes per frame measured in the tests at 100 and 600 visible objects
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: N3
+    title: Net client endpoint - frames in, acknowledgements, the reliable order stream
+    intent: >
+      The client end of the conversation (TechnicalDesign.md §5.5) receives frames and
+      fragments, acknowledges what it applied, and delivers orders reliably through loss, so
+      that Replica has frames and the host has orders with nothing else in between.
+    project: Net
+    depends_on: [N1]
+    files:
+      - Net/Client.h
+      - Net/Client.cpp
+      - Net/Reassembler.h
+      - Net/Reassembler.cpp
+      - Net/ReliableStream.h
+      - Net/ReliableStream.cpp
+      - Net/Net.vcxproj
+      - Net/Net.vcxproj.filters
+      - Tests/NetTests/ClientTests.cpp
+      - Tests/NetTests/ReliableStreamTests.cpp
+      - Tests/NetTests/NetTests.vcxproj
+      - Tests/NetTests/NetTests.vcxproj.filters
+    acceptance:
+      - Client joins through the transport, reassembles fragments and discards a frame with one missing, hands complete frames to a sink in sequence order and acknowledges the newest applied sequence in every datagram it sends
+      - "ReliableStream carries orders with sequence numbers, cumulative acknowledgements in every datagram, and resend after a round-trip estimate; duplicates are dropped and delivery is in order; the host side of the stream lives in N2's Host and is exercised here"
+      - "Tests over loopback with seeded loss, duplication and reorder: every order arrives once and in order; a frame with a lost fragment is skipped and the next delta recovers; the round-trip estimate converges"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: R1
+    title: Replica world and interpolation, with the convergence tests
+    intent: >
+      The client's world model (TechnicalDesign.md §2, §5) applies frames into a replica that is
+      a faithful reading of the host's interest set and interpolates it 100 milliseconds behind,
+      so that the client draws what the host said and a test proves it converges with and
+      without loss.
+    project: Replica
+    depends_on: [N3]
+    files:
+      - Replica/Replica.h
+      - Replica/Replica.cpp
+      - Replica/ReplicaObject.h
+      - Replica/Interpolation.h
+      - Replica/Interpolation.cpp
+      - Replica/DesignStore.h
+      - Replica/Replica.vcxproj
+      - Replica/Replica.vcxproj.filters
+      - Tests/ReplicaTests/ConvergenceTests.cpp
+      - Tests/ReplicaTests/InterpolationTests.cpp
+      - Tests/ReplicaTests/ReplicaTests.vcxproj
+      - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
+    acceptance:
+      - Replica applies created, changed and removed records, keeps ghosts for structures, holds the seat's own state, designs by DesignState, and its commander's fog grid from fog deltas
+      - Interpolation keeps the last two frames per object and evaluates positions and headings at a time 100 milliseconds behind the newest frame, which is the first float conversion and the only one, never outside the segment between the two frames
+      - "Convergence test: a real Sim, N2's Host and N3's Client over LoopbackTransport in ReplicaTests; at every acknowledged frame, with and without seeded loss, the replica equals the host's interest set for that seat object for object"
+      - "Tests also cover: a ghost persists after the structure leaves visibility and updates when seen again; interpolation stays on the segment; a rejoin rebuilds the replica from a full frame"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: R2
+    title: Replica render view, model composition at markers, and picking
+    intent: >
+      The replica becomes a plain list of what to draw (TechnicalDesign.md §6.3) with a device
+      composed from its chassis, drive and module models at their markers, plus the picking that
+      turns a click into an object, so that the executable holds no logic worth a test.
+    project: Replica
+    depends_on: [R1, C4]
+    blocked_by:
+      - m0-foundation/T20
+    files:
+      - Replica/RenderViewBuilder.h
+      - Replica/RenderViewBuilder.cpp
+      - Replica/ModelComposer.h
+      - Replica/ModelComposer.cpp
+      - Replica/Picking.h
+      - Replica/Picking.cpp
+      - Replica/Replica.vcxproj
+      - Replica/Replica.vcxproj.filters
+      - Tests/ReplicaTests/RenderViewTests.cpp
+      - Tests/ReplicaTests/PickingTests.cpp
+      - Tests/ReplicaTests/ReplicaTests.vcxproj
+      - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
+    acceptance:
+      - "RenderViewBuilder fills Core's RenderView each frame: for every replica object one instance per model part with its interpolated transform, the seat's colour index, a rank badge, a selection flag and, for a structure under construction, its progress; wrecks and short-lived projectile instances from events; the terrain chunks whose heights changed since the last frame; the commander's fog grid for the fog pass and the minimap"
+      - ModelComposer places a drive model at each of the chassis's MarkerDrive markers and a module model at each MarkerMount, carrying the module's MarkerMuzzle forward, so a device is a tree of three model kinds and the model count is a sum, not a product
+      - Picking finds the nearest replica object under a screen ray and the objects inside a screen rectangle, as pure functions over the replica and the camera matrices
+      - "Tests: the composition of a heavy with two modules yields the expected instance list; a construction site scales; a ray picks the nearer of two overlapping devices; a rectangle selects only own devices"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: K1
+    title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals
+    intent: >
+      Devices, structures, features, wrecks and shells are drawn from the render view in the
+      Species look (GameDesign.md §11 point 1; TechnicalDesign.md §6.4), with the team-colour
+      slot written unlit as pillar 3 demands, so that a fight reads from the far end of the map.
+    project: Client
+    depends_on: [C1]
+    blocked_by:
+      - m0-foundation/T20
+    files:
+      - Client/ModelBuffers.h
+      - Client/ModelBuffers.cpp
+      - Client/GeometryPass.h
+      - Client/GeometryPass.cpp
+      - Client/Shaders/GeometryVS.hlsl
+      - Client/Shaders/GeometryPS.hlsl
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/ModelBuffersTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Design/ADR/README.md
+      - Design/TechnicalDesign.md
+    acceptance:
+      - ModelBuffers loads a ModelDesc into vertex and index buffers with one colour per vertex and a team-colour flag per vertex where the model's slot colour was; the per-face normal comes from screen-space derivatives in the pixel shader or from split vertices, and the ADR this task writes decides which with a captured frame of a placeholder model
+      - GeometryPass draws every instance of the render view with one instance buffer per model per frame, the seat colour substituted for flagged vertices and those vertices written unlit, lit otherwise by the two directional lights of the terrain pass
+      - The unit test covers the loader's vertex splitting or flagging on a small model; the capture job's frames show composed placeholder devices once G2 lands
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: K2
+    title: Client fog pass
+    intent: >
+      Unexplored cells are black and explored ones dimmed from the commander's fog grid as the
+      replica knows it (TechnicalDesign.md §6.2), so that what the player sees is what the host
+      sent and nothing more.
+    project: Client
+    depends_on: []
+    blocked_by:
+      - m0-foundation/T20
+    files:
+      - Client/FogPass.h
+      - Client/FogPass.cpp
+      - Client/Shaders/FogVS.hlsl
+      - Client/Shaders/FogPS.hlsl
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+    acceptance:
+      - A per-cell fog texture is updated from the render view's fog grid only for rows that changed, and a full-screen pass darkens explored cells and blacks unexplored ones after the geometry pass and before the UI
+      - The capture job's frames show the three states once G2 lands
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+    parallel_safe: true
+    status: todo
+
+  - id: K3
+    title: Client UI toolkit - panels, widgets, the Spectrum font atlas, the UI pass, router integration
+    intent: >
+      The interface of Design/Interface.md needs panels, widgets and text drawn 1:1 at the
+      authored resolution with the Species font (TechnicalDesign.md §6.4), consuming input
+      UI-first through the router of M0, so that the game's panels are assembled rather than
+      hand-drawn.
+    project: Client
+    depends_on: [D1, C4]
+    blocked_by:
+      - m0-foundation/T19
+      - m0-foundation/T20
+    files:
+      - Client/UiPanel.h
+      - Client/UiPanel.cpp
+      - Client/UiWidgets.h
+      - Client/UiWidgets.cpp
+      - Client/UiLayout.h
+      - Client/UiLayout.cpp
+      - Client/BitmapFont.h
+      - Client/BitmapFont.cpp
+      - Client/UiPass.h
+      - Client/UiPass.cpp
+      - Client/UiInputSink.h
+      - Client/UiInputSink.cpp
+      - Client/Shaders/UiVS.hlsl
+      - Client/Shaders/UiPS.hlsl
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/UiLayoutTests.cpp
+      - Tests/ClientTests/BitmapFontTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+    acceptance:
+      - "Panels are fixed rectangles at the authored resolution holding widgets: label, button, toggle, list, progress bar, icon, text field taking WM_CHAR characters; flat rectangles with one-pixel borders in the chrome palette of SpeciesCanvas.md §3"
+      - BitmapFont loads the Spectrum atlas from its DDS through Core's TextureFile (16 by 14 cells from ASCII 32, glyph advance 0.6 of the size per SpeciesCanvas.md §4) and lays out text as quads at 1:1; UiPass draws panels, text and icons orthographically, alpha blended, after the fog pass
+      - UiInputSink is the router's first sink; a widget that acts on an event consumes it, and a panel under the cursor consumes clicks so they never reach selection
+      - "Tests: layout arithmetic, text measurement, the consume rule with stub events"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      The toolkit's rules are documented in the header comment of UiPanel.h, not in a prose
+      file: project directories are flat (AGENTS.md §2).
+
+  - id: G1
+    title: FrontierCommander application - the client loop, the host thread over loopback, match start, camera, selection and orders
+    intent: >
+      The slice runs as the two loops of TechnicalDesign.md §3 in one process: a host thread
+      with Sim and Net's Host over loopback, and the client loop with Net's Client, the replica,
+      the render view and the passes, so that single-player is the same code path as a match
+      over the network from the first playable build (owner, 2026-09-17).
+    project: FrontierCommander
+    depends_on: [R2, N2, K1, K2, S12]
+    files:
+      - FrontierCommander/App.h
+      - FrontierCommander/App.cpp
+      - FrontierCommander/LocalHost.h
+      - FrontierCommander/LocalHost.cpp
+      - FrontierCommander/Match.h
+      - FrontierCommander/Match.cpp
+      - FrontierCommander/Selection.h
+      - FrontierCommander/Selection.cpp
+      - FrontierCommander/OrderInput.h
+      - FrontierCommander/OrderInput.cpp
+      - FrontierCommander/Main.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+    acceptance:
+      - "LocalHost runs Sim, Net's Host and the AI seat on its own thread driven by wall time, mapping wall time to ticks in exactly one place, slowing the match clock rather than skipping when it falls behind; it talks to the client only through LoopbackTransport"
+      - "The client loop is the seven steps of §3: pump, drain the network, apply frames, interpolate 100 milliseconds behind, build the render view, route input, draw and present; it has no simulation clock"
+      - Starting the executable starts a match on Content/Landscapes/Slice.json with the human in seat 0 and the scripted AI in seat 1 at the lobby defaults, until M2's lobby exists
+      - "Selection by click and drag rectangle through Replica's picking; orders by right click (Move, or Attack on an enemy), by hotkey (attack-move, stop, stances) and, until K4's panels, by hotkey plus click for structure placement with the footprint ghost; every order becomes an OrderMessage and nothing in the executable touches Sim"
+      - "The end of the match shows a win or loss overlay; Escape pauses the local host and shows a menu with resume and quit; Alt+F4 quits"
+      - A click moves a unit in about 250 milliseconds over loopback, measured with the log and recorded in the notes
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: G2
+    title: FrontierCommander --capture replays a scripted match and CI uploads its frames
+    intent: >
+      The agent's only view of the game is the capture artefact (OpenQuestions.md R1), so the
+      M0 capture grows into a headless AI-versus-AI match whose frames show bases, devices,
+      combat and fog, and the CI job runs it on every pull request.
+    project: FrontierCommander
+    depends_on: [G1]
+    files:
+      - FrontierCommander/App.cpp
+      - FrontierCommander/Capture.h
+      - FrontierCommander/Capture.cpp
+      - .github/workflows/build.yml
+    acceptance:
+      - "--warp --capture <landscape> <ticks> <directory> runs LocalHost with two AI seats for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
+      - "The CI step runs --warp --capture Slice 6000 Captures and uploads the sixty frames; the frames at ticks 2,000, 4,000 and 6,000 show a base, devices in transit and fog"
+      - The capture's wall time in CI is recorded in the notes, and the tick count is reduced if it exceeds five minutes
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+    parallel_safe: true
+    status: todo
+
+  - id: K4
+    title: The M1 panels and the minimap per Design/Interface.md
+    intent: >
+      The operator manages the economy, designs, research, production and construction through
+      the fixed panels Design/Interface.md specifies, reading the replica and emitting orders, so
+      that the slice is playable without hotkey lore.
+    project: FrontierCommander
+    depends_on: [K3, G1]
+    files:
+      - FrontierCommander/Hud.h
+      - FrontierCommander/Hud.cpp
+      - FrontierCommander/SelectionPanel.cpp
+      - FrontierCommander/ProductionPanel.cpp
+      - FrontierCommander/DesignPanel.cpp
+      - FrontierCommander/ResearchPanel.cpp
+      - FrontierCommander/ConstructionPanel.cpp
+      - FrontierCommander/Minimap.h
+      - FrontierCommander/Minimap.cpp
+      - FrontierCommander/PowerReadout.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+      - Client/MinimapPass.h
+      - Client/MinimapPass.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+    acceptance:
+      - Every panel Interface.md specifies exists with the content and bindings it gives, reads only the replica, and emits only OrderMessages
+      - The design panel shows the derived statistics from Content/DesignStats before the commander commits and refuses a design without a command post; the construction panel shows the footprint ghost coloured by placement legality using the same rules as Sim's Placement, evaluated on the replica's copy of the landscape
+      - The minimap draws the fog states, structures, selection and the camera frustum from the render view, and a click on it moves the camera
+      - A capture with the panels on shows them legible at 1:1
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: G3
+    title: The owner's run - M1 accepted, and the tick-cost measurements added to the tick ADR
+    intent: >
+      M1 is done when the owner has played a match to annihilation on a running build
+      (GameDesign.md §12), and the tick ADR of M0 gets the measurement it could not have then.
+    project: Design
+    depends_on: [G2, K4, C3, S12]
+    acceptance:
+      - The owner plays the slice against the scripted AI to a decided end on hardware, and records the frame time, the perceived order delay and what felt wrong in this task's notes
+      - "The tick ADR gains a dated measurement section: the cost of a full tick at the slice's object counts, the visibility refresh's share, pathing's nodes per tick, and the host thread's headroom, measured with the log on the owner's machine and on CI's WARP run"
+      - Every M1 line of GameDesign.md §12 is true, and this plan is moved to tasks/Archive/
+    status: todo
+    notes: >
+      Owner's task. An agent prepares the ADR addendum from the capture run's log and the PR
+      that archives the plan once the owner reports.

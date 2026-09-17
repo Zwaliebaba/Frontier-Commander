@@ -9,7 +9,7 @@
 Four `AGENTS.md` rules shape everything below, and this document does not re-argue them:
 
 - **R12** — Direct3D 12 only, COM lifetimes RAII, one scene target presented scaled.
-- **R14** — the Windows SDK and the MSVC standard library, and nothing else. No Agility SDK, no `d3dx12.h`, no DirectXTK, no shader compiler at runtime, and no parser library: JSON, BMP and WAV are read by code in this tree.
+- **R14** — the Windows SDK and the MSVC standard library, and nothing else. No Agility SDK, no `d3dx12.h`, no DirectXTK, no shader compiler at runtime, and no parser library: JSON, DDS and WAV are read by code in this tree.
 - **R16** — the simulation is deterministic and holds no floats: integers and fixed point, a pinned PRNG, the tick as the only clock. Floats live in the renderer and in the client's replica.
 - **§2** — flat project directories, one-way edges, project files as source.
 
@@ -21,7 +21,7 @@ What the rules leave open, and this document decides: the projects, the simulati
 
 ## 2. Projects and layers
 
-Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS.md` §3 requires. The names are decided (owner, 2026-09-17). Arrows point at what a project is built on; every arrow points downward and none points sideways.
+Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS.md` §3 requires. The names are decided (owner, 2026-09-17), and [`ADR-001`](ADR/ADR-001-solution-layout.md) records the layout as built (2026-09-17). Arrows point at what a project is built on; every arrow points downward and none points sideways.
 
 ```
             ┌────────────────────────────────────────────────┐
@@ -51,7 +51,7 @@ Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS
 
 | Project | Kind | Namespace | Holds | Built on |
 |---|---|---|---|---|
-| `Core` | static lib | `Neuron` | Fixed-point math, binary angles, integer geometry, the PRNG, hashing, slot maps, byte-stream reader and writer, the JSON reader and writer, the BMP and WAV readers, the UDP transport and its loopback twin, path resolution (executable directory, user profile), assertions, the one header that owns the Windows macro family | nothing |
+| `Core` | static lib | `Neuron` | Fixed-point math, binary angles, integer geometry, the PRNG, hashing, slot maps, byte-stream reader and writer, the JSON reader and writer, the DDS and WAV readers and a BMP writer for captures, the UDP transport and its loopback twin, path resolution (executable directory, user profile), assertions, the one header that owns the Windows macro family | nothing |
 | `Content` | static lib | `Frontier` | The loaders and the in-memory tables: components, research, structures, the damage matrix, sound events, biomes, landscape definitions, stamps, models; the content hash; validation with file-and-line diagnostics | `Core` |
 | `Sim` | static lib | `Frontier` | The landscape, the world, orders and their validation, economy, research, production, movement and pathing, visibility, combat, the AI, the tick, the hash, snapshots | `Core`, `Content` |
 | `Net` | static lib | `Frontier` | The protocol: message records, the host endpoint that publishes each client's view of `Sim`, the client endpoint that receives it | `Core`, `Sim` |
@@ -79,7 +79,7 @@ Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS
 
 ## 3. The frame and the tick
 
-**The simulation ticks at 20 Hz** (owner, 2026-09-17), 50 ms each, with ADR-003 recording the measured confirmation once there is a build to measure. Species inherited 10 Hz from Darwinia and spread heavy work over ten slices; twenty is chosen because orders feel late at 100 ms of tick quantisation on top of the replication interval, and because a 50 ms budget on a 2026 desktop for the object counts below is generous.
+**The simulation ticks at 20 Hz** (owner, 2026-09-17), 50 ms each, recorded in ADR-002, with the empty tick measured there now and the full tick by `m1-vertical-slice/G3`. Species inherited 10 Hz from Darwinia and spread heavy work over ten slices; twenty is chosen because orders feel late at 100 ms of tick quantisation on top of the replication interval, and because a 50 ms budget on a 2026 desktop for the object counts below is generous.
 
 **Only the host simulates.** There are two loops, and a single-player game runs both in one process, from M1 (owner, 2026-09-17):
 
@@ -165,7 +165,7 @@ Flow fields — one field per destination, shared by every device heading there 
 
 Per commander, a grid of the three fog states. Each tick, a budgeted share of the devices and structures with sight recompute the cells they see: a disc of the sight radius, extended by the height difference, with each cell tested for occlusion by walking the heightfield from the viewer to the cell in integer steps. A viewer that has not moved and whose surroundings have not changed keeps its previous disc. The budget — every viewer refreshes at least once per second — is in viewers per tick, so it is deterministic.
 
-Every device and structure with sight is a viewer — up to 4,000 at the budget of §3 — and the refresh budget is 200 viewers per tick, moved viewers first, so every viewer refreshes at least once per second. A refresh of a 24-cell radius is a disc of about 1,800 cells with an average occlusion walk of 12 steps, roughly 22,000 heightfield reads, so the budget costs 4.4 million reads per tick, local to each viewer's neighbourhood rather than random over the heightfield; it is the largest single cost in the tick and the first thing ADR-003 measures. The grid holds, per commander and cell, a viewer count of one byte, so that a moved viewer's old disc can be un-seen, and the two-bit fog state derived from it.
+Every device and structure with sight is a viewer — up to 4,000 at the budget of §3 — and the refresh budget is 200 viewers per tick, moved viewers first, so every viewer refreshes at least once per second. A refresh of a 24-cell radius is a disc of about 1,800 cells with an average occlusion walk of 12 steps, roughly 22,000 heightfield reads, so the budget costs 4.4 million reads per tick, local to each viewer's neighbourhood rather than random over the heightfield; it is the largest single cost in the tick and the first thing ADR-002's full-tick measurement records. The grid holds, per commander and cell, a viewer count of one byte, so that a moved viewer's old disc can be un-seen, and the two-bit fog state derived from it.
 
 **The host also keeps, per seat, a ghost store**: the last-seen record of every structure that seat has ever seen, which is what a client's explored-but-not-visible map shows, what an attack on an unseen target is redirected to, and what a rejoining client gets back; it is part of the snapshot (§4.9).
 
@@ -235,7 +235,7 @@ An object entering the set is sent whole; an object leaving it is sent as a remo
 
 The host publishes a **frame** per client every second tick (10 Hz): a sequence number, the sequence of the **baseline** it is encoded against, and three lists — objects created since the baseline (full records), objects changed (a field mask and the changed fields), objects removed — plus the events of the interval. The baseline is the newest frame the client has acknowledged; the host keeps a short history of what it sent each client (32 frames, 3.2 seconds) and encodes against the acked one, so **a lost frame costs nothing but a larger next frame**: no retransmission, no ordering, just the next delta from an older baseline. A client whose acknowledged baseline has fallen out of the history receives a full frame — the same path a joining client takes.
 
-Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, position, heading, hit points, rank, order kind, target, stance flags), `StructureState`, `WreckState`, `FeatureState`, `SeatState` (power, research in progress, victory state), and `Event` (kind, position, source, target, time). Positions on the wire are quantised to a quarter of a world unit and sent as deltas from the baseline; a device that did not move sends nothing. Every field is a fixed-width integer — an id is the four-byte counter of §4.3, hit points two bytes, a position delta six — and there is no float on the wire. A design's parts travel as a `DesignState` record with the first device of that design a client sees, so a client can show what it is fighting. **A frame larger than a datagram** — 1,200 bytes of payload, under every common path MTU — is split into numbered fragments; the client applies a frame only when every fragment has arrived and discards one with a fragment missing, which costs nothing but a larger next delta.
+Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, position, heading, hit points, rank, order kind, target, stance flags), `StructureState`, `WreckState`, `FeatureState`, `SeatState` (power, research in progress, victory state), and `Event` (kind, position, source, target, time). Positions on the wire are quantised to a quarter of a world unit and sent as deltas from the baseline; a device that did not move sends nothing. Every field is a fixed-width integer — an id is the four-byte counter of §4.3, hit points two bytes, a position delta six — and there is no float on the wire. A design's parts travel as a `DesignState` record with the first device of that design a client sees, so a client can show what it is fighting. A `FogDelta` record carries the changes to the commander's own fog grid — runs of cells with their new state — because the fog pass and the minimap draw the commander's visibility and nothing else in the frame says what it is; it is the commander's own information and leaks nothing (added 2026-09-17 by the implementation plan, `ImplementationPlan.md` §6). **A frame larger than a datagram** — 1,200 bytes of payload, under every common path MTU — is split into numbered fragments; the client applies a frame only when every fragment has arrived and discards one with a fragment missing, which costs nothing but a larger next delta.
 
 Datagrams carry frames unreliably. Orders (§5.5) are the one reliable stream.
 
@@ -256,7 +256,7 @@ UDP, one socket per process, ported from the Species `network-transport` work ra
 
 ### 5.7 Bandwidth, as arithmetic
 
-Take a client whose commander sees 600 objects in a large battle, 300 of which change between frames. A changed device record is 4 bytes of id, 6 of position delta, 1 of heading, 2 of hit points, 1 of flags: 14 bytes, so 4.2 KB per frame — four fragments — and 42 KB/s at 10 Hz. Creations are about 40 bytes each and events 8; a full frame of 600 objects is about 24 KB, twenty fragments. Peak is therefore 30–70 KB/s per client and about 0.6 MB/s out of a host with eight, against under 2 KB/s per client for the lockstep draft: thirty times more, and still trivial on a LAN or a broadband link. A replay of a two-hour match is under 4 MB, unchanged, because it is orders. Arithmetic, not measurement; ADR-004 records the measured numbers.
+Take a client whose commander sees 600 objects in a large battle, 300 of which change between frames. A changed device record is 4 bytes of id, 6 of position delta, 1 of heading, 2 of hit points, 1 of flags: 14 bytes, so 4.2 KB per frame — four fragments — and 42 KB/s at 10 Hz. Creations are about 40 bytes each and events 8; a full frame of 600 objects is about 24 KB, twenty fragments. Peak is therefore 30–70 KB/s per client and about 0.6 MB/s out of a host with eight, against under 2 KB/s per client for the lockstep draft: thirty times more, and still trivial on a LAN or a broadband link. A replay of a two-hour match is under 4 MB, unchanged, because it is orders. Arithmetic, not measurement; the network ADR records the measured numbers.
 
 ### 5.8 Trust
 
@@ -268,9 +268,9 @@ The host is the truth; a client is a view and a source of requests. What a clien
 
 ### 6.1 Shape
 
-Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK that R14 admits (owner, 2026-09-17), vendored under `Client/` with its MIT notice and pinned in ADR-002: device, command queue, one command allocator per frame in flight, a flip-model swap chain of three back buffers, descriptor heaps managed by hand, barriers and heap and pipeline descriptions through the helper's structures, three frames in flight with a fence per frame. **A WARP device is a launch option** — `FrontierCommander --capture <match> <ticks> <directory>` replays a scripted match headless on the software rasteriser and writes a BMP of the scene target every hundred ticks — because CI is the agent's compiler and its eyes (§10). The scene target at the authored resolution (R12) and the present pass that scales it, with the 1:1, integer and bilinear cases `AGENTS.md` §5 lists.
+Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK that R14 admits (owner, 2026-09-17), vendored under `Client/` with its MIT notice and pinned in ADR-004: device, command queue, one command allocator per frame in flight, a flip-model swap chain of three back buffers, descriptor heaps managed by hand, barriers and heap and pipeline descriptions through the helper's structures, three frames in flight with a fence per frame. **A WARP device is a launch option** — `FrontierCommander --capture <match> <ticks> <directory>` replays a scripted match headless on the software rasteriser and writes a BMP of the scene target every hundred ticks — because CI is the agent's compiler and its eyes (§10). A capture is a screenshot the agent reads back, not a texture, which is why it is BMP where every texture is DDS (§8). The scene target at the authored resolution (R12) and the present pass that scales it, with the 1:1, integer and bilinear cases `AGENTS.md` §5 lists.
 
-**The first client ADR** settles the authored resolution, the window style and whether the scene target is multisampled. This design assumes 1920×1080, a borderless window covering the primary monitor with Escape and Alt+F4 owned by the game, and a 4× multisampled scene target — flat-shaded geometry with hard silhouettes is exactly the content that aliases worst and that multisampling fixes best, and the back buffer cannot be multisampled, which is the reason the scene target exists.
+**ADR-004, the first client ADR,** settles the authored resolution, the window style and whether the scene target is multisampled (2026-09-17), as this design assumed: 1920×1080, a borderless window covering the primary monitor with Escape and Alt+F4 owned by the game, and a 4× multisampled scene target — flat-shaded geometry with hard silhouettes is exactly the content that aliases worst and that multisampling fixes best, and the back buffer cannot be multisampled, which is the reason the scene target exists.
 
 ### 6.2 Passes
 
@@ -284,13 +284,13 @@ Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK
 | UI | Windows, text, icons, the minimap | One PSO, orthographic, alpha blended |
 | Present | The scene target into the back buffer, scaled | One PSO |
 
-Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `Client/Shaders/`, compiled by `FXCompile` into `Client/CompiledShaders/` (`AGENTS.md` §2). Shader model 6 through the SDK's `dxc` is the target; whether `FXCompile` drives it cleanly on the pinned toolset is one of the first things M0 finds out.
+Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `Client/Shaders/`, compiled by `FXCompile` into `Client/CompiledShaders/` (`AGENTS.md` §2). Shader model 6 through the SDK's `dxc`, which `FXCompile` drives on the pinned toolset when the model is 6.x (ADR-004, 2026-09-17).
 
-**The terrain mesh is the one place the numbers bite.** A Large landscape at four samples per cell edge is 2,049 × 2,049 samples: 8.4 million triangles and 67 MB of vertices at full resolution, which is not drawn whole. Chunks are 32 × 32 cells — 129 × 129 samples, 16,641 vertices, inside 16-bit indices — with four levels of detail by sample stride (1, 2, 4, 8) and a skirt on each chunk to hide the cracks between levels; a Large landscape is 256 chunks, of which the ones in the near band draw at full detail and the rest at a stride that keeps the visible count near a million triangles. The fog of `SpeciesLook.md` §5 either scales with the landscape or becomes distance desaturation (owner, 2026-09-17), and which of the two decides how much of the far field is drawn at all; ADR-002 picks with a frame to look at.
+**The terrain mesh is the one place the numbers bite.** A Large landscape at four samples per cell edge is 2,049 × 2,049 samples: 8.4 million triangles and 67 MB of vertices at full resolution, which is not drawn whole. Chunks are 32 × 32 cells — 129 × 129 samples, 16,641 vertices, inside 16-bit indices — with four levels of detail by sample stride (1, 2, 4, 8) and a skirt on each chunk to hide the cracks between levels; a Large landscape is 256 chunks, of which the ones in the near band draw at full detail and the rest at a stride that keeps the visible count near a million triangles. The fog of `SpeciesLook.md` §5 either scales with the landscape or becomes distance desaturation (owner, 2026-09-17), and which of the two decides how much of the far field is drawn at all: ADR-005 picked the desaturation on two captured frames (2026-09-17), so the whole frustum is drawn and the budget bounds it, the far plane scales with the landscape, and the depth is reversed for the precision the far field then needs; the owner confirms or overrides the fog at `m0-foundation/T22`.
 
 ### 6.3 The render view
 
-The executable builds, each frame, a plain list of what to draw from the replica: for each object a model id, a position and an orientation interpolated between the last two frames (the first float conversion of a simulation number, and the only place it happens), a team colour and a rank badge; for the terrain, which chunks changed height since the last frame. `Client` draws the list. `Client` never sees a `Device`.
+The executable builds, each frame, a plain list of what to draw from the replica: for each object a model id, a position and an orientation interpolated between the last two frames (the first float conversion of a simulation number, and the only place it happens), a team colour and a rank badge; for the terrain, which chunks changed height since the last frame. `Client` draws the list. `Client` never sees a `Device`. The render-view and height-view types are plain aggregates in `Core`, in the engine namespace, so that `Replica` produces them and `Client` consumes them without an edge between the two (`ImplementationPlan.md` §6; ADR-001 records it).
 
 ### 6.4 The look, mechanically
 
@@ -327,11 +327,11 @@ Content\
   Structures.json          the structure catalogue and modules (GameDesign.md §5)
   Damage.json              the weapon-class by target-class modifier matrix (GameDesign.md §8)
   Sounds.json              the sound-event table, the Species Sounds.txt model
-  Biomes.json              per biome: palette, water and wave bitmaps, the light pair, fog, sky (SpeciesLook.md, SpeciesTerrain.md)
+  Biomes.json              per biome: palette, water and wave textures, the light pair, fog, sky (SpeciesLook.md, SpeciesTerrain.md)
   Landscapes\*.json        a landscape definition: size class, seed, tiles, stamp placement (SpeciesTerrain.md §2 in JSON)
   Stamps\*.json            authored terrain patches
   Models\*.json            positions, colours, triangles, markers, fragments
-  Textures\*.bmp           palettes, water, waves, sprites, icons, the font (24- and 8-bit BMP)
+  Textures\*.dds           palettes, water, waves, sprites, icons, the font (DDS, §8 below)
   Sounds\*.wav             16-bit PCM, which XAudio2 plays as it is
 Mods\<name>\...            the same tree; a file here overrides the one at the same path under Content\
 ```
@@ -342,7 +342,9 @@ Mods\<name>\...            the same tree; a file here overrides the one at the s
 
 **The content hash**, also M3, is a 64-bit digest over the bytes of every file loaded, in load order, mods included, computed at start and sent at join (§5.4). Two players with different files are refused each other's matches before the first tick.
 
-**Importers**, under `Tools/`, never ship: `ImportShp.py` converts a Species `.shp` into a model JSON, keeping fragments, colours, triangles from both encodings and markers (the review tool that rendered the Species set is its prototype); `ImportSounds.py` selects and copies WAVs by the names `Sounds.txt` references. Textures are BMPs already and need no conversion; PNG, which would need an inflate implementation under R14, is an ADR for the day it matters.
+**Textures are DDS** (owner, 2026-09-17), and only DDS: the DirectDraw Surface container, whose header names a `DXGI_FORMAT` and whose payload is the texture as the GPU takes it, so that one reader in `Core` serves every pass and an upload is a copy, never a conversion. The reader parses the header and its DX10 extension, computes the mip chain from the format's block size, refuses cube maps and texture arrays until a pass needs them, hands block-compressed data straight to the upload path, and decodes only uncompressed formats for the two consumers that read texels on the CPU — the terrain palette lookup (§6.4) and the font metrics. **The default is uncompressed `B8G8R8A8_UNORM` with no mip chain**, because the palettes are colour ramps a lookup reads exactly, and the sprites, icons and font are pixel art drawn 1:1 (pillar 3): block compression would put its error into exactly the pixels that matter. Compression (`BC1`, `BC3`, `BC7`) and mips are permitted per texture where one is ever large enough for them to matter, applied by the importer and passed through by the loader. The content ADR records the admitted formats.
+
+**Importers**, under `Tools/`, never ship: `ImportShp.py` converts a Species `.shp` into a model JSON, keeping fragments, colours, triangles from both encodings and markers (the review tool that rendered the Species set is its prototype); `ImportSounds.py` selects and copies WAVs by the names `Sounds.txt` references; `ImportTextures.py` converts the Species BMPs to DDS, expanding the 8-bit ones through their palette and turning a sprite's colour key into alpha, and writes uncompressed DDS itself — a header and the pixels — so that the only tool a compressed texture would need, the SDK's `texconv`, is an option nobody has taken yet.
 
 **Models compose at markers.** A chassis model carries `MarkerMount*` and `MarkerDrive*` markers; a drive model is drawn at the chassis's drive markers — a wheel per marker, a track per side — and a module model at a mount marker, with its own `MarkerMuzzle` for the shot. A device is therefore three models drawn as a tree, not one model per combination, and the model count is chassis + drives + modules rather than their product. Authoring is any tool that exports Wavefront OBJ: `ImportObj.py` takes positions, faces and per-face material colours into a model JSON, and an object named `Marker*` becomes a marker at its origin with its orientation.
 
@@ -369,8 +371,9 @@ Under the user directory:
 | `Saves\*.fcsave` | host | a snapshot (§4.9) plus settings, versioned |
 | `Replays\*.fcreplay` | host | settings, seed, order stream, versioned; always recorded, the oldest pruned |
 | `Logs\Host.log` | host | what the host did and why a client was refused; rotated |
+| `Logs\Client.log` | client | what the client did: the adapter, the scene target, every debug-layer message; rotated (ADR-004) |
 
-The headless host, run as a service or by another user, uses the same layout under its own profile. Nothing resolves against the working directory. ADR-007 records the preferences schema and ADR-008 the save and replay formats.
+The headless host, run as a service or by another user, uses the same layout under its own profile. Nothing resolves against the working directory. The preferences ADR records the preferences schema and ADR-003 the save and replay formats.
 
 ---
 
@@ -381,7 +384,7 @@ The headless host, run as a service or by another user, uses the same layout und
 - **Interest is a security property and is tested as one**: for every publish in a scripted match, no record in a client's frame — object, design, ghost or flatten delta — names anything outside its commander's visibility, own objects and ghost store. This is the test that makes the fog of war real.
 - **`Replica` converges**: applying a host's frames, with and without loss, produces a replica equal to the host's interest set at every acked frame, and interpolation never places an object outside the segment between two frames.
 - **`Content`** loads the shipped tree, refuses each of a set of deliberately broken files with the right file and line, and applies a mod overlay; `FrontierHost --validate` is the same code and agrees by construction.
-- **`Core`** tests the JSON reader against a conformance set (including the pathological documents), the BMP and WAV readers against small fixtures, and its arithmetic exhaustively where the domain is small (the binary-angle tables, the integer square root, the fixed-point multiply).
+- **`Core`** tests the JSON reader against a conformance set (including the pathological documents), the DDS and WAV readers against small fixtures built by hand in the tests, and its arithmetic exhaustively where the domain is small (the binary-angle tables, the integer square root, the fixed-point multiply).
 - **`Client` and the executables** are tested by running them (`AGENTS.md` §3); the pure parts — the input derivation, the UI router — get unit tests, as the Species input work showed they can.
 - **The renderer is tested by capture, because CI is the agent's compiler and its eyes.** Claude Code sessions for this project run on Linux and cannot build (owner, 2026-09-17), so every push builds and tests `Debug|x64` on the Windows runner (`AGENTS.md` §6), and a capture job runs `FrontierCommander --capture` (§6.1) on WARP over a scripted match and uploads the BMPs as artefacts the agent reads back; a Direct3D 12 debug-layer message during the capture fails the job. A Linux build of the portable libraries was considered and rejected: it would be a second build system, which `AGENTS.md` §3 forbids, and the test framework is Windows-only.
 
@@ -394,26 +397,27 @@ A `SuiteSmoke` placeholder in every test project until its first real test, as `
 | Risk | Why it is real | What the design does about it |
 |---|---|---|
 | **Scope** | This is a strategy game with a design system, a research tree, an AI, replicated multiplayer and a large-map renderer, with no library for any of it, by one developer | Milestones that are playable states, a vertical slice that cuts everything not on the critical path, and data files so that content is not code |
-| **Replication** | A second world model that must stay a faithful reading of the host's; interest management that is also the fog-of-war security; bandwidth peaks in large battles; a view that is always 100–200 ms behind | `Replica` as a tested library, the interest test of §10, the arithmetic of §5.7 measured in ADR-004, no prediction to get wrong, and loopback from M1 so that it is exercised from the first playable build (owner, 2026-09-17) |
+| **Replication** | A second world model that must stay a faithful reading of the host's; interest management that is also the fog-of-war security; bandwidth peaks in large battles; a view that is always 100–200 ms behind | `Replica` as a tested library, the interest test of §10, the arithmetic of §5.7 measured in the network ADR, no prediction to get wrong, and loopback from M1 so that it is exercised from the first playable build (owner, 2026-09-17) |
 | **Large landscapes** | Pathing, visibility and terrain rendering scale with the map; a Frontier landscape is sixteen times a *Warzone* map | Hierarchical pathing, budgeted visibility, chunked terrain — and M4, not M1, is where Frontier-class maps must perform |
-| **Hand-written readers** | JSON, BMP and WAV readers under R14 are small and are exactly where a malformed file becomes a crash | Strict parsers with fixtures and conformance tests; content refused at load with a location, never partially loaded |
+| **Hand-written readers** | JSON, DDS and WAV readers under R14 are small and are exactly where a malformed file becomes a crash | Strict parsers with fixtures and conformance tests; content refused at load with a location, never partially loaded |
 | **D3D12 with one helper** | R14 admits `d3dx12.h` and nothing else (owner, 2026-09-17), so its structures describe barriers, heaps and root signatures, and everything above them — descriptor management, uploads, the frame loop, the pipelines — is hand-written | Seven fixed pipelines, no material system, no generality: write the little the game needs, once; the header is a pinned file in the tree with its licence beside it, never fetched |
-| **Provenance of the Species content** | The effects, palettes, sprites, icons and the Darwinia-derived code have no established licence, and the owner has chosen to use them and carry the risk, including handing them to other players in M3 and inside mods (2026-09-17) | ADR-006 records the decision and the list; the soundtrack, the branding and the narration are excluded regardless |
+| **Provenance of the Species content** | The effects, palettes, sprites, icons and the Darwinia-derived code have no established licence, and the owner has chosen to use them and carry the risk, including handing them to other players in M3 and inside mods (2026-09-17) | The provenance ADR records the decision and the list; the soundtrack, the branding and the narration are excluded regardless |
 | **Text at scale** | A pixel font resampled is the cost of the scaled present | 1:1 at the authored resolution is the common path; the ADR settles the resolution with that in mind |
 
 ---
 
 ## 12. The first decisions, as ADRs
 
-The ADRs the first tasks will write, in the order the work meets them. Where the owner has already decided, the ADR records the decision and adds the measurement.
+The ADRs the first tasks will write, in the order the work meets them. Where the owner has already decided, the ADR records the decision and adds the measurement. An ADR takes the next free number when it is written, and this table is updated in that commit (`ImplementationPlan.md` §6); a row without a number is one not yet written, and the documents name it by its subject. The tasks that write them are in `tasks/`.
 
 | ADR | Decision | Written by |
 |---|---|---|
-| 001 | The solution and project layout of §2, the eight projects and their edges, the two namespaces | The first project |
-| 002 | Authored resolution, window style, scene target multisampling; the `d3dx12.h` exception and its pinned version; the fog's form and the unlit team-colour slots, with a captured frame | The first renderer task |
-| 003 | The 20 Hz tick, measured; the position unit and the fixed-point formats of §4.1 | The first `Sim` task |
-| 004 | The network model — host-authoritative replication, as decided — and the measured protocol numbers: publish rate, history length, quantisation, interest cost, and the leak posture of §5.2 | The first `Net` task |
-| 005 | The content directory, the JSON schemas and their versioning, the overlay rule for mods, the content hash | The first loader |
-| 006 | The Species-derived content that came across and the accepted provenance risk, stated to cover distribution to other players and inside mods; the Spectrum font | The first importer run |
-| 007 | The user directory and the preferences schema | The first task that needs a setting to persist |
-| 008 | The snapshot and replay formats | The first save |
+| 001 | The solution and project layout of §2, the eight projects and their edges, the two namespaces | The first project (written 2026-09-17) |
+| 002 | The 20 Hz tick; the position unit and the fixed-point formats of §4.1; the hash's order and the order record; the empty tick measured, and a dated section for the full tick when the slice has one | The first `Sim` task (`m0-foundation/T15`, written 2026-09-17); the full-tick measurements by `m1-vertical-slice/G3` |
+| 003 | The snapshot and replay formats | The first snapshot (`m0-foundation/T15`, written 2026-09-17), because the determinism tests need the format from M0; the save file of M2 and the replay file of M3 cite it |
+| 004 | The renderer: authored resolution, window style, scene target multisampling; the `d3dx12.h` exception and its pinned version; which shader compiler `FXCompile` drives on the pinned toolset | The first renderer task (`m0-foundation/T18`, written 2026-09-17) |
+| 005 | The fog's form and the unlit team-colour slots, ruled on captured frames: distance desaturation, the slots neither lit nor fogged, the far plane scaling with the landscape and the reversed depth that follow | The terrain pass (`m0-foundation/T20`, written 2026-09-17); the owner confirms or overrides the fog at `m0-foundation/T22` |
+| — | The network model — host-authoritative replication, as decided — and the measured protocol numbers: publish rate, history length, quantisation, interest cost, and the leak posture of §5.2 | The first `Net` task, numbered when written |
+| — | The content directory, the JSON schemas and their versioning, the DDS formats a texture may use, the overlay rule for mods, the content hash | The first loader, numbered when written |
+| — | The Species-derived content that came across and the accepted provenance risk, stated to cover distribution to other players and inside mods; the Spectrum font | The first importer run, numbered when written |
+| — | The user directory and the preferences schema | The first task that needs a setting to persist, numbered when written |

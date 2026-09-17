@@ -1,0 +1,96 @@
+# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/m4-frontier.yaml
+#
+# Coarse: split when M3 closes. Two of its tasks are design documents the owner accepts before
+# their implementation tasks are written.
+
+plan: m4-frontier
+title: M4 Frontier - Frontier-class landscapes at full performance, the neutral faction, commanders, legs and possibly lift
+phase: 4
+summary: >
+  What M4 proves (GameDesign.md §12): Frontier-class landscapes at full performance; the neutral
+  faction; commanders; legs, and lift if the owner decides so then. Content is version 2 of the
+  tables. A campaign, if there is one, follows M4 with its own design document and its own plan.
+
+tasks:
+  - id: T1
+    title: Frontier-class landscapes at full performance
+    intent: >
+      A 1,024-cell landscape with 4,096 clusters and 33.6 megabytes of samples runs eight
+      commanders inside the tick and the frame (TechnicalDesign.md §4.4, §6.2).
+    project: Sim
+    depends_on: []
+    blocked_by:
+      - m3-multiplayer/T10
+    acceptance:
+      - The landscape tool's Frontier recipe passes the guarantees; the tick cost, visibility memory and terrain triangle count on Frontier are measured and recorded in the tick ADR's addendum; nothing regresses on Small
+    status: todo
+
+  - id: T2
+    title: Design the neutral faction
+    intent: >
+      A hostile faction owned by no commander, designed fresh (owner, 2026-09-17), needs its own
+      design document accepted before it is built.
+    project: Design
+    depends_on: []
+    blocked_by:
+      - m3-multiplayer/T10
+    acceptance:
+      - Design/NeutralFaction.md exists, README lists it, and the owner's merge accepts it
+    status: todo
+
+  - id: T3
+    title: Build the neutral faction
+    intent: >
+      Nests and a swarm that make a large landscape dangerous to cross alone (pillar 2), as a
+      second AI in Sim.
+    project: Sim
+    depends_on: [T1, T2]
+    acceptance:
+      - The faction's objects, behaviour and content exist per its design document, are deterministic, and appear in the interest test; the lobby enables and scales it
+    status: todo
+
+  - id: T4
+    title: Commanders
+    intent: >
+      Devices with a command module lead attached groups, share their target and inherit their
+      rank (GameDesign.md §8), so that late-game armies are a handful of groups.
+    project: Sim
+    depends_on: []
+    blocked_by:
+      - m3-multiplayer/T10
+    acceptance:
+      - The command module, attachment orders and shared targeting exist in Sim with tests, the interface shows groups, and the AI uses commanders
+    status: todo
+
+  - id: T5
+    title: Legs, and the air decision
+    intent: >
+      The legs drive of GameDesign.md §6 lands; lift and air units need the owner's decision and,
+      if taken, a design document for the lift-drive factory and the rearm pad.
+    project: Sim
+    depends_on: []
+    blocked_by:
+      - m3-multiplayer/T10
+    acceptance:
+      - Legs is a drive with its slope and speed numbers, pathed by its own passability; the air question is put to the owner in OpenQuestions.md with a recommendation, and a yes produces Design/Air.md and its tasks
+    status: todo
+
+  - id: T6
+    title: Version 2 of the tables
+    intent: >
+      The tables are retuned on the measurements of three milestones of play.
+    project: Content
+    depends_on: [T3, T4, T5]
+    acceptance:
+      - Every table is at version 2 with its changes recorded, CheckBalance passes, and the research tree is complete
+    status: todo
+
+  - id: T7
+    title: The owner's run - M4 accepted
+    intent: >
+      A milestone is done when its "proves" column is true on a running build the owner has run.
+    project: Design
+    depends_on: [T1, T3, T4, T5, T6]
+    acceptance:
+      - Every M4 line of GameDesign.md §12 is true on a Frontier landscape; the plan is archived
+    status: todo

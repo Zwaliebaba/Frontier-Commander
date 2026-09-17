@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "sizeClass": "Small",
+  "cellsPerSide": 128,
+  "samplesPerSide": 513,
+  "sampleSpacingWorldUnits": 16,
+  "outsideHeight": -26,
+  "seed": 6,
+  "palette": "Default",
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "extent": 512,
+      "fractalDimensionHundredths": 160,
+      "amplitude": 90,
+      "desiredHeight": 80,
+      "heightShift": 48,
+      "lowlandExponentHundredths": 70,
+      "method": 1,
+      "edgeFalloff": 32
+    },
+    {
+      "x": -24,
+      "y": 45,
+      "extent": 256,
+      "fractalDimensionHundredths": 230,
+      "amplitude": 90,
+      "desiredHeight": 75,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 214,
+      "y": -41,
+      "extent": 256,
+      "fractalDimensionHundredths": 230,
+      "amplitude": 90,
+      "desiredHeight": 105,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": -33,
+      "y": 226,
+      "extent": 256,
+      "fractalDimensionHundredths": 230,
+      "amplitude": 90,
+      "desiredHeight": 75,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 259,
+      "y": 255,
+      "extent": 256,
+      "fractalDimensionHundredths": 210,
+      "amplitude": 90,
+      "desiredHeight": 105,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 38,
+      "y": 119,
+      "extent": 128,
+      "fractalDimensionHundredths": 250,
+      "amplitude": 90,
+      "desiredHeight": 110,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 8,
+      "y": 360,
+      "extent": 128,
+      "fractalDimensionHundredths": 250,
+      "amplitude": 90,
+      "desiredHeight": 110,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 221,
+      "y": 319,
+      "extent": 128,
+      "fractalDimensionHundredths": 270,
+      "amplitude": 90,
+      "desiredHeight": 110,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    }
+  ],
+  "starts": [
+    {
+      "cellX": 68,
+      "cellY": 44
+    },
+    {
+      "cellX": 20,
+      "cellY": 108
+    }
+  ],
+  "deposits": [
+    {
+      "cellX": 62,
+      "cellY": 38
+    },
+    {
+      "cellX": 67,
+      "cellY": 38
+    },
+    {
+      "cellX": 72,
+      "cellY": 38
+    },
+    {
+      "cellX": 62,
+      "cellY": 43
+    },
+    {
+      "cellX": 14,
+      "cellY": 102
+    },
+    {
+      "cellX": 19,
+      "cellY": 102
+    },
+    {
+      "cellX": 24,
+      "cellY": 102
+    },
+    {
+      "cellX": 14,
+      "cellY": 107
+    },
+    {
+      "cellX": 20,
+      "cellY": 60
+    },
+    {
+      "cellX": 68,
+      "cellY": 92
+    },
+    {
+      "cellX": 25,
+      "cellY": 65
+    },
+    {
+      "cellX": 61,
+      "cellY": 85
+    }
+  ]
+}

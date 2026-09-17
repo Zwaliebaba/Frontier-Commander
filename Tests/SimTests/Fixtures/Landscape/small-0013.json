@@ -1,0 +1,156 @@
+{
+  "version": 1,
+  "sizeClass": "Small",
+  "cellsPerSide": 128,
+  "samplesPerSide": 513,
+  "sampleSpacingWorldUnits": 16,
+  "outsideHeight": -26,
+  "seed": 13,
+  "palette": "Default",
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "extent": 512,
+      "fractalDimensionHundredths": 160,
+      "amplitude": 90,
+      "desiredHeight": 80,
+      "heightShift": 48,
+      "lowlandExponentHundredths": 70,
+      "method": 1,
+      "edgeFalloff": 32
+    },
+    {
+      "x": 253,
+      "y": 19,
+      "extent": 256,
+      "fractalDimensionHundredths": 230,
+      "amplitude": 90,
+      "desiredHeight": 105,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": -54,
+      "y": 283,
+      "extent": 256,
+      "fractalDimensionHundredths": 190,
+      "amplitude": 90,
+      "desiredHeight": 90,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 258,
+      "y": 306,
+      "extent": 256,
+      "fractalDimensionHundredths": 230,
+      "amplitude": 90,
+      "desiredHeight": 90,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 372,
+      "y": 35,
+      "extent": 128,
+      "fractalDimensionHundredths": 270,
+      "amplitude": 90,
+      "desiredHeight": 150,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 200,
+      "y": 217,
+      "extent": 128,
+      "fractalDimensionHundredths": 290,
+      "amplitude": 90,
+      "desiredHeight": 150,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 14,
+      "y": 150,
+      "extent": 128,
+      "fractalDimensionHundredths": 290,
+      "amplitude": 90,
+      "desiredHeight": 110,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    }
+  ],
+  "starts": [
+    {
+      "cellX": 92,
+      "cellY": 100
+    },
+    {
+      "cellX": 20,
+      "cellY": 20
+    }
+  ],
+  "deposits": [
+    {
+      "cellX": 86,
+      "cellY": 94
+    },
+    {
+      "cellX": 91,
+      "cellY": 94
+    },
+    {
+      "cellX": 96,
+      "cellY": 94
+    },
+    {
+      "cellX": 86,
+      "cellY": 99
+    },
+    {
+      "cellX": 14,
+      "cellY": 14
+    },
+    {
+      "cellX": 19,
+      "cellY": 14
+    },
+    {
+      "cellX": 24,
+      "cellY": 14
+    },
+    {
+      "cellX": 14,
+      "cellY": 19
+    },
+    {
+      "cellX": 80,
+      "cellY": 40
+    },
+    {
+      "cellX": 32,
+      "cellY": 80
+    },
+    {
+      "cellX": 75,
+      "cellY": 45
+    },
+    {
+      "cellX": 37,
+      "cellY": 75
+    }
+  ]
+}

@@ -1,0 +1,169 @@
+# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/m2-skirmish.yaml
+#
+# Coarser than m1-vertical-slice on purpose: each task here is a unit of scope, not yet a unit of
+# work, and is split into tasks of the M1 grain when M1 closes and the slice has numbers. The
+# acceptance lines are the milestone's; a split keeps them and adds the observable ones.
+
+plan: m2-skirmish
+title: M2 Skirmish - up to four commanders on a Medium landscape with the full catalogue, the full component set, personalities, save and resume, and the look completed
+phase: 2
+summary: >
+  What M2 proves (GameDesign.md §12): up to four commanders on a Medium landscape with the full
+  structure catalogue, the full component set, fog of war, retreat and repair, ranks, and an AI
+  with personalities; a match saves and resumes; the look completed. Content is the full §5
+  catalogue, the §6 tables at version 1, 150 research items, three personalities by three
+  difficulties, eight biomes, the sky and clouds, the sprite population, a stamp library and
+  the Eclipse-shaped windows. Everything M1 deliberately left out lands here.
+
+tasks:
+  - id: T1
+    title: The full structure catalogue
+    intent: >
+      Walls that join, hardpoints carrying a researched weapon, the bunker, the repair bay, the
+      sensor tower and the uplink exist as GameDesign.md §5 describes them, so that a base has
+      a defence beyond the tower and the retreat mechanic has somewhere to go.
+    project: Sim
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - Every row of the §5 catalogue is in Structures.json with a model, and Sim applies each structure's behaviour, including wall joining, the hardpoint's module choice from the researched set, the repair bay's repair of devices that come to it, the sensor tower's spotting, and the uplink's ghost refresh every ten seconds with no device sight
+      - SimTests covers each new behaviour and the interest test still passes with uplink ghosts
+    status: todo
+
+  - id: T2
+    title: The full component set and the 150-item research tree
+    intent: >
+      Hover, rocket pod, flamer, artillery, laser, sensor and repair modules, the chassis Marks
+      II and every version-1 number of GameDesign.md §6 and §7 are in the tables, so that the
+      design space is the one the pillars promise.
+    project: Content
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - Components.json, Research.json and Damage.json hold the complete version-1 tables and 150 research items whose tree reaches every component; FrontierHost --validate passes
+      - Tools/CheckBalance.py reports no dominator in any tier, and the notes record what moved
+      - Thermal armour, burst fire, minimum ranges, the laser's armorFactor and artillery's are applied by Sim and tested
+    status: todo
+
+  - id: T3
+    title: Retreat and repair complete, ranks visible
+    intent: >
+      The stance system exists for retreat and repair (GameDesign.md §8); with the repair bay and
+      the repair module in the game the mechanic is complete and a veteran is worth saving.
+    project: Sim
+    depends_on: [T1, T2]
+    acceptance:
+      - A device under its retreat threshold returns to the nearest repair bay or repair device within 60 cells, is repaired at the bay's or module's rate for power, and returns to its guard position; the render view carries the rank badge and the client draws it
+      - SimTests covers the round trip and the 60-cell rule against a real bay
+    status: todo
+
+  - id: T4
+    title: AI personalities and difficulties
+    intent: >
+      One planner with personality weights (rusher, turtle, artillery, expander) and three
+      difficulties that change cadence and options, never information, with the power bonus at
+      the highest stated in the lobby (owner, 2026-09-17).
+    project: Sim
+    depends_on: [T2]
+    acceptance:
+      - The planner of TechnicalDesign.md §7 replaces the M1 behaviour list; personalities are tables of weights; difficulty sets the planner's cadence (every 10, 3 or 1 seconds) and the number of options scored; the highest difficulty takes the power bonus and no other advantage
+      - Three personalities against each other from a seed reproduce hash for hash and reach a decided end within a bounded tick count in SimTests
+    status: todo
+
+  - id: T5
+    title: Save and resume, preferences and designs on disk
+    intent: >
+      A match is saved as a versioned snapshot with its settings and resumed by the same
+      players (GameDesign.md §10), and the client's preferences and designs persist under the
+      user directory (TechnicalDesign.md §9), each with its ADR.
+    project: FrontierCommander
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - Saves\*.fcsave holds a snapshot plus settings, written by the host and loaded to resume; a resumed match continues to the same hashes as the original in a test
+      - Preferences.json (scaling mode, key bindings, audio volumes, player name) and Designs.json are written and read through Core's JSON, absent meaning defaults, and the preferences ADR records the schema; the save-file ADR cites the snapshot ADR of M0
+    status: todo
+
+  - id: T6
+    title: The local lobby and Medium landscapes for up to four commanders
+    intent: >
+      The lobby of GameDesign.md §10 exists locally: landscape by seed and size or by name, base,
+      power and technology levels, the victory condition, alliances with shared vision, and AI
+      seats with personality and difficulty, so that a skirmish is set up rather than hard-coded.
+    project: FrontierCommander
+    depends_on: [T4]
+    acceptance:
+      - The lobby screen sets every MatchSettings value and starts the match; four commanders on a Medium landscape run at the frame time and tick cost recorded in the notes
+      - Alliances share vision and victory and cannot attack each other, tested in SimTests
+    status: todo
+
+  - id: T7
+    title: Stamps and the stamp library
+    intent: >
+      Authored content enters as stamps the generator places (GameDesign.md §3), so that a
+      start base, a ruin and a chokepoint exist without a hand-authored map.
+    project: Sim
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - StampDesc loads from Content\Stamps, the generator places stamps at chosen or seeded positions after generation, and the landscape tool measures Medium with the library at a stated pass rate
+      - The editor window that authors a stamp exists in the client or the task's notes say why it waited
+    status: todo
+
+  - id: T8
+    title: The look completed - eight biomes, sky and clouds, water with waves, the sprite pass, the pixel post pass decision
+    intent: >
+      The five points of GameDesign.md §11 are all on screen: every biome's palette and light pair,
+      the Species sky and cloud layers at the scale the fog ADR chose, the water plane with the
+      wave texture and the shore band, sprites for the population and particles, and a decision
+      on the pixel post pass with a frame to look at.
+    project: Client
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - Biomes.json carries all eight palettes with the light pairs SpeciesLook.md §3 measured; the sky, cloud and water passes exist per SpeciesLook.md and SpeciesTerrain.md; the sprite pass draws the population walking between structures and the particle events
+      - The pixel post pass is decided in an ADR on captured frames, and the capture job's frames show the completed look
+    status: todo
+
+  - id: T9
+    title: Audio - XAudio2, X3DAudio and the sound-event table
+    intent: >
+      Weapons, explosions, engines, construction and the interface sound through the Species
+      event model (TechnicalDesign.md §6.5) with the Species effects imported, positioned in 3D.
+    project: Client
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - Sounds.json carries an event per (object kind, event) with sample group, position type, loop type and parameter curves; ImportSounds.py has populated Content\Sounds under the provenance ADR's list; device loss parks silent and rebuilds
+      - The pure parts (the event table, the curve evaluation) are unit-tested; the rest is run by the owner
+    status: todo
+
+  - id: T10
+    title: Eclipse-shaped windows replace the fixed panels
+    intent: >
+      The interface becomes windows that open over the world (GameDesign.md §11 point 4), in the
+      Eclipse shape with the rules SpeciesCanvas.md §2 writes down, so that the terminal look is
+      complete; the panels' content is unchanged.
+    project: Client
+    depends_on: []
+    blocked_by:
+      - m1-vertical-slice/G3
+    acceptance:
+      - A window stack with the chrome of SpeciesCanvas.md §3, dragging and closing, the router offering events to the topmost window first; the design, research and production screens and the minimap are windows the operator opens; Design/Interface.md is revised to describe them
+    status: todo
+
+  - id: T11
+    title: The owner's run - M2 accepted
+    intent: >
+      A milestone is done when its "proves" column is true on a running build the owner has run.
+    project: Design
+    depends_on: [T3, T5, T6, T7, T8, T9, T10]
+    acceptance:
+      - The owner plays a four-commander skirmish on a Medium landscape against three personalities, saves and resumes it, and records the frame time and the tick cost; every M2 line of GameDesign.md §12 is true; the plan is archived
+    status: todo
