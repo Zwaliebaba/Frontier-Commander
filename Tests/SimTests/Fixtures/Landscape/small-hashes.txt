@@ -1,0 +1,21 @@
+# fnv1a64 of the little-endian int16 heights of Small seeds 1..20, written by Tools/LandscapeTool.py --hashes
+1 1ff2ef8e85fafd5d
+2 ebbcbd20f1e4051f
+3 9ee84acaf8afcbf7
+4 c589f8613f90fa34
+5 65cf933a10ec22bc
+6 58d8c089c20a686f
+7 5dcb3123b44bf4e4
+8 f7d3ff50f60cae54
+9 ef2c89a21294eef7
+10 0bfd1bd1657eefc5
+11 dafe5a4ad9d6ef8b
+12 c09572d104caaf56
+13 6b4f467346636a13
+14 7e16395cc3c3c4f4
+15 8a89c0f1dcbaee0b
+16 56a48fc225162ebe
+17 8923467ec286c72c
+18 abdfb2edbe09dd3f
+19 bc0ce451f57a5931
+20 23febdcc5fcb995f
