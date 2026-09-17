@@ -27,4 +27,4 @@ Read them in that order. `GameDesign.md` is written to stand alone for a reader 
 
 ## What is deliberately not here yet
 
-A map and stamp content plan, an art bible beyond the presentation section of the game design, an audio design, a user-interface specification, and any campaign writing. Each of those is worth doing only against a running vertical slice, and the milestones in `GameDesign.md` §12 say when that is.
+An interface specification for M1 — the design, research and production screens, selection and orders, the minimap, as fixed panels — is written before M1 starts, as `Design/Interface.md`, because the slice cannot run without it. A map and stamp content plan, an art bible beyond the presentation section of the game design, an audio design and any campaign writing are worth doing only against the running slice, and the milestones in `GameDesign.md` §12 say when that is.

@@ -1,6 +1,6 @@
 # Frontier Commander — Technical Design
 
-**Status: DESIGN (accepted by the owner on 2026-09-17, after the questions in [`OpenQuestions.md`](OpenQuestions.md) were answered; revised through ADRs).** It assumes [`AGENTS.md`](../AGENTS.md) has been read and cites its rules by number rather than repeating them. Decisions carry the date they were taken. Figures are arithmetic on stated assumptions, not measurements, and are labelled so: nothing in this repository has been built or run, and this document was written on Linux where nothing could be.
+**Status: DESIGN (accepted by the owner on 2026-09-17, after the questions in [`OpenQuestions.md`](OpenQuestions.md) were answered; revised through ADRs; revised again on 2026-09-17 after an external review, those revisions being the author's and in the pull request for the owner's approval).** It assumes [`AGENTS.md`](../AGENTS.md) has been read and cites its rules by number rather than repeating them. Decisions carry the date they were taken. Figures are arithmetic on stated assumptions, not measurements, and are labelled so: nothing in this repository has been built or run, and this document was written on Linux where nothing could be.
 
 ---
 
@@ -65,7 +65,7 @@ Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS
 - **`Sim` includes no Windows header, no D3D header and no socket.** That is what makes a headless host possible and the simulation testable without a window, and it is the edge the layering checker guards hardest, because it is the one a convenience include breaks first.
 - **`Content` holds data and its loaders, not behaviour.** The row types (`ChassisDesc`, `ResearchItemDesc`, …) are plain aggregates (R8) filled from JSON; the validation that checks the tables lives beside them (§8). `Sim` reads `Content`; `Content` knows nothing of `Sim`.
 - **`Net` builds on `Sim`** because the host endpoint reads simulation state to publish it, and never on `Client`, `Replica` or the executables. The message records — the wire form of a device, a structure, a projectile, an event — are defined here and are the only thing the two ends share.
-- **`Replica` builds on `Net`** for those records and on nothing above. It is the second world model this design has, and it exists because only the host simulates (owner, 2026-09-17): a client draws what the host told it, not what it computed. It is a library rather than part of the executable so that "applying frames converges to the host's state" is a unit test (§10).
+- **`Replica` builds on `Net`** for those records and on nothing above. It is the second world model this design has, and it exists because only the host simulates (owner, 2026-09-17): a client draws what the host told it, not what it computed. It is a library rather than part of the executable so that "applying frames converges to the host's state" is a unit test (§10). **It is M3 work**: in M1 and M2 the executable builds the render view from `Sim` directly through the seam of §6.3, and the seam is what keeps `Net` and `Replica` out of the vertical slice without leaving a hole to fill later.
 - **`Client` does not build on `Sim` or `Replica`.** The executable builds a **render view** from the replica each frame — a plain list of what to draw — and `Client` draws it, so nothing in `Client` names a `Device`. That is R9's "the engine does not know the game" made structural.
 - **The executables hold what is genuinely theirs**: the frame loop, the camera, the HUD, the render-view translation, and in `FrontierCommander` the thread that hosts a match locally. Code in an executable cannot be linked into a test DLL, so anything in one that deserves a test is code that belongs in a library.
 
@@ -73,7 +73,7 @@ Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS
 
 **Tests** are one `Tests/<Name>Tests` project per static library on the Microsoft Native Unit Test Framework, each sitting directly above its library with the same edges. `Sim`, `Net` and `Replica` tests are the bulk of the suite (§10).
 
-**`Build/` and `Tools/`** hold Python that never ships: the three checkers `AGENTS.md` §6 names, a layering checker in the Species mould (an upward include fails, and there is no allowlist), `CheckContent.py` (§8), and the importers of §8.
+**`Build/` and `Tools/`** hold Python that never ships: the three checkers `AGENTS.md` §6 names, a layering checker in the Species mould (an upward include fails, and there is no allowlist), the landscape tool of §4.4, the cost-efficiency script of `GameDesign.md` §8, and the importers of §8.
 
 ---
 
@@ -81,7 +81,7 @@ Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS
 
 **The simulation ticks at 20 Hz** (owner, 2026-09-17), 50 ms each, with ADR-003 recording the measured confirmation once there is a build to measure. Species inherited 10 Hz from Darwinia and spread heavy work over ten slices; twenty is chosen because orders feel late at 100 ms of tick quantisation on top of the replication interval, and because a 50 ms budget on a 2026 desktop for the object counts below is generous.
 
-**Only the host simulates.** There are two loops, and a single-player game runs both in one process:
+**Only the host simulates.** There are two loops, and from M3 a single-player game runs both in one process; in M1 and M2 there is one loop, the client's, in which step 2 is empty, step 3 advances `Sim` by the ticks wall time owes, and steps 4 and 5 read `Sim` in place of the replica:
 
 ```
 host loop (FrontierHost, or the host thread inside FrontierCommander), driven by wall time:
@@ -101,9 +101,9 @@ client loop (FrontierCommander), driven by the display:
 7  record, draw, present
 ```
 
-Step 2 of the host loop is the only place wall time and ticks meet (R16). The client has no simulation clock; it has the replica's timeline, which is the host's tick numbers arriving late. **Local play is a host thread in the same process talking to the client through the loopback transport**, so single-player exercises the same code path as a match over the network; nothing is special-cased for one player.
+Step 2 of the host loop is the only place wall time and ticks meet (R16). The client has no simulation clock; it has the replica's timeline, which is the host's tick numbers arriving late. **Local play is a host thread in the same process talking to the client through the loopback transport**, so single-player exercises the same code path as a match over the network; nothing is special-cased for one player. **A host that falls behind** — more objects than the machine can advance in real time — slows the match clock rather than skipping: it reduces ticks per wall second until it catches up, tells every client, and the lobby shows it, because a skipped tick would be a different match. **What a click costs in time**: up to 50 ms for the next tick on the host, plus over the network up to 100 ms for the next publish, 100 ms of interpolation and the round trip — 250 to 330 ms from click to visible movement at broadband latencies, against 150 ms in the lockstep draft, and the tick alone in M1 and M2.
 
-**Budget arithmetic.** Eight commanders at 300 devices is 2,400 devices; with structures, projectiles and a neutral faction, call it 4,000 simulated objects. At 50 ms per tick that is 12.5 µs per object per tick, which is thousands of instructions. Pathing and visibility are the systems that can spend it (§4.5, §4.6); publishing (§5) is the third, and it runs every other tick.
+**Budget arithmetic.** Eight commanders at the caps of `GameDesign.md` §4 — 200 devices and 300 structures each — is 4,000 objects; with projectiles and a neutral faction, call it 5,000 simulated objects. At 50 ms per tick that is 10 µs per object per tick, which is thousands of instructions. Pathing and visibility are the systems that can spend it (§4.5, §4.6); publishing (§5) is the third, and it runs every other tick.
 
 ---
 
@@ -115,7 +115,7 @@ Everything in `Sim`, in the order R16 forces. It runs on the host only, and ever
 
 | Quantity | Representation | Range | Note |
 |---|---|---|---|
-| Position (x, z) | `std::int32_t` in 1/256 world unit | ±8.3 million world units | A Frontier landscape is 131,072 across; the range is not the constraint, the arithmetic is |
+| Position (x, z) | `std::int32_t` in 1/256 world unit | ±8.3 million world units | A Frontier landscape is 65,536 across; the range is not the constraint, the arithmetic is |
 | Height (y) | `std::int32_t`, same unit | | Terrain samples and object heights share it |
 | Velocity | position units per tick | | No per-second quantity ever enters the simulation; the tick is the unit |
 | Angle | `std::uint16_t` binary angle | 65,536 per turn | `sin` and `cos` from a 1,024-entry integer table with linear interpolation, in `Core` |
@@ -142,11 +142,11 @@ The generator is a small, well-known algorithm written into `Core` from its spec
 
 ### 4.4 The landscape
 
-**Heights are generated, integer, and identical everywhere.** The Species generator — diamond-square tiles with a fractal dimension, height scale and desired height each, merged into one map and smoothed under a guide grid; [`SpeciesTerrain.md`](SpeciesTerrain.md) §4 has every step — is ported from the Species repository's `GameLogic/Landscape.cpp` into integer arithmetic on the simulation stream. The Species code draws from the cosmetic LCG and computes its noise as `sfrand(powf(length × 10, fractalDimension))` in `float`; that is exactly what R16 forbids, and it is why Species records a landscape that changed shape across a compiler migration. The port replaces `powf` with a fixed-point table over the handful of fractal dimensions a landscape may use, and the LCG with the simulation stream keyed by tile seed. **The heightfield is simulation state**: pathing, slope, water and line of sight all read it, so it is under R16 without exception. The palette lookup that colours it (§6.4) is not, and stays in float on the renderer side. **Generation depends on nothing but the definition**: the Species preference that changed the heightmap's resolution (`SpeciesTerrain.md` §3) is the bug this port does not carry.
+**Heights are generated, integer, and identical everywhere.** The Species generator — diamond-square tiles with a fractal dimension, height scale and desired height each, merged into one map and smoothed under a guide grid; [`SpeciesTerrain.md`](SpeciesTerrain.md) §4 has every step — is ported from the Species repository's `GameLogic/Landscape.cpp` into integer arithmetic on the simulation stream. The Species code draws from the cosmetic LCG and computes its noise as `sfrand(powf(length × 10, fractalDimension))` in `float`; that is exactly what R16 forbids, and it is why Species records a landscape that changed shape across a compiler migration. The port replaces `powf` with a fixed-point table over the handful of fractal dimensions a landscape may use, and the LCG with the simulation stream keyed by tile seed. **The heightfield is simulation state**: pathing, slope, water and line of sight all read it, so it is under R16 without exception. The palette lookup that colours it (§6.4) is not, and stays in float on the renderer side. **Generation depends on nothing but the definition**: the Species preference that changed the heightmap's resolution (`SpeciesTerrain.md` §3) is the bug this port does not carry. **The generator is tuned by a tool before it is trusted**: a Python port of the same integer algorithm under `Tools/` runs a hundred seeds per size class and reports slope histograms per drive class, flood-fill connectivity between starts, the count of buildable footprints near each start and a palette rendering, against the guarantees `GameDesign.md` §3 makes; the recipe that turns a seed into a tile list is what that tool tunes, and it is the first deliverable of M0's landscape task.
 
 The client generates the same landscape from the definition the host sends at join, with the same `Sim` code — the client executable links `Sim` because it hosts locally — and receives the flatten deltas as they happen. A landscape is therefore never replicated sample by sample.
 
-**Storage.** Heights are sampled every 16 world units — four samples per cell edge, close to the Species spacing of 10.66 — and stored as `std::int16_t` whole units, which covers the height range of any Species landscape many times over. A Large landscape is 4,097 × 4,097 samples, 33.6 MB; a Frontier one 8,193 × 8,193, 134 MB, which is memory rather than a problem on the machines this game targets, and it is one of the numbers that make Frontier-class landscapes M4 work rather than M1. Derived grids are per cell, not per sample, each one byte or one bit: slope class, water, obstruction (a structure or feature occupies the cell), and per-commander visibility at two bits for its three states. Eight commanders on a Frontier landscape is 8 × 4.2 million cells × 2 bits = 8.4 MB of visibility. Arithmetic, not measurement.
+**Storage.** Heights are sampled every 16 world units — four samples per cell edge, close to the Species spacing of 10.66 — and stored as `std::int16_t` whole units, which covers the height range of any Species landscape many times over. A Large landscape is 2,049 × 2,049 samples, 8.4 MB; a Frontier one 4,097 × 4,097, 33.6 MB. Derived grids are per cell, not per sample: slope class, water and obstruction at a byte or a bit each, and per-commander visibility at one byte of viewer count (§4.6) plus two bits of state. Eight commanders on a Frontier landscape is 8 × 1.05 million cells × 1.25 bytes = 10.5 MB of visibility. Arithmetic, not measurement.
 
 **Stamps** are authored patches: a rectangle of relative heights and a list of features, applied after generation at a position the generator chooses. Their format is the same as a snapshot's landscape section, so the tool that authors one is the game with an editor window, and a stamp is a JSON file under `Content\Stamps` (§8). **Terrain deltas at runtime** — flatten under a structure, and nothing else through M3 (owner, 2026-09-17) — are recorded as a list of rectangular height edits applied over the generated base, so a snapshot carries the seed plus the deltas rather than the heights, and terraforming can come later without a new snapshot format.
 
@@ -154,10 +154,10 @@ The client generates the same landscape from the definition the host sends at jo
 
 The system that decides whether a Large landscape works. The design is **hierarchical A\* over clusters with local steering**:
 
-- The landscape is divided into 16×16-cell clusters; each cluster's boundary crossings are nodes, and the paths between them inside the cluster are precomputed edges, per drive class, because water and slope differ per class. A Large landscape has 4,096 clusters; a Frontier one 16,384.
+- The landscape is divided into 16×16-cell clusters; each cluster's boundary crossings are nodes, and the paths between them inside the cluster are precomputed edges, per drive class, because water and slope differ per class. A Large landscape has 1,024 clusters; a Frontier one 4,096.
 - A move order plans over the cluster graph (thousands of nodes, not millions of cells), refines the first few clusters to a cell path, and refines further as the device advances. Planning is amortised over ticks with a budget per tick, and it is deterministic because the budget is in nodes expanded, not in milliseconds.
 - Between cells, devices steer around each other with a separation rule in integer arithmetic; formations are a version-2 concern.
-- A structure placed or destroyed invalidates the clusters it touches, which recompute their internal edges lazily.
+- A structure placed or destroyed invalidates the clusters it touches, which recompute their internal edges lazily. Plans and wrecks obstruct nothing — only structures under construction or standing do — so a battle does not churn the clusters and a loser cannot grief the pathfinder with placements.
 
 Flow fields — one field per destination, shared by every device heading there — are the alternative and are better for hundred-unit blobs converging on one point; they are worse for a landscape this size because a field covers the map. The choice is an ADR when the slice has numbers; the interface `Sim` exposes (request a path, advance along it) is the same for both.
 
@@ -165,7 +165,9 @@ Flow fields — one field per destination, shared by every device heading there 
 
 Per commander, a grid of the three fog states. Each tick, a budgeted share of the devices and structures with sight recompute the cells they see: a disc of the sight radius, extended by the height difference, with each cell tested for occlusion by walking the heightfield from the viewer to the cell in integer steps. A viewer that has not moved and whose surroundings have not changed keeps its previous disc. The budget — every viewer refreshes at least once per second — is in viewers per tick, so it is deterministic.
 
-The cost, as arithmetic: a sight radius of 24 cells is a disc of about 1,800 cells; an occlusion walk averages 12 steps; that is roughly 22,000 heightfield reads per viewer refresh, and 400 viewers refreshing once a second over 20 ticks is 440,000 reads per tick — well inside the budget of §3, and the reason the budget is in viewers rather than milliseconds.
+Every device and structure with sight is a viewer — up to 4,000 at the budget of §3 — and the refresh budget is 200 viewers per tick, moved viewers first, so every viewer refreshes at least once per second. A refresh of a 24-cell radius is a disc of about 1,800 cells with an average occlusion walk of 12 steps, roughly 22,000 heightfield reads, so the budget costs 4.4 million reads per tick, local to each viewer's neighbourhood rather than random over the heightfield; it is the largest single cost in the tick and the first thing ADR-003 measures. The grid holds, per commander and cell, a viewer count of one byte, so that a moved viewer's old disc can be un-seen, and the two-bit fog state derived from it.
+
+**The host also keeps, per seat, a ghost store**: the last-seen record of every structure that seat has ever seen, which is what a client's explored-but-not-visible map shows, what an attack on an unseen target is redirected to, and what a rejoining client gets back; it is part of the snapshot (§4.9).
 
 **Visibility is also the replication filter.** What a commander's grid marks visible is what the host publishes to that commander's client (§5.2), so the fog of war is enforced by the host and a client is never sent what it should not see.
 
@@ -201,7 +203,7 @@ Step 11 is why the AI is in `Sim`: it emits orders like any commander, into the 
 ### 4.9 Hash, snapshot, replay
 
 - **The hash** in step 13 is a 64-bit digest over every object's simulation fields in id order plus every seat's state, each tick. FNV-1a is enough and is a few lines in `Core`. It is what a test compares between two runs and what a replay is checked against; there is no cross-client comparison, because no client simulates.
-- **A snapshot** is the full serialisation of `Sim` — seed, tick, landscape deltas, every slot map, every seat, the PRNG state — through one versioned byte-stream writer and reader pair in `Core`. It is the save file, and it is host-side only: a client never holds the whole match, and a joining or rejoining client receives its commander's view (§5.4), not a snapshot. Estimated size: 4,000 objects at about 64 bytes, plus per-commander grids compressed as runs, under 2 MB for a Large landscape.
+- **A snapshot** is the full serialisation of `Sim` — seed, tick, landscape deltas, every slot map, every seat and its ghost store, the PRNG state — through one versioned byte-stream writer and reader pair in `Core`. It is the save file, and it is host-side only: a client never holds the whole match, and a joining or rejoining client receives its commander's view (§5.4), not a snapshot. Estimated size: 5,000 objects at about 64 bytes, plus per-commander grids compressed as runs, under 2 MB for a Large landscape.
 - **A replay** is the settings, the seed and the order stream the host applied. The stream is tiny (§5.7), so the host records every match; a replay is watched by hosting it locally from the file, which is why the client executable links `Sim`.
 
 ---
@@ -224,8 +226,8 @@ A client's **interest set** is decided by the host every publish, per client, fr
 
 - every object in a cell its commander, or an ally, currently sees;
 - every object its commander owns, wherever it is;
-- structures in explored cells at their **last-seen state** — sent once when they leave visibility, and updated only when seen again — which is how a client draws the ghost of a base it scouted;
-- the landscape's definition and flatten deltas, and the match settings, which every client holds in full because they are not secrets.
+- structures in explored cells at their **last-seen state**, from the seat's ghost store (§4.6) — sent when they leave visibility and again when seen again — which is how a client draws the ghost of a base it scouted and how a rejoining client gets its scouting back;
+- the landscape's definition and the match settings, which every client holds in full: the seed, the size class, the tile list and the stamp placements are not secrets, and deposits and start positions are known to every commander from the first tick, as in most strategy games. **Flatten deltas are not**: a structure's footprint reaches a client only inside the structure's own record or ghost, so the terrain under an unseen enemy base stays as the generator made it until the base is scouted. That the definition is public is the one leak this model keeps, and it is named here rather than hidden.
 
 An object entering the set is sent whole; an object leaving it is sent as a removal, and the replica keeps a ghost only for structures. Projectiles and effects inside the set are sent as short-lived events rather than objects. Interest is recomputed every publish from the grid, so the cost is a walk over the commander's visible cells' occupants, which the visibility pass already maintains.
 
@@ -233,7 +235,7 @@ An object entering the set is sent whole; an object leaving it is sent as a remo
 
 The host publishes a **frame** per client every second tick (10 Hz): a sequence number, the sequence of the **baseline** it is encoded against, and three lists — objects created since the baseline (full records), objects changed (a field mask and the changed fields), objects removed — plus the events of the interval. The baseline is the newest frame the client has acknowledged; the host keeps a short history of what it sent each client (32 frames, 3.2 seconds) and encodes against the acked one, so **a lost frame costs nothing but a larger next frame**: no retransmission, no ordering, just the next delta from an older baseline. A client whose acknowledged baseline has fallen out of the history receives a full frame — the same path a joining client takes.
 
-Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, position, heading, hit points, rank, order kind, target, stance flags), `StructureState`, `WreckState`, `FeatureState`, `SeatState` (power, research in progress, victory state), and `Event` (kind, position, source, target, time). Positions on the wire are quantised to a quarter of a world unit and sent as deltas from the baseline; a device that did not move sends nothing. Every field is a fixed-width integer; there is no float on the wire.
+Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, position, heading, hit points, rank, order kind, target, stance flags), `StructureState`, `WreckState`, `FeatureState`, `SeatState` (power, research in progress, victory state), and `Event` (kind, position, source, target, time). Positions on the wire are quantised to a quarter of a world unit and sent as deltas from the baseline; a device that did not move sends nothing. Every field is a fixed-width integer — an id is the four-byte counter of §4.3, hit points two bytes, a position delta six — and there is no float on the wire. A design's parts travel as a `DesignState` record with the first device of that design a client sees, so a client can show what it is fighting. **A frame larger than a datagram** — 1,200 bytes of payload, under every common path MTU — is split into numbered fragments; the client applies a frame only when every fragment has arrived and discards one with a fragment missing, which costs nothing but a larger next delta.
 
 Datagrams carry frames unreliably. Orders (§5.5) are the one reliable stream.
 
@@ -246,7 +248,7 @@ Datagrams carry frames unreliably. Orders (§5.5) are the one reliable stream.
 
 ### 5.5 Orders and their feel
 
-Orders travel client to host on a **reliable stream**: sequence numbers, cumulative acknowledgements in every datagram, and resend of anything unacknowledged after a round-trip estimate. The host applies an order at the start of the next tick and it shows in the following frame. The round trip plus the publish interval is 120–180 ms at broadband latencies, which is comparable to the input delay the lockstep draft carried; the client acknowledges an order locally at once — a cursor mark, a sound — and the unit moves when the replica says it has. There is no client-side prediction of movement: a strategy game does not need it and the replica stays honest.
+Orders travel client to host on a **reliable stream**: sequence numbers, cumulative acknowledgements in every datagram, and resend of anything unacknowledged after a round-trip estimate. The host applies an order at the start of the next tick and it shows in the following frame. From click to visible movement is 250 to 330 ms at broadband latencies (§3), about twice the input delay the lockstep draft carried; the client acknowledges an order locally at once — a cursor mark, a sound — and the unit moves when the replica says it has. There is no client-side prediction of movement: a strategy game does not need it and the replica stays honest.
 
 ### 5.6 The transport
 
@@ -254,7 +256,7 @@ UDP, one socket per process, ported from the Species `network-transport` work ra
 
 ### 5.7 Bandwidth, as arithmetic
 
-Take a client whose commander sees 600 objects in a large battle, 300 of which change between frames. A changed device record is 2 bytes of id, 6 of position delta, 1 of heading, 1 of hit points, 1 of flags: 11 bytes, so 3.3 KB per frame and 33 KB/s at 10 Hz. Creations are about 30 bytes each and events 8; a full frame of 600 objects is about 18 KB. Peak is therefore 20–60 KB/s per client and about 0.5 MB/s out of a host with eight, against under 2 KB/s per client for the lockstep draft: twenty times more, and still trivial on a LAN or a broadband link. A replay of a two-hour match is under 4 MB, unchanged, because it is orders. Arithmetic, not measurement; ADR-004 records the measured numbers.
+Take a client whose commander sees 600 objects in a large battle, 300 of which change between frames. A changed device record is 4 bytes of id, 6 of position delta, 1 of heading, 2 of hit points, 1 of flags: 14 bytes, so 4.2 KB per frame — four fragments — and 42 KB/s at 10 Hz. Creations are about 40 bytes each and events 8; a full frame of 600 objects is about 24 KB, twenty fragments. Peak is therefore 30–70 KB/s per client and about 0.6 MB/s out of a host with eight, against under 2 KB/s per client for the lockstep draft: thirty times more, and still trivial on a LAN or a broadband link. A replay of a two-hour match is under 4 MB, unchanged, because it is orders. Arithmetic, not measurement; ADR-004 records the measured numbers.
 
 ### 5.8 Trust
 
@@ -274,7 +276,7 @@ Direct3D 12 through the SDK headers alone (R14): device, command queue, one comm
 
 | Pass | Draws | Pipeline |
 |---|---|---|
-| Terrain | Chunked landscape meshes, 64×64 cells per chunk, vertex colour from the palette, two directional lights, per-face normals | One PSO; chunks culled by frustum; a coarser mesh per chunk beyond a distance |
+| Terrain | Chunked landscape meshes, 32×32 cells per chunk with four levels of detail by sample stride and skirts, vertex colour from the palette, two directional lights, per-face normals | One PSO; chunks culled by frustum; the near band at full detail, the rest at a stride that keeps the visible count near a million triangles |
 | Water | One plane at the water level with the wave texture scrolling, and the shore band | One PSO, alpha blended |
 | Geometry | Every device, structure, feature and wreck: models, per-vertex colour, team colour substituted, instanced per model | One PSO; one instance buffer per model per frame |
 | Sprites | Billboards for infantry-sized things, the population, and particles | One PSO, instanced, alpha tested |
@@ -283,6 +285,8 @@ Direct3D 12 through the SDK headers alone (R14): device, command queue, one comm
 | Present | The scene target into the back buffer, scaled | One PSO |
 
 Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `Client/Shaders/`, compiled by `FXCompile` into `Client/CompiledShaders/` (`AGENTS.md` §2). Shader model 6 through the SDK's `dxc` is the target; whether `FXCompile` drives it cleanly on the pinned toolset is one of the first things M0 finds out.
+
+**The terrain mesh is the one place the numbers bite.** A Large landscape at four samples per cell edge is 2,049 × 2,049 samples: 8.4 million triangles and 67 MB of vertices at full resolution, which is not drawn whole. Chunks are 32 × 32 cells — 129 × 129 samples, 16,641 vertices, inside 16-bit indices — with four levels of detail by sample stride (1, 2, 4, 8) and a skirt on each chunk to hide the cracks between levels; a Large landscape is 256 chunks, of which the ones in the near band draw at full detail and the rest at a stride that keeps the visible count near a million triangles. Whether the fog of `SpeciesLook.md` §5 stays decides how much of the far field is drawn at all, which is why that ruling is asked for before the first renderer ADR.
 
 ### 6.3 The render view
 
@@ -332,13 +336,15 @@ Content\
 Mods\<name>\...            the same tree; a file here overrides the one at the same path under Content\
 ```
 
-**Mods** are directories under `Mods\` beside the executable, enabled by name in the lobby; the loader reads `Content\` and then each enabled mod in order, and a file in a mod replaces the file at the same path. Nothing else is needed for a mod that changes numbers, adds a component or a model, or replaces a sound.
+**Mods** are M3 work — there is nobody to disagree with in single-player — and are directories under `Mods\` beside the executable, enabled by name in the lobby; the loader reads `Content\` and then each enabled mod in order, and a file in a mod replaces the file at the same path. Nothing else is needed for a mod that changes numbers, adds a component or a model, or replaces a sound.
 
-**Validation happens twice, with the same rules.** At load, `Content` checks that every research prerequisite names an existing item and the tree has no cycle; that every component's unlock names an item; that every model, texture and sound a table names exists; that no id is duplicated; that every number is in its range — and refuses to start on a failure, naming the file and line. In CI, `Build/CheckContent.py` runs the same checks over `Content\` on every push, so a table edit that would break the game breaks the build first. The two implementations are kept in step by a shared list of rules in the checker's header comment and a test that feeds the same broken files to both.
+**Validation happens at load and in CI with one implementation.** At load, `Content` checks that every research prerequisite names an existing item and the tree has no cycle; that every component's unlock names an item; that every model, texture and sound a table names exists; that no id is duplicated; that every number is in its range — and refuses to start on a failure, naming the file and line. In CI, `FrontierHost --validate` loads `Content\` with that same code and exits non-zero on any failure, so a table edit that would break the game breaks the build first, without a second implementation of the rules to keep in step.
 
-**The content hash** is a 64-bit digest over the bytes of every file loaded, in load order, mods included, computed at start and sent at join (§5.4). Two players with different files are refused each other's matches before the first tick.
+**The content hash**, also M3, is a 64-bit digest over the bytes of every file loaded, in load order, mods included, computed at start and sent at join (§5.4). Two players with different files are refused each other's matches before the first tick.
 
 **Importers**, under `Tools/`, never ship: `ImportShp.py` converts a Species `.shp` into a model JSON, keeping fragments, colours, triangles from both encodings and markers (the review tool that rendered the Species set is its prototype); `ImportSounds.py` selects and copies WAVs by the names `Sounds.txt` references. Textures are BMPs already and need no conversion; PNG, which would need an inflate implementation under R14, is an ADR for the day it matters.
+
+**Models compose at markers.** A chassis model carries `MarkerMount*` and `MarkerDrive*` markers; a drive model is drawn at the chassis's drive markers — a wheel per marker, a track per side — and a module model at a mount marker, with its own `MarkerMuzzle` for the shot. A device is therefore three models drawn as a tree, not one model per combination, and the model count is chassis + drives + modules rather than their product. Authoring is any tool that exports Wavefront OBJ: `ImportObj.py` takes positions, faces and per-face material colours into a model JSON, and an object named `Marker*` becomes a marker at its origin with its orientation.
 
 **Shaders are the one thing still compiled in**: HLSL under `Client/Shaders/`, compiled at build time by `FXCompile` (`AGENTS.md` §2), never loaded at runtime.
 
@@ -372,9 +378,9 @@ The headless host, run as a service or by another user, uses the same layout und
 
 - **`Sim` is the bulk of the suite, and determinism is its first test.** Two matches from one seed and one order stream hash identically at every tick; a snapshot taken at tick *n* and reloaded continues to the same hashes as the original; a replay reproduces a recorded match hash for hash. These three tests exist from M0, and every later feature runs under them.
 - **`Net` is tested over `LoopbackTransport`**, as Species does: join, a full frame, deltas against an acked baseline, a lost frame recovered by the next delta, a full frame after the history is exhausted, orders delivered reliably through loss, a slow client dropped to AI — the conversation, not the encodings.
-- **Interest is a security property and is tested as one**: for every publish in a scripted match, no record in a client's frame names an object outside its commander's visibility, own objects and ghosts. This is the test that makes the fog of war real.
+- **Interest is a security property and is tested as one**: for every publish in a scripted match, no record in a client's frame — object, design, ghost or flatten delta — names anything outside its commander's visibility, own objects and ghost store. This is the test that makes the fog of war real.
 - **`Replica` converges**: applying a host's frames, with and without loss, produces a replica equal to the host's interest set at every acked frame, and interpolation never places an object outside the segment between two frames.
-- **`Content`** loads the shipped tree, refuses each of a set of deliberately broken files with the right file and line, and applies a mod overlay; `CheckContent.py` agrees with the loader on every broken file.
+- **`Content`** loads the shipped tree, refuses each of a set of deliberately broken files with the right file and line, and applies a mod overlay; `FrontierHost --validate` is the same code and agrees by construction.
 - **`Core`** tests the JSON reader against a conformance set (including the pathological documents), the BMP and WAV readers against small fixtures, and its arithmetic exhaustively where the domain is small (the binary-angle tables, the integer square root, the fixed-point multiply).
 - **`Client` and the executables** are tested by running them (`AGENTS.md` §3); the pure parts — the input derivation, the UI router — get unit tests, as the Species input work showed they can.
 
@@ -387,8 +393,8 @@ A `SuiteSmoke` placeholder in every test project until its first real test, as `
 | Risk | Why it is real | What the design does about it |
 |---|---|---|
 | **Scope** | This is a strategy game with a design system, a research tree, an AI, replicated multiplayer and a large-map renderer, with no library for any of it, by one developer | Milestones that are playable states, a vertical slice that cuts everything not on the critical path, and data files so that content is not code |
-| **Replication** | A second world model that must stay a faithful reading of the host's; interest management that is also the fog-of-war security; bandwidth peaks in large battles; a view that is always 100–200 ms behind | `Replica` as a tested library, the interest test of §10, the arithmetic of §5.7 measured in ADR-004, and no prediction to get wrong |
-| **Large landscapes** | Pathing, visibility and terrain rendering scale with the map; a Frontier landscape is over sixty times a *Warzone* map | Hierarchical pathing, budgeted visibility, chunked terrain — and M4, not M1, is where Frontier-class maps must perform |
+| **Replication** | A second world model that must stay a faithful reading of the host's; interest management that is also the fog-of-war security; bandwidth peaks in large battles; a view that is always 100–200 ms behind | `Replica` as a tested library, the interest test of §10, the arithmetic of §5.7 measured in ADR-004, no prediction to get wrong, and none of it before M3 |
+| **Large landscapes** | Pathing, visibility and terrain rendering scale with the map; a Frontier landscape is sixteen times a *Warzone* map | Hierarchical pathing, budgeted visibility, chunked terrain — and M4, not M1, is where Frontier-class maps must perform |
 | **Hand-written readers** | JSON, BMP and WAV readers under R14 are small and are exactly where a malformed file becomes a crash | Strict parsers with fixtures and conformance tests; content refused at load with a location, never partially loaded |
 | **D3D12 without helpers** | R14 removes `d3dx12.h`, so barriers, heaps and root signatures are hand-written | Seven fixed pipelines, no material system, no generality: write the little the game needs, once |
 | **Provenance of the Species content** | The effects, palettes, sprites, icons and the Darwinia-derived code have no established licence, and the owner has chosen to use them and carry the risk (2026-09-17) | ADR-006 records the decision and the list; the soundtrack, the branding and the narration are excluded regardless |
@@ -405,7 +411,7 @@ The ADRs the first tasks will write, in the order the work meets them. Where the
 | 001 | The solution and project layout of §2, the eight projects and their edges, the two namespaces | The first project |
 | 002 | Authored resolution, window style, scene target multisampling | The first renderer task |
 | 003 | The 20 Hz tick, measured; the position unit and the fixed-point formats of §4.1 | The first `Sim` task |
-| 004 | The network model — host-authoritative replication, as decided — and the measured protocol numbers: publish rate, history length, quantisation, interest cost | The first `Net` task |
+| 004 | The network model — host-authoritative replication, as decided — and the measured protocol numbers: publish rate, history length, quantisation, interest cost, and the leak posture of §5.2 | The first `Net` task |
 | 005 | The content directory, the JSON schemas and their versioning, the overlay rule for mods, the content hash | The first loader |
 | 006 | The Species-derived content that came across and the accepted provenance risk; the Spectrum font | The first importer run |
 | 007 | The user directory and the preferences schema | The first task that needs a setting to persist |

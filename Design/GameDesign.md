@@ -1,6 +1,6 @@
 # Frontier Commander — Game Design
 
-**Status: DESIGN (accepted by the owner on 2026-09-17, after the questions in [`OpenQuestions.md`](OpenQuestions.md) were answered; revised through ADRs).** Every number in this document is a proposed default for tuning to start from, not a measurement, and every one of them is expected to move once the vertical slice runs. Decisions carry the date they were taken.
+**Status: DESIGN (accepted by the owner on 2026-09-17, after the questions in [`OpenQuestions.md`](OpenQuestions.md) were answered; revised through ADRs; revised again on 2026-09-17 after an external review, those revisions being the author's and in the pull request for the owner's approval).** Every number in this document is a proposed default for tuning to start from, not a measurement, and every one of them is expected to move once the vertical slice runs. Decisions carry the date they were taken.
 
 ---
 
@@ -31,33 +31,37 @@
 | Condition | Ends the match when | For |
 |---|---|---|
 | Annihilation | Every enemy structure and every enemy builder is destroyed | The default, and the *Warzone 2100* rule |
-| Dominance | One side has held at least 60% of the landscape's deposits for 10 continuous minutes | Large landscapes, where hunting the last builder across a landscape sixty Gardens wide is not a game |
+| Dominance | One side has held — an extractor built and served (§4) — at least 60% of the landscape's deposits for 10 continuous minutes | Large landscapes, where hunting the last builder across a landscape sixteen Gardens wide is not a game; it ships with the first Large landscapes (§12) |
 | Survival | The clock runs out; the side that extracted the most power wins | Short matches and AI stress tests |
 
 Alliances are fixed in the lobby; allied commanders share vision and victory and cannot attack each other.
+
+**Base, power and technology levels** are lobby settings with values. Base level: *nothing* is a builder and a command post; *small* adds two served extractors, a generator and a factory; *established* adds a lab, a repair bay and four hardpoints. Power level sets the starting stockpile: 400, 1,000 or 2,500. Technology level pre-completes the first zero, one or two tiers of the research tree.
 
 ---
 
 ## 3. The landscape
 
-**The landscape is a heightfield on a grid of cells, and it is large.** The world unit is the Species unit, so that the Species models import at their native scale: a soldier is 14 units tall, a tank body 49 long, a wall segment 46 wide, a power station 82 by 103 (`SpeciesLineage.md` §4 has the measurements). One cell is 64 world units on a side, which is one tank or one wall segment; the first draft of this document had a cell at 4 units, and the art review corrected it. Sizes, as proposed defaults:
+**The landscape is a heightfield on a grid of cells, and it is large.** The world unit is the Species unit, so that the Species models import at their native scale: a soldier is 14 units tall, a tank body 49 long, a wall segment 46 wide, a power station 82 by 103 (`SpeciesLineage.md` §4 has the measurements). One cell is 64 world units on a side, which is one tank or one wall segment; the first draft of this document had a cell at 4 units, and the art review corrected it. Sizes, as proposed defaults, halved on 2026-09-17 after the review's crossing-time arithmetic:
 
 | Class | Cells per side | World units per side | Deposits | Commanders |
 |---|---|---|---|---|
-| Small | 256 | 16,384 | 24 | 2 |
-| Medium | 512 | 32,768 | 60 | 2–4 |
-| Large | 1,024 | 65,536 | 160 | 4–8 |
-| Frontier | 2,048 | 131,072 | 500 | 4–8 |
+| Small | 128 | 8,192 | 12 | 2 |
+| Medium | 256 | 16,384 | 24 | 2–4 |
+| Large | 512 | 32,768 | 60 | 4–8 |
+| Frontier | 1,024 | 65,536 | 160 | 4–8 |
 
-For scale: the largest Species map, the Garden, is 2,002 world units across, which is 31 of these cells, so a Small landscape is eight Gardens across and a Large one thirty-three; *Warzone 2100* maps run up to 250 tiles a side, and a tile is one tank, the same as the cell proposed here. A Large landscape is therefore about sixteen times the area of the largest *Warzone* map, and a Frontier one over sixty times. "Large" is the point of the game (pillar 2), and it is also the single biggest technical risk in it: pathing, visibility and the terrain renderer are all sized by it (`TechnicalDesign.md` §4, §6).
+For scale: the largest Species map, the Garden, is 2,002 world units across, which is 31 of these cells, so a Small landscape is four Gardens across and a Frontier one thirty-three; *Warzone 2100* maps run up to 250 tiles a side, and a tile is one tank, the same as the cell proposed here, so a Medium landscape is a *Warzone* map, Large is four times its area and Frontier sixteen. **Distance is the point of the game and its biggest risk.** With the speeds of §6 a light device crosses a Small landscape in 1.3 minutes and a heavy in 4.7; a Large one in 5.3 and 19. Whether that is decisions or dead time is the premise everything in `TechnicalDesign.md` §4 is sized by, and the test that decides it costs an evening and no engine: *Warzone 2100*, whose stats are files, with its unit speeds and power numbers set to this game's, played for thirty minutes against a stock AI, logging the time to first contact and the share of a unit's life spent in transit. It is run before M1, and its numbers replace these.
 
 **Terrain has three properties the simulation reads:** height, slope and water. Height sets sight (§8) and, for indirect fire, range. Slope is the gradient between neighbouring cells; each drive class has a maximum it can climb (§6), and cliffs are slopes nothing climbs. Water is any cell below the water level — the Species `outsideHeight` — and only hover and lift drives cross it. Nothing else about the terrain is simulated: no soil types, no destruction, no terraforming, and that holds through M3 (owner, 2026-09-17); the delta format in `TechnicalDesign.md` §4.4 is chosen so it can change later.
 
-**Deposits** are point features the landscape generator scatters, denser toward the edges than the centre so that expansion pulls commanders outward and toward each other. An extractor is built on a deposit and nowhere else. Deposits are the only thing on the landscape worth fighting over that cannot be moved, and that is what gives the landscape its shape as a game.
+**Deposits** are point features the landscape generator scatters with a minimum spacing: a modest cluster at each start, and the largest clusters midway between starts, so that expansion pulls commanders toward each other rather than away. An extractor is built on a deposit and nowhere else. Deposits are the only thing on the landscape worth fighting over that cannot be moved, and that is what gives the landscape its shape as a game.
 
 **Features** are scenery the simulation treats as obstacles: rock, ruins, the Species temples and caves. They block movement and line of sight; they do not take damage in the first version.
 
 **Landscapes are generated from a seed and optionally stamped.** The generator is the Species diamond-square landscape — tiles of fractal terrain with a fractal dimension, a height scale and a desired height each, merged and smoothed — ported to integer arithmetic so every machine generates the same heights (`TechnicalDesign.md` §4.4). A landscape definition is therefore a seed, a size class, a tile list and a palette, and it is a few hundred bytes. Authored content enters as **stamps**: a start base, a ruin, a chokepoint, each an authored patch of heights and features that the generator places at a chosen or a seeded position. There are no hand-authored whole maps (owner, 2026-09-17): a stamp library plus a seed does what a hand-authored map does at a fraction of the content cost, and a one-developer project has no content budget to spend.
+
+**What the generator guarantees**, measured by the landscape tool of `TechnicalDesign.md` §4.4 over a hundred seeds before a size class ships: every start is on flat ground with room for the established base; every pair of starts is connected for wheels, tracks and hover alike; every deposit is on land and reachable by a builder; and at least seven tenths of the land is passable to tracks. A seed that fails is rejected and the next tried, which is what makes the guarantee cheap. How a seed becomes a tile list — how many tiles, of what sizes, fractal dimensions and heights, per size class — is the generator's recipe, tuned against those measurements, and it is the first deliverable of M0's landscape task.
 
 **Fog of war** has three states per cell per commander: unexplored (black), explored (the terrain and the last-seen structures, dimmed) and visible (live). Vision comes from devices and structures with a sight radius, extended by height: a sensor on a hill sees further than the same sensor in a valley, and a ridge between the sensor and the target blocks it. The rules and their cost are in §8 and `TechnicalDesign.md` §4.6.
 
@@ -67,7 +71,7 @@ For scale: the largest Species map, the Garden, is 2,002 world units across, whi
 
 **One currency: power.** Everything — structures, devices, research, repair — costs power, and power comes from the ground. There is no second resource and no population cap; the limits on an army are power, factory throughput and the commander's attention.
 
-**The chain is deposit → extractor → generator.** An extractor on a deposit produces nothing until a generator serves it, and one generator serves four extractors. The generator can be anywhere; the link is logical, not a pipe. Destroying a generator stops four extractors, which is why generators are the target and extractors are the bait, exactly as in *Warzone 2100*. A command post produces a trickle so a commander who has lost everything can rebuild an extractor.
+**The chain is deposit → extractor → generator.** An extractor on a deposit produces nothing until a generator serves it; a generator serves the four nearest unserved extractors within 48 cells of it, and an extractor beyond every generator's reach produces nothing. That radius is what keeps generators at the front rather than in the core: a commander who expands carries generators outward with the extractors, and a raid on a forward generator stops four extractors at once — the generator is the target and the extractors are the bait, as in *Warzone 2100*, at this game's distances. A command post produces a trickle so a commander who has lost everything can rebuild an extractor.
 
 **Proposed starting numbers**, for tuning to begin from:
 
@@ -93,7 +97,9 @@ For scale: the largest Species map, the Garden, is 2,002 world units across, whi
 | Heavy device | 500–900 | 50–90 |
 | Research item | 50–2,000 | 30–600 |
 
-**Power is a stockpile with a cap.** Income accumulates into a per-commander stockpile capped at a value that rises with the number of generators (proposed: 1,000 plus 500 per generator), so a turtled base cannot bank an unlimited army and a raided one loses something real. Spending is drawn at the start of a build, not over its duration, so a cancelled build refunds what it took.
+**Power is a stockpile with a cap, and the cap cannot be parked around.** Income accumulates into a per-commander stockpile capped at 1,000 plus 500 per generator, so a turtled base cannot bank an unlimited army and a raided one loses something real. Cost is drawn when construction or production begins, not when a plan is placed; cancelling refunds the share of the cost not yet built, and any refund that would exceed the cap is lost — so power cannot be stored in unfinished builds. Cancelled research refunds nothing: the power was spent when it started.
+
+**Armies are bounded.** A commander may field at most 200 devices and 300 structures at once (a lobby setting: 100, 200 or 300 devices), and a factory whose commander is at the cap pauses. Eight commanders make 1,600 devices and 2,400 structures, inside the simulation budget `TechnicalDesign.md` §3 sizes for. There is no upkeep: the cap and the factory count are the brake, and the cap is what an AI that turtles runs into.
 
 **Repair and demolition.** Repair costs power at a fraction of the build cost per hit point restored. Demolishing a structure refunds half its cost; a destroyed one refunds nothing.
 
@@ -103,30 +109,30 @@ For scale: the largest Species map, the Garden, is 2,002 world units across, whi
 
 **Structures are placed by the commander and built by builders.** The commander chooses a structure and a place; a builder device (§6) drives there and constructs it over the build time, and several builders shorten it. A structure under construction has hit points proportional to its progress and can be destroyed. Nothing is built instantly, including at the start of the match — the base level in the lobby decides what is already standing when the match begins.
 
-**Placement rules.** A structure has a rectangular footprint in cells. It may be placed where the footprint holds no other structure, no feature and no water, and where the slope across the footprint is under a limit; when built, the terrain under the footprint is flattened to its mean height, which is the Species flatten-under-buildings mechanic and the one terrain modification the game makes. There is no build radius: a structure may be placed anywhere the commander has explored, which is what makes forward bases and deposit-grabbing possible.
+**Placement rules.** A structure has a rectangular footprint in cells. It may be placed where the footprint holds no other structure, no feature and no water, and where the slope across the footprint is under 25%; when construction begins, the terrain under the footprint is flattened to its mean height, which is the Species flatten-under-buildings mechanic and the one terrain modification the game makes. There is no build radius: a structure may be placed anywhere the commander has explored, which is what makes forward bases and deposit-grabbing possible. A placed plan costs nothing and obstructs nothing until a builder begins it, and a commander may have at most 64 plans waiting.
 
 **The structure catalogue** for the complete skirmish game (§12, M2). Footprints are in cells; strength is the class the damage model reads (§8).
 
 | Structure | Footprint | Strength | Role |
 |---|---|---|---|
-| Command post | 3×3 | Hard | Unlocks the design screen and the minimap; produces a trickle of power; a commander with no command post can still build one |
-| Extractor | 1×1 | Medium | Produces power on a deposit when served by a generator |
+| Command post | 3×3 | Hard | Unlocks the design screen; produces a trickle of power; a commander with no command post keeps the minimap and can still build one |
+| Extractor | 1×1 | Soft | Produces power on a deposit when a generator within 48 cells serves it |
 | Generator | 2×2 | Medium | Serves four extractors; takes one module, which adds two more |
 | Factory | 3×3 | Medium | Builds devices from designs; takes up to two modules, each shortening build time |
 | Research lab | 2×2 | Medium | Researches one item at a time; takes one module, shortening research time |
 | Repair bay | 2×2 | Medium | Repairs devices that come to it; devices with a retreat threshold (§8) return here |
-| Sensor tower | 1×1 | Medium | Long sight radius; spots for indirect-fire devices in range |
+| Sensor tower | 1×1 | Soft | Sight 40 cells; spots for indirect-fire devices in range |
 | Wall | 1×1 | Hard | Blocks movement and direct fire; joins to neighbouring walls |
 | Hardpoint | 1×1 | Hard | A wall segment carrying a weapon module chosen from the researched set |
 | Tower | 1×1 | Medium | A light weapon module on a tall mount with a sight bonus |
 | Bunker | 2×2 | Bunker | An anti-personnel and anti-light weapon in a fortified housing |
-| Uplink | 2×2 | Medium | Reveals the whole landscape to its commander while it stands; late research |
+| Uplink | 2×2 | Medium | Shows every structure on the landscape as a ghost and marks the clusters holding enemy devices, refreshed every ten seconds; grants no sight of devices; late research |
 
 Air units are not before M4 (owner, 2026-09-17); they would add a lift-drive factory and a rearm pad.
 
-**Modules** are upgrades built onto a standing structure by a builder, and they are researched like anything else. They are how a base grows without growing its footprint.
+**Modules** are upgrades built onto a standing structure by a builder, and they are researched like anything else. They are how a base grows without growing its footprint: a factory module shortens its factory's build times by 25% (two: 50%), a lab module shortens its lab's research by 30%, and a generator module serves two more extractors.
 
-**Damage and repair.** Structures have hit points and an armour value, take damage by the model in §8, are repaired by builders, and leave a wreck when destroyed that blocks movement for a while and then disappears.
+**Damage and repair.** Structures have hit points and an armour value, take damage by the model in §8, are repaired by builders, and leave a wreck when destroyed that is drawn for a while and blocks nothing.
 
 ---
 
@@ -136,11 +142,11 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 
 **Chassis** sets hit points, armour against kinetic and thermal damage, base power cost, weight, and how many module mounts it carries. Three classes, each with successive marks unlocked by research:
 
-| Class | Hit points | Kinetic armour | Thermal armour | Cost | Mounts | Note |
-|---|---|---|---|---|---|---|
-| Light | 100 | 5 | 5 | 60 | 1 | Fast to build, fast to move, cheap to lose |
-| Medium | 250 | 12 | 10 | 150 | 1 | The line unit |
-| Heavy | 500 | 25 | 18 | 320 | 2 | Slow; the second mount arrives at Mark II |
+| Class | Hit points | Kinetic armour | Thermal armour | Base speed (wu/s) | Sight (cells) | Cost | Mounts | Note |
+|---|---|---|---|---|---|---|---|---|
+| Light | 100 | 5 | 5 | 80 | 20 | 60 | 1 | Fast to build, fast to move, cheap to lose |
+| Medium | 250 | 12 | 10 | 55 | 18 | 150 | 1 | The line unit |
+| Heavy | 500 | 25 | 18 | 40 | 16 | 320 | 2 on Heavy II | Slow; the second mount is Heavy II's |
 
 **Drive** sets speed as a function of terrain, the slope it can climb, whether it crosses water, and a hit-point multiplier. Six classes, of which four are in the first version:
 
@@ -153,23 +159,25 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 | Legs | 0.9 | 60% | No | 1.0 | 50 | 2 |
 | Lift | 2.0 | ignores | Yes | 0.7 | 90 | M4 at the earliest |
 
-Speed is the drive's factor scaled by the chassis weight and the module weight, so a heavy cannon on wheels is slower than the same wheels under a machine gun; the derivation is one formula in the component tables and it is the same for every device.
+**Derived statistics**, the formulas the tables carry and the design screen shows: speed = chassis base speed × drive speed factor × (100 − the sum of the modules' weight penalties) / 100; hit points = chassis hit points × drive HP factor × (100 + the class's hit-point upgrade) / 100; armour = chassis armour × (100 + the class's armour upgrade) / 100; cost = chassis + drive + modules; build time = cost ÷ 10 seconds, less the factory's modules; sight = the chassis's, or the sensor module's if larger. So a light on wheels with a machine gun is 104 world units per second (1.6 cells) for 130 power in 13 seconds, and a heavy on tracks with a cannon is 29 per second (0.45 cells) for 490 power in 49 seconds.
+
+**A Mark is a component; an upgrade is a percentage.** Light II is a second chassis row with better numbers, unlocked by research, and a device keeps the chassis it was built with; a class upgrade is a percentage applied to every component of a class already in the field. The heavy's second mount belongs to Heavy II, so it exists only on devices designed with it, and a fielded Heavy I never sprouts an empty one.
 
 **Modules** are what the device does. A weapon module has a damage class, damage, rate of fire, a short and a long range with a hit chance at each, and whether it fires direct or indirect. A system module does something other than shoot. Module costs run from about 40 (machine gun) to 250 (artillery).
 
-| Module | Kind | Note |
-|---|---|---|
-| Machine gun | Weapon, anti-personnel | Cheap, fast-firing, weak against armour |
-| Cannon | Weapon, anti-tank | The line weapon; direct fire |
-| Rocket pod | Weapon, anti-tank | Burst fire, long range, slow reload |
-| Mortar | Weapon, artillery | Indirect; needs a spotter (§8); splash |
-| Flamer | Weapon, thermal | Short range, strong against light drives and soft structures |
-| Artillery | Weapon, artillery | Indirect, very long range; heavy chassis only; late research |
-| Laser | Weapon, energy | Late research; ignores half of kinetic armour |
-| Builder | System | Constructs and repairs structures; the first device every commander owns |
-| Sensor | System | Extended sight; spots for indirect fire in its radius |
-| Repair | System | Repairs devices in the field |
-| Command | System | Leads an attached group and shares its experience; version 2 |
+| Module | Class | Damage | Rate (shots/s) | Range short / long (cells) | Hit % short / long | Splash (cells) | Weight | Cost | Note |
+|---|---|---|---|---|---|---|---|---|---|
+| Machine gun | Anti-light | 8 | 4 | 8 / 12 | 80 / 50 | — | 0% | 40 | Cheap, fast-firing, weak against armour |
+| Cannon | Anti-tank | 60 | 0.5 | 10 / 16 | 70 / 45 | — | 10% | 100 | The line weapon; direct fire |
+| Rocket pod | Anti-tank | 30, bursts of 4 | 0.2 | 12 / 20 | 60 / 40 | — | 10% | 120 | Burst fire, long range, slow reload |
+| Mortar | Artillery | 80 | 0.25 | 6 minimum / 28 | indirect | 2 | 15% | 110 | Needs a spotter (§8); splash |
+| Flamer | Flame | 20 | 3 | 4 / 6 | 90 / 70 | 1 | 5% | 60 | Short range, strong against light drives and soft structures |
+| Artillery | Artillery | 200 | 0.1 | 12 minimum / 48 | indirect | 3 | 30% | 250 | Heavy chassis only; late research |
+| Laser | Energy | 90 | 0.5 | 12 / 18 | 85 / 60 | — | 10% | 180 | Late research; armour counts half |
+| Builder | System | builds 10 power/s | — | 2 | — | — | 10% | 50 | Constructs and repairs structures; the first device every commander owns |
+| Sensor | System | — | — | sight 40 | — | — | 0% | 60 | Extended sight; spots for indirect fire in its sight |
+| Repair | System | 15 hit points/s | — | 3 | — | — | 10% | 80 | Repairs devices in the field |
+| Command | System | — | — | — | — | — | 5% | 120 | Leads an attached group and shares its experience; M4 |
 
 **A design** is a named combination of chassis, drive and modules. Designs are per commander, made in the design screen (which needs a command post), and saved between matches in the user's directory (`TechnicalDesign.md` §9). A design's cost, build time, speed, hit points and armour are computed from its parts by formulas in the component tables and displayed in the design screen before the commander commits, and a design whose parts are later upgraded by research improves in the field: upgrades apply to the class, not to the instance.
 
@@ -197,14 +205,24 @@ Speed is the drive's factor scaled by the chassis weight and the module weight, 
 
 ```
 scaled = damage × modifier[weaponClass][targetClass] / 100
-dealt  = max(scaled − armour, scaled / 3)
+dealt  = max(scaled − armour × armorFactor[weaponClass] / 100, scaled / 3)
 ```
 
-Target classes are the six drive classes for devices and the four strength classes for structures. The modifier matrix is a table in the component data — ten target columns by six weapon-class rows of integer percentages — and it is the whole of the rock-paper-scissors: anti-personnel weapons are strong against light drives and soft structures and weak against tracks and bunkers, anti-tank the reverse, flame strong against everything light and useless against bunkers, artillery indifferent to armour and poor against anything moving.
+Target classes are the six drive classes for devices and the four strength classes for structures — Soft, Medium, Hard and Bunker (§5). The modifier matrix is a table in the component data, one row per weapon class and ten target columns of integer percentages, and it is the whole of the rock-paper-scissors. Each weapon class also says how much of the target's armour counts against it — `armorFactor` above: 100 for anti-light, anti-tank and flame, 50 for energy, 0 for artillery, which is how artillery is indifferent to armour and the laser ignores half of it — and which armour it meets: kinetic for anti-light, anti-tank, artillery and energy, thermal for flame. The version-1 matrix, for tuning to start from:
+
+| Weapon class | Wheels | Half-track | Tracks | Hover | Legs | Lift | Soft | Medium | Hard | Bunker |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Anti-light | 120 | 100 | 50 | 110 | 130 | 100 | 120 | 60 | 30 | 20 |
+| Anti-tank | 90 | 100 | 120 | 90 | 70 | 60 | 80 | 100 | 110 | 60 |
+| Flame | 130 | 110 | 70 | 120 | 140 | 40 | 150 | 80 | 40 | 10 |
+| Artillery | 100 | 100 | 100 | 100 | 100 | 20 | 130 | 120 | 100 | 60 |
+| Energy | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 80 |
+
+Anti-light is the machine gun's class: strong against light drives and soft structures, weak against tracks and bunkers; anti-tank the reverse; flame strong against everything light and useless against bunkers; artillery indifferent to armour and poor against anything that walks out from under it. **The tables are checked before the design screen exists**: a headless script under `Tools/` runs every design against every design per tier and per power spent, and a design that dominates its tier is a table bug to fix first.
 
 **Hitting.** A weapon has a hit chance at short range and a lower one at long range, both percentages, both modified by the device's rank and by research; the simulation rolls once per shot from its own random stream. Direct-fire weapons decide the hit at the moment of firing, and the projectile is a visual that arrives when it arrives. Indirect-fire weapons decide at impact against whatever is in the splash radius at the predicted landing cell, so a moving target can walk out from under a mortar.
 
-**Sight and range.** Every device and structure has a sight radius; a target must be visible to someone on the commander's side to be fired on, and indirect-fire weapons additionally need a spotter — a sensor tower, a sensor device, or any device with the target in its own sight — because their range exceeds their sight. Height extends sight: a unit sees a distance scaled by its height above the target, and a ridge between them blocks it. Terrain occlusion is tested on the heightfield at cell resolution.
+**Sight and range.** Every device and structure has a sight radius; a target must be visible to someone on the commander's side to be fired on, and indirect-fire weapons additionally need a spotter — a sensor tower, a sensor device, or any device with the target in its own sight — because their range exceeds their sight. Height extends sight: a unit sees a distance scaled by its height above the target, and a ridge between them blocks it. Terrain occlusion is tested on the heightfield at cell resolution. Sight radii: light chassis 20 cells, medium 18, heavy 16, the sensor module 40, structures 12, the sensor tower 40, the tower 20; height adds a cell of sight for every 32 world units a viewer stands above its target.
 
 **Orders.** A device carries a primary order and a standing set of stances:
 
@@ -214,7 +232,9 @@ Target classes are the six drive classes for devices and the four strength class
 
 Structures with weapons take a target-priority stance only. Orders are given to selections and to numbered groups, and every order is validated by the simulation against what the commander can see and owns — an order to attack an unseen unit becomes an attack-move to its last known position.
 
-**Retreat and repair** is what the stances exist for. A device whose hit points fall under its retreat threshold breaks off, returns to the nearest repair bay or repair device, waits to be repaired and returns to its guard position. It is the mechanic that makes experience matter and that makes the repair bay a structure worth defending.
+**An enemy is legible.** Selecting or hovering a visible enemy device shows its chassis, drive and modules, and a structure its kind and health; designs are not secrets, because counter-design is the game (pillar 1). The host sends a design's parts with the first device of that design a client sees (`TechnicalDesign.md` §5.3).
+
+**Retreat and repair** is what the stances exist for. A device whose hit points fall under its retreat threshold breaks off, returns to the nearest repair bay or repair device, waits to be repaired and returns to its guard position. It is the mechanic that makes experience matter and that makes the repair bay a structure worth defending. A device retreats only if a repair bay or a repair device is within 60 cells; otherwise it holds and fights, so that a heavy on a large landscape does not spend the match commuting — the answer to distance is a forward repair bay, and there is no build radius to stop one.
 
 **Commanders**, in version 2, are devices with a command module: units attached to one follow it, share its target and inherit its rank. They exist so that late-game armies can be handled as a handful of groups rather than a hundred units.
 
@@ -225,6 +245,8 @@ Structures with weapons take a target-priority stance only. Orders are given to 
 **An AI commander plays through the same orders a human does.** It sees what its units see, spends the same power, and its orders enter the simulation through the same validation. It runs inside the simulation, deterministically (`TechnicalDesign.md` §7), which is what makes an AI game replayable and an AI bug reproducible from a seed.
 
 **It is a set of personalities over one planner.** The planner keeps a build order, an economy target, a research plan and an army composition, and chooses among them by weights; a personality is a set of weights (rusher, turtle, artillery, expander). Difficulty changes decision quality and reaction time, not information: an AI on any difficulty sees only what it has scouted. The highest difficulty additionally takes a power bonus, never vision, and the lobby says so in plain words next to the setting (owner, 2026-09-17), because an opponent that cheats silently is a bug report waiting to happen.
+
+**The AI designs from the same tables.** For every combination of unlocked chassis, drive and module it scores expected damage per power against the enemy composition it has seen, through the damage matrix, plus a personality weight for speed, range or armour, and keeps the best two or three designs per role — line, raider, artillery, builder — re-scoring whenever research completes or the enemy's mix changes. Difficulty sets how often the planner runs (easy every 10 seconds, medium every 3, hard every second) and how many options it scores; the highest difficulty also takes the power bonus.
 
 **A neutral faction** — hostile devices and nests scattered over the landscape, owned by no commander, the Species virus as it would look in this game — comes in M4, designed fresh (owner, 2026-09-17). It would make a large landscape dangerous to cross alone, which pillar 2 wants; it is also a second AI to write.
 
@@ -252,6 +274,8 @@ Structures with weapons take a target-priority stance only. Orders are given to 
 4. **The interface is a terminal.** Flat rectangles with one-pixel borders, a pixel font, monochrome icons with one accent colour, windows that open over the world rather than a fixed HUD strip: the Species *Eclipse* toolkit as it looks, rewritten for this renderer. The design screen, the research screen and the minimap are windows the operator opens. The font is the Species Spectrum font (owner, 2026-09-17), because the typeface is as much a part of the Species look as the terrain palette.
 5. **The camera flies.** Free yaw, pitch and height with edge scrolling and a minimum height above the terrain: the Species camera, which is an RTS camera already. No cinematic modes.
 
+**Where the look and pillar 3 disagree, pillar 3 wins, and three points need the owner's ruling before the first renderer ADR** (`OpenQuestions.md`, R4): the black fog from 1,000 to 4,000 units was sized for maps of 5,400 and on these landscapes must scale with the map or go; lights of up to (5.0, 2.35, 0.77) would tint every team colour orange, so team-colour slots are drawn unlit; and zero ambient makes unlit faces black, which is the Species look and also what hides a fight in shadow.
+
 **Sound** uses the Species effect library where an effect fits — weapons, explosions, engines, construction, interface — as WAV files under `Content\Sounds` (`SpeciesLineage.md` §5), positioned in 3D by XAudio2 as Species does. There is no soundtrack in the first version: the Species music is licensed to Introversion from third-party artists and is not available to this game.
 
 **Rendering is Direct3D 12 at an authored resolution presented scaled** (`AGENTS.md` §5). The authored resolution is the first client ADR; this design assumes 1920×1080 and a pixel font drawn 1:1 at that resolution, which is what pillar 3 needs and what the scaling rule exists to protect.
@@ -264,11 +288,13 @@ Each milestone is a playable state, not a subsystem list; a milestone is done wh
 
 | Milestone | Proves | Content |
 |---|---|---|
-| **M0 — Foundation** | A window presents a scene target; the simulation ticks deterministically and hashes; every library has a test suite; every checker `AGENTS.md` names exists and runs in CI | No game content. The landscape generator produces heights and the renderer draws them |
-| **M1 — Vertical slice** | Two commanders (one human, one scripted) on a Small landscape build extractors, generators, a factory and a lab, design a device and fight to annihilation | 1 landscape; 5 structures; 3 chassis; 3 drives; 4 modules (machine gun, cannon, mortar, builder); 30 research items; 1 scripted AI; the damage and visibility models complete |
-| **M2 — Skirmish** | Up to four commanders on a Large landscape with the full structure catalogue, the full component set, fog of war, retreat and repair, and an AI with personalities; a match saves and resumes | The full §5 catalogue; the §6 tables at version 1; 150 research items; 3 personalities × 3 difficulties; 8 terrain palettes; a stamp library |
-| **M3 — Multiplayer** | Eight commanders over LAN and direct IP on a headless host; a client is never sent what its commander cannot see; a dropped player rejoins; replays record and play | Lobby; headless host; replay viewer |
-| **M4 — Frontier** | Frontier-class landscapes at full performance; the dominance victory; the neutral faction; commanders; legs, and lift if the owner decides so then | Version 2 of the tables |
+| **M0 — Foundation** | A window presents a scene target; the simulation ticks deterministically and hashes; every library has a test suite; every checker `AGENTS.md` names exists and runs in CI; the landscape tool measures the generator's guarantees (§3) | No game content. The generator produces heights and the renderer draws them |
+| **M1 — Vertical slice** | Two commanders (one human, one scripted) on a Small landscape build extractors, generators, a factory and a lab, design a device and fight to annihilation, in one process with the view built from the simulation directly | 1 landscape; 5 structures and one defence; 3 chassis; 3 drives; 4 modules (machine gun, cannon, mortar, builder); 30 research items; fixed-panel interface per `Interface.md`; 1 scripted AI; the damage and visibility models complete; the M1 tables checked by the cost-efficiency script |
+| **M2 — Skirmish** | Up to four commanders on a Medium landscape with the full structure catalogue, the full component set, fog of war, retreat and repair, ranks, and an AI with personalities; a match saves and resumes; the look completed | The full §5 catalogue; the §6 tables at version 1; 150 research items; 3 personalities × 3 difficulties; 8 biomes, the sky and clouds, the sprite population; a stamp library; the Eclipse-shaped windows |
+| **M3 — Multiplayer** | Eight commanders over LAN and direct IP on a headless host, the client now a replica; a client is never sent what its commander cannot see; a dropped player rejoins; Large landscapes and the dominance victory; mods and the content hash; replays record and play | Lobby; `Net` and `Replica`; headless host; replay viewer |
+| **M4 — Frontier** | Frontier-class landscapes at full performance; the neutral faction; commanders; legs, and lift if the owner decides so then | Version 2 of the tables |
+
+Revised on 2026-09-17 after the external review: `Net` and `Replica` move to M3, and Large landscapes and the dominance victory with them; M1 renders from the simulation directly and uses fixed panels; the look's extras come with M2.
 
 A campaign, if there is one, follows M4 and gets its own design document.
 
@@ -306,3 +332,4 @@ All answered by the owner on 2026-09-17. [`OpenQuestions.md`](OpenQuestions.md) 
 | **Host** | The machine that runs the one simulation and sends each client what its commander can see |
 | **Replica** | A client's copy of the part of the match its commander can see, kept current by the host |
 | **Stamp** | An authored patch of terrain and features the generator places into a landscape |
+| **Plan** | A placed structure awaiting a builder; it costs and obstructs nothing until construction begins |

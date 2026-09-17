@@ -1,6 +1,6 @@
 # Open questions — answered
 
-**Status: ANSWERED (2026-09-17).** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. **Nothing is open.** A new question is added below the table in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner.
+**Status: ANSWERED (2026-09-17), with six questions from the external review open below.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; six from the external review are below.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -23,6 +23,19 @@
 | — | Promotion | `GameDesign.md` and `TechnicalDesign.md` are the design `AGENTS.md` refers to; the two `AGENTS.md` sentences that said it did not exist are updated | Yes | `README.md`; `AGENTS.md` |
 
 Three answers went against the recommendation, and the documents say so where they record them rather than smoothing it over. Replication (Q2) costs a second world model and a protocol the lockstep draft did not need, and the design carries that cost in `TechnicalDesign.md` §5 and §11. JSON (Q4) costs a reader under R14, which is three hundred lines and a conformance test. The accepted provenance risk (Q5) is the owner's to carry, and ADR-006 will say so in terms. Two answers went further than the recommendation: R13 withdrawn outright (Q3), which simplified the content pipeline more than the mod-directory ADR would have, and promotion now.
+
+## Raised by the external review (2026-09-17)
+
+An external review of the eight documents, read without `AGENTS.md`, found the game half under-specified relative to the engineering half and challenged the premise that scale produces decisions rather than dead time. Its corrections are applied in the documents and marked as the author's revisions; the decisions it raised are the owner's.
+
+| # | Question | Recommendation |
+|---|---|---|
+| R1 | Where does Claude Code run for this project — can it invoke MSBuild and vstest, and can it ever see a rendered frame? | Assume Linux sessions that cannot build. Then CI is the agent's compiler: every push builds and tests Debug\|x64 on the Windows runner, and the renderer gets an offscreen capture mode — a WARP device that replays a scripted match for N ticks and writes BMPs as CI artefacts the agent can read — with Direct3D debug-layer messages counted as test failures. A Linux build of the portable libraries would need a second build system, which `AGENTS.md` §3 forbids, and the test framework is Windows-only. |
+| R2 | May M1 and M2 run single-player without `Net` and `Replica`, with the view built from `Sim` through the render-view seam? | Yes, and it is applied as the M1–M2 shape in `GameDesign.md` §12 and `TechnicalDesign.md` §2 and §3 pending this answer. Replication stays the M3 model; its one remaining leak — the landscape definition is public — is named in §5.2, and the flatten-delta leak is closed. |
+| R3 | What time to first contact and map-crossing time should Small target? | Four to six minutes to first contact and under two minutes for a light device to cross. The size classes are halved and the speeds set to that in `GameDesign.md` §3 and §6, pending this answer; the *Warzone 2100* mod test the review proposes is run before M1 and its numbers replace these. |
+| R4 | Pillar 3 outranks the look by the game design's own rule. Do the black fog, the zero ambient and the over-bright tinting lights go, or is pillar 3 reworded? | Keep zero ambient, because it is the look, but draw team-colour slots unlit; scale the fog to the landscape or replace it with distance desaturation; keep the terrain mottling and reword pillar 3 to forbid texture detail rather than vertex noise. Ruled in the first renderer ADR, with a frame to look at. |
+| R5 | The accepted provenance risk (Q5): does it knowingly cover handing the Species-derived content to other players in M3 and inside mods? | If yes, ADR-006 says so in terms; if not, M3 is the deadline for replacing the effects, palettes, sprites and icons. |
+| R6 | R14 forbids `d3dx12.h`, a single MIT-licensed header, and applies to tools and tests that never ship. Reconsider? | Keep R14 as written: the helper saves perhaps two hundred lines of barriers and heap descriptions, which is not worth the first exception to a rule that has none, and tools already sit outside it. It is the owner's rule either way. |
 
 ## Adding a question
 
