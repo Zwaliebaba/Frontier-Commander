@@ -108,6 +108,9 @@
     <ClCompile Include="TextureFile.cpp" />
     <ClCompile Include="BitmapWriter.cpp" />
     <ClCompile Include="Wave.cpp" />
+    <ClCompile Include="Datagram.cpp" />
+    <ClCompile Include="LoopbackTransport.cpp" />
+    <ClCompile Include="Liveness.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -131,6 +134,10 @@
     <ClInclude Include="TextureFile.h" />
     <ClInclude Include="BitmapWriter.h" />
     <ClInclude Include="Wave.h" />
+    <ClInclude Include="Transport.h" />
+    <ClInclude Include="Datagram.h" />
+    <ClInclude Include="LoopbackTransport.h" />
+    <ClInclude Include="Liveness.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -119,6 +119,9 @@
     <ClCompile Include="TextureFileTests.cpp" />
     <ClCompile Include="BitmapWriterTests.cpp" />
     <ClCompile Include="WaveTests.cpp" />
+    <ClCompile Include="DatagramTests.cpp" />
+    <ClCompile Include="LoopbackTransportTests.cpp" />
+    <ClCompile Include="LivenessTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

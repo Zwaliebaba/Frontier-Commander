@@ -733,6 +733,23 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      The seam has seven calls, the four the design names and three the first users need: Accept, so
+      the host learns the ids it assigned; Close; IsOpen. A client end talks to HOST_CONNECTION (1)
+      and the host end to ids from 2, assigned at Connect; NO_CONNECTION is 0. MAX_DATAGRAM_BYTES is
+      1,200, header included, so Net's fragments never meet IP fragmentation, and a larger Send is
+      refused and counted rather than truncated. Framing is a two-byte version and a two-byte
+      length; a datagram is also refused when it carries more than the length says, since a real
+      datagram is exact and a surplus is a bug upstream. The loopback delivers on Poll only: an
+      end's Poll carries its outbox through the faults to the destinations and then takes in what
+      has arrived for its own poll count, so a datagram sent in one round arrives in the next, both
+      ways, whatever the poll order; delay is counted in the receiver's polls and reorder slots a
+      datagram in ahead of the one queued last. Every datagram draws all four fault kinds from the
+      one seeded Random, always, so turning a fault off changes no other fault's draws and the same
+      seed loses the same datagrams; the test runs the same traffic twice and compares. Liveness is
+      three ticks of settings and two remembered ticks; Lost is sticky because a peer that answers
+      after the grace has to rejoin through the join path (TechnicalDesign.md §5.4), not slide back
+      in. Nineteen tests, run natively on Linux before the push.
 
   - id: T15
     title: Sim skeleton - the tick, seats, the order queue, the hash, the snapshot, and the three determinism tests
