@@ -621,7 +621,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       The DDS layout is in the Windows SDK's dxgiformat.h (the DXGI_FORMAT values) and the
       documented DDS_HEADER / DDS_HEADER_DXT10 structures; write the two structures into
