@@ -29,8 +29,16 @@ struct ScratchDirectory
   ~ScratchDirectory()
   {
     Neuron::Paths::ClearOverride();
-    std::error_code ignored;
-    std::filesystem::remove_all(path, ignored);
+    try
+    {
+      std::error_code ignored;
+      std::filesystem::remove_all(path, ignored);
+    }
+    catch (...)
+    {
+      // A scratch directory left behind is not a test failure, and a destructor must not throw.
+      Logger::WriteMessage("the scratch directory could not be removed");
+    }
   }
 };
 

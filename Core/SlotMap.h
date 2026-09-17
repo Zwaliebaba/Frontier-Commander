@@ -65,7 +65,8 @@ public:
   }
 
   /// Erases the element the handle names; false, and nothing else, for a stale or null handle.
-  bool Erase(SlotHandle _handle) noexcept
+  /// Not noexcept: the free list grows by one, and growth can throw.
+  bool Erase(SlotHandle _handle)
   {
     Slot* slot = SlotOf(_handle);
     if (slot == nullptr)

@@ -42,8 +42,16 @@ struct ScratchLog
     Neuron::Log::Close();
     Neuron::Log::SetTick(Neuron::Log::NO_TICK);
     Neuron::Log::SetMinimumLevel(Neuron::LogLevel::Info);
-    std::error_code ignored;
-    std::filesystem::remove_all(directory, ignored);
+    try
+    {
+      std::error_code ignored;
+      std::filesystem::remove_all(directory, ignored);
+    }
+    catch (...)
+    {
+      // A scratch directory left behind is not a test failure, and a destructor must not throw.
+      Logger::WriteMessage("the scratch directory could not be removed");
+    }
   }
 };
 
