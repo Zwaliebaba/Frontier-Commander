@@ -238,7 +238,7 @@ tasks:
       - python3 Build/CheckProjectFiles.py
       - python3 Build/CheckProjectFiles.py --self-test
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       Nineteen rules, each named in its finding and each with one fixture, because 'the checker
       fires' is only checkable when every rule has a case that makes it fire and one that does not
@@ -257,6 +257,9 @@ tasks:
       real suites, and AGENTS.md §3 says to delete it when the first test lands, so it is deleted
       here. The include-directory rule checks the form, $(SolutionDir)<AnotherProject>; which other
       projects an edge permits is T6's table, and T6 extends the same script.
+
+      Landed in CI run 24 (35265693075), where the build-shape step ran for the first time and
+      passed on the fourteen projects.
 
   - id: T5
     title: Write Build/RunClangTidy.py
@@ -278,6 +281,23 @@ tasks:
       - python Build\RunClangTidy.py
     parallel_safe: true
     status: in_progress
+    notes: >
+      The runner imports CheckProjectFiles.py's project parser, so the two scripts read a .vcxproj
+      one way; the switches it adds beyond the project file are the ones ADR-001 fixes
+      (/std:c++latest, /EHsc, /permissive-, /arch:AVX2, /fp:precise) and the Unicode character set
+      as defines. It never passes a /D of the Windows macro family: WarningsAsErrors '*' makes
+      clang's own diagnostics fatal too, so a second definition of NOMINMAX would fail the run the
+      way C4005 fails the build. CppUnitTest.h is found under VCINSTALLDIR\Auxiliary\VS or on
+      INCLUDE, since a suite's project file takes it from Microsoft.Cpp.UnitTest.props rather than
+      naming it. --dry-run prints the commands, which is how the enumeration was checked on Linux,
+      where the MSVC driver cannot run. A pass with the pinned clang-tidy 22.1.8 from pip over Core
+      and CoreTests, through the GNU driver against stand-in windows.h and CppUnitTest.h headers,
+      found two defects before CI did: a namespace-scope std::ofstream in Log.cpp (bugprone-
+      throwing-static-initialization) and a default argument multiplied in unsigned int then widened
+      in Log.h; both are fixed. That pass is an approximation, and CI's run through the MSVC driver
+      is the answer that counts. .clang-tidy's comments no longer describe the runner as unwritten,
+      its example command drops the macro-family defines, and Client/d3dx12.h joins Resource.h in
+      ExcludeHeaderFilterRegex.
     notes: >
       Windows only by nature (it needs the MSVC headers); the agent cannot run it in a session and
       reads its result off the PR. Test it by pushing.
