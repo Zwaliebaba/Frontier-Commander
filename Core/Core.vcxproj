@@ -98,6 +98,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Assert.cpp" />
+    <ClCompile Include="FixedPoint.cpp" />
+    <ClCompile Include="BinaryAngle.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -106,6 +108,10 @@
     <ClInclude Include="Assert.h" />
     <ClInclude Include="WindowsHeader.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="FixedPoint.h" />
+    <ClInclude Include="Point.h" />
+    <ClInclude Include="BinaryAngle.h" />
+    <ClInclude Include="SinTable.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

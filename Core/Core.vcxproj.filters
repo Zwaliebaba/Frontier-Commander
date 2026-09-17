@@ -14,6 +14,12 @@
     <ClCompile Include="Assert.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FixedPoint.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BinaryAngle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -26,6 +32,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FixedPoint.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Point.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BinaryAngle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SinTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

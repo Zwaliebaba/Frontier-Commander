@@ -108,6 +108,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="SuiteSmoke.cpp" />
+    <ClCompile Include="FixedPointTests.cpp" />
+    <ClCompile Include="BinaryAngleTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
