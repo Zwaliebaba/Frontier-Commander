@@ -1,0 +1,15 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/EmptyTests/EmptyTests.vcxproj" Id="0a4f9d2e-1c3b-4e5f-8a6b-7c8d9e0f1a2b" />
+    <Project Path="Tests/StaleTests/StaleTests.vcxproj" Id="1b5a0e3f-2d4c-4f60-9b7c-8d9e0f1a2b3c" />
+  </Folder>
+  <Project Path="Clean/Clean.vcxproj" Id="2c6b1f40-3e5d-4071-ac8d-9e0f1a2b3c4d" />
+  <Project Path="Elsewhere/Moved.vcxproj" Id="3d7c2051-4f6e-4182-bd9e-0f1a2b3c4d5e" />
+  <Project Path="Names/Names.vcxproj" Id="4e8d3162-507f-4293-ce0f-1a2b3c4d5e6f" />
+  <Project Path="Phantom/Phantom.vcxproj" Id="5f9e4273-6180-43a4-df10-2b3c4d5e6f70" />
+  <Project Path="Registry/Registry.vcxproj" Id="60af5384-7291-44b5-e021-3c4d5e6f7081" />
+  <Project Path="Shape/Shape.vcxproj" Id="71b06495-83a2-45c6-f132-4d5e6f708192" />
+</Solution>

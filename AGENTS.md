@@ -131,7 +131,7 @@ private:
 | R2 affixes, R7 file names and project registration, R11 spellings, §2 flat directories | `Build/CheckProjectFiles.py`, gated in CI |
 | R4, R6, R9, R10 | Review. Check your own diff against the table before handing it back. |
 
-**Neither checker exists yet** (§6). `.clang-tidy` is configured and gates the moment there is a translation unit to run it over; `Build/CheckProjectFiles.py` has to be written, and until it is, the four rules in its row are review's problem and nothing else. A rule nobody can run is a rule that rots, so writing that checker is early work rather than housekeeping.
+`Build/CheckProjectFiles.py` exists (2026-09-17) and gates in CI; `python Build\CheckProjectFiles.py --self-test` proves that each of its rules fires on the deliberately broken projects under `Build/Fixtures/ProjectFiles/`, and the README there says what each fixture breaks. `.clang-tidy` is configured and gates the moment `Build/RunClangTidy.py` runs it over the tree (§6). A rule nobody can run is a rule that rots, which is why that runner is early work rather than housekeeping.
 
 ---
 
@@ -249,7 +249,7 @@ Inside the simulation, additionally: no `float` where a fixed-point or integer q
 
 **Record decisions as ADRs.** An engineering decision — a file format, a wire protocol, a subsystem's shape, an exception to a rule here — goes in `Design/ADR/` as one file per decision, numbered in order from `ADR-001-<slug>.md`, stating the context, the decision and what it forecloses, in the same commit as the change that implements it. Figures in an ADR are measured, not estimated — if you quote one, say how you measured it. A decision nobody wrote down gets re-litigated every few months by whoever forgot it.
 
-**Write the checkers early.** `Build/CheckFormat.py`, `Build/CheckProjectFiles.py` and `Build/RunClangTidy.py` are what §1, §2 and §3 lean on. `CheckFormat.py` exists (2026-09-17); the other two do not yet, and until each one lands, the rules it would enforce are review's problem — which is exactly why they are early work rather than housekeeping.
+**Write the checkers early.** `Build/CheckFormat.py`, `Build/CheckProjectFiles.py` and `Build/RunClangTidy.py` are what §1, §2 and §3 lean on. `CheckFormat.py` and `CheckProjectFiles.py` exist (2026-09-17); `RunClangTidy.py` does not yet, and until it lands, the naming table is review's problem — which is exactly why it is early work rather than housekeeping.
 
 **What CI runs.** [`.github/workflows/build.yml`](.github/workflows/build.yml) has two jobs: a Windows job that checks the build shape, builds **Debug|x64**, runs the test suites and then clang-tidy; and a Linux job that checks formatting on a pinned clang-format. **Every step that has something to run blocks; a step whose input does not exist yet is skipped, not faked.** Each gate is guarded on the file it needs — the checker script, the solution, the built test DLLs — so the workflow is honest about today's empty tree and starts gating the moment that file lands. The guards are the only concession: nothing is `continue-on-error`, and a script that exists and fails still fails the build. Remove a guard once its input is permanently there, not before, and never add one to get past a red build.
 

@@ -165,14 +165,17 @@ jobs:
             /m /nologo /v:minimal /warnaserror `
             /flp:LogFile=build.log`;Verbosity=normal
 
-      # One suite per *Tests.vcxproj in the tree, and every one of them must have produced a DLL:
+      # One suite per *Tests.vcxproj in the tree (outside Build/Fixtures, where the project-file
+      # checker keeps deliberately broken projects for its self-test), and every one of them must
+      # have produced a DLL:
       # vstest reports "no tests found" as a pass, so a suite that did not build is not a suite
       # that passed. No suites at all is a state this repository is still legitimately in.
       - name: Run the tests
         if: steps.solution.outputs.path != ''
         shell: pwsh
         run: |
-          $projects = @(Get-ChildItem -Path . -Recurse -Filter '*Tests.vcxproj' -File)
+          $projects = @(Get-ChildItem -Path . -Recurse -Filter '*Tests.vcxproj' -File |
+            Where-Object { $_.FullName -notmatch '[\\/]Build[\\/]Fixtures[\\/]' })
           if ($projects.Count -eq 0) {
             Write-Output "::notice::No *Tests.vcxproj in the tree yet. Nothing to run."
             exit 0

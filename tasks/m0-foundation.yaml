@@ -239,6 +239,24 @@ tasks:
       - python3 Build/CheckProjectFiles.py --self-test
     parallel_safe: true
     status: in_progress
+    notes: >
+      Nineteen rules, each named in its finding and each with one fixture, because 'the checker
+      fires' is only checkable when every rule has a case that makes it fire and one that does not
+      (the Clean fixture). The solution is the list of projects (ADR-001), so the script holds no
+      second list; the .clang-tidy alternation is checked against what the solution lists. The
+      settings table is ADR-001's, pinned per configuration including the optimisation rows, since a
+      default is not a decision. Debug and Release are compared as effective values after the %(...)
+      references resolve, so a conditional group that repeats an unconditional value passes and one
+      that changes it fails. R2 is checked on definitions only, so that a forward declaration of an
+      SDK interface (struct ID3D12Device;) is not ours to rename. R11 runs on comment- and literal-
+      stripped code, on the stems, so every inflection is caught and prose is not; cancellation is
+      left alone because both halves spell it with two l's. The fixture suites are named
+      *Tests.vcxproj, which CI's test discovery would have picked up and failed on as not built; the
+      workflow now skips Build/Fixtures there, the one line outside the task's files. The rule that
+      fired on the real tree was suite-stale: Tests/CoreTests/SuiteSmoke.cpp still sat beside ten
+      real suites, and AGENTS.md §3 says to delete it when the first test lands, so it is deleted
+      here. The include-directory rule checks the form, $(SolutionDir)<AnotherProject>; which other
+      projects an edge permits is T6's table, and T6 extends the same script.
 
   - id: T5
     title: Write Build/RunClangTidy.py
