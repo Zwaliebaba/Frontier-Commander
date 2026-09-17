@@ -13,7 +13,7 @@ namespace
 // low six bits interpolate toward the next; the interpolation is linear in integers and exact
 // for what it is, with a maximum error against a real sine that the test pins.
 constexpr int TABLE_SHIFT = 6;
-constexpr std::uint32_t TABLE_MASK = SIN_TABLE_16_16.size() - 1;
+constexpr std::uint32_t TABLE_MASK = static_cast<std::uint32_t>(SIN_TABLE_16_16.size() - 1);
 constexpr std::int32_t FRACTION_MASK = (1 << TABLE_SHIFT) - 1;
 
 } // namespace

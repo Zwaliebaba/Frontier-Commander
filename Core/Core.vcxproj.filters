@@ -58,5 +58,14 @@
     <ClInclude Include="Hash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="SlotMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ByteWriter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ByteReader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

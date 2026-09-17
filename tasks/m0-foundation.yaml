@@ -331,6 +331,11 @@ tasks:
       float in sight; Sin interpolates the top ten bits' entry toward the next with the low six.
       Syntax-checked with clang against a stand-in for the test framework; CI is the first build.
 
+
+      CI run 35261693561 failed on C4267: the table mask was initialised from size() without a
+      cast, which clang's default warnings do not report and MSVC's /W4 does; fixed, and the
+      syntax aid now runs with -Wshorten-64-to-32 and -Wimplicit-int-conversion so that the next
+      narrowing is caught in the session.
   - id: T8
     title: Core randomness and hashing - xoshiro128** and FNV-1a
     intent: >
@@ -399,6 +404,12 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      A dense vector of slots with a LIFO free list, and beside it a sorted vector of (key, index)
+      so that FindByKey is a binary search and ForEachByKey walks ascending keys without a sort per
+      hash; an insert costs a memmove of the index, cheap at five thousand objects. Iteration is
+      slot order, which two identical histories reproduce, and the test pins the exact order a
+      scripted history yields. Erase resets the value to T{} so a stale slot holds nothing.
 
   - id: T10
     title: Core byte stream - a bounded, versioned reader and writer
@@ -430,6 +441,12 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      Integers cross the stream as bytes written and read one at a time, little-endian, never as an
+      object representation; bool is a byte; enums go as their underlying type. The reader reports
+      failure through its return value and stays failed, ReadSpan takes the caller's limit so a
+      hostile length prefix allocates nothing, and the header check takes a version range. The
+      test pins the 24 bytes of a record of every width and truncates it at every byte.
 
   - id: T11
     title: Core JSON reader and writer

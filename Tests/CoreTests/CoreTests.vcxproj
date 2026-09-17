@@ -112,6 +112,8 @@
     <ClCompile Include="BinaryAngleTests.cpp" />
     <ClCompile Include="RandomTests.cpp" />
     <ClCompile Include="HashTests.cpp" />
+    <ClCompile Include="SlotMapTests.cpp" />
+    <ClCompile Include="ByteStreamTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

@@ -116,6 +116,9 @@
     <ClInclude Include="SinTable.h" />
     <ClInclude Include="Random.h" />
     <ClInclude Include="Hash.h" />
+    <ClInclude Include="SlotMap.h" />
+    <ClInclude Include="ByteWriter.h" />
+    <ClInclude Include="ByteReader.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
