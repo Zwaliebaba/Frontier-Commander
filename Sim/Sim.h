@@ -1,0 +1,141 @@
+#pragma once
+
+#include "MatchSettings.h"
+#include "Order.h"
+#include "OrderQueue.h"
+#include "Seat.h"
+
+#include "Random.h"
+
+#include <cstdint>
+#include <span>
+#include <vector>
+
+// The simulation (TechnicalDesign.md §4): one object, advanced one tick at a time by the host and
+// by nothing else, whose every input is an order and whose every output is its state. Integers
+// only (§4.1, ADR-002): nothing under Sim/ names a floating-point type, and the tick is the clock.
+// Advance() is the fixed stage order of §4.8, written once as fourteen member functions; a stage
+// whose system does not exist yet is an empty function that keeps its place.
+
+namespace Frontier
+{
+
+class Snapshot;
+
+class Sim
+{
+public:
+  /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed.
+  explicit Sim(const MatchSettings& _settings);
+
+  /// Enqueues an order. One for a tick already advanced is moved to the next tick, so that a late
+  /// order is applied rather than lost, and the queue keeps its arrival order.
+  void Submit(Order _order);
+
+  /// One tick: the fourteen stages of TechnicalDesign.md §4.8, in order. The tick counter and the
+  /// simulation Random advance here and nowhere else.
+  void Advance();
+
+  [[nodiscard]] std::uint32_t Tick() const noexcept
+  {
+    return m_tick;
+  }
+
+  /// The hash stage 13 computed in the last Advance; 0 before the first.
+  [[nodiscard]] std::uint64_t Hash() const noexcept
+  {
+    return m_hash;
+  }
+
+  /// The stage-13 computation over the state as it is now: the tick, the Random state, every seat
+  /// and the match's outcome, in that order (ADR-002). The pending order queue is not state and is
+  /// left out, so that a match fed its orders early hashes as one fed them on time.
+  [[nodiscard]] std::uint64_t ComputeHash() const noexcept;
+
+  [[nodiscard]] const MatchSettings& Settings() const noexcept
+  {
+    return m_settings;
+  }
+
+  [[nodiscard]] std::span<const Seat> Seats() const noexcept
+  {
+    return m_seats;
+  }
+
+  [[nodiscard]] const Neuron::Random& Stream() const noexcept
+  {
+    return m_random;
+  }
+
+  [[nodiscard]] const OrderQueue& Orders() const noexcept
+  {
+    return m_orders;
+  }
+
+  [[nodiscard]] std::uint32_t AppliedOrders() const noexcept
+  {
+    return m_appliedOrders;
+  }
+
+  /// Orders that failed validation: a seat outside the match or empty or defeated, or a kind that
+  /// names objects while no system exists to own them.
+  [[nodiscard]] std::uint32_t DroppedOrders() const noexcept
+  {
+    return m_droppedOrders;
+  }
+
+  [[nodiscard]] bool Finished() const noexcept
+  {
+    return m_finished;
+  }
+
+  /// The alliance that won, or NO_ALLIANCE while the match runs or when it ended in a draw.
+  [[nodiscard]] std::uint8_t WinningAlliance() const noexcept
+  {
+    return m_winningAlliance;
+  }
+
+  /// Stage 14: true after every second tick, which is when Net publishes (TechnicalDesign.md §4.8).
+  [[nodiscard]] bool PublishDue() const noexcept
+  {
+    return m_publishDue;
+  }
+
+private:
+  friend class Snapshot;
+
+  // The fourteen stages of TechnicalDesign.md §4.8, in its order and under its names.
+  void ApplyOrders();         // 1  this tick's orders, in seat order then arrival order
+  void AdvanceEconomy();      // 2  extraction, stockpile, caps
+  void AdvanceResearch();     // 3  advance, complete, apply upgrades
+  void AdvanceProduction();   // 4  factories advance, spawn devices
+  void AdvanceConstruction(); // 5  builders advance structures and modules
+  void AdvanceMovement();     // 6  paths, steering, terrain and obstruction
+  void RefreshVisibility();   // 7  the budgeted refresh
+  void ResolveTargeting();    // 8  acquire, roll, spawn projectiles, direct hits
+  void AdvanceProjectiles();  // 9  advance, indirect impacts, splash
+  void ResolveDamage();       // 10 damage, destruction, wrecks, experience
+  void AdvanceAiSeats();      // 11 observe, decide, enqueue orders for a later tick
+  void CheckVictory();        // 12 the lobby's condition
+  void HashState();           // 13 the digest of everything above
+  void MarkPublish();         // 14 every second tick: Net publishes, reading the state
+
+  /// Validates and applies one order; false when it is dropped.
+  [[nodiscard]] bool Apply(const Order& _order);
+
+  MatchSettings m_settings;
+  std::uint32_t m_tick = 0;
+  Neuron::Random m_random;
+  std::vector<Seat> m_seats;
+  OrderQueue m_orders;
+  std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
+  std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.
+  std::uint32_t m_appliedOrders = 0;
+  std::uint32_t m_droppedOrders = 0;
+  bool m_finished = false;
+  std::uint8_t m_winningAlliance = NO_ALLIANCE;
+  bool m_publishDue = false;
+  std::uint64_t m_hash = 0;
+};
+
+} // namespace Frontier

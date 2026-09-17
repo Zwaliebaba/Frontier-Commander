@@ -51,7 +51,7 @@ tasks:
     blocked_by:
       - m2-skirmish/T11
     acceptance:
-      - ContentLoader reads Content\ then each enabled mod in order with path override; the 64-bit hash over the bytes of every loaded file in load order is computed at start and checked at join; ContentTests covers the overlay and the hash; ADR-005 is superseded or amended by a new ADR only if the schema changes
+      - ContentLoader reads Content\ then each enabled mod in order with path override; the 64-bit hash over the bytes of every loaded file in load order is computed at start and checked at join; ContentTests covers the overlay and the hash; the content ADR is superseded or amended by a new ADR only if the schema changes
     status: todo
 
   - id: T4
@@ -116,7 +116,7 @@ tasks:
   - id: T9
     title: Bandwidth and interest measured on a LAN
     intent: >
-      ADR-004's arithmetic becomes measurement: bytes per client per second in a large battle,
+      The network ADR's arithmetic becomes measurement: bytes per client per second in a large battle,
       and the interest test extended to eight seats.
     project: Net
     depends_on: [T4, T7]

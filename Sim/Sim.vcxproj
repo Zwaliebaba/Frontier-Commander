@@ -98,12 +98,23 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Sim.cpp" />
+    <ClCompile Include="OrderQueue.cpp" />
+    <ClCompile Include="StateHash.cpp" />
+    <ClCompile Include="Snapshot.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Sim.h" />
+    <ClInclude Include="MatchSettings.h" />
+    <ClInclude Include="Seat.h" />
+    <ClInclude Include="Order.h" />
+    <ClInclude Include="OrderQueue.h" />
+    <ClInclude Include="StateHash.h" />
+    <ClInclude Include="Snapshot.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.vcxproj">

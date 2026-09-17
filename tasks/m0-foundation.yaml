@@ -766,6 +766,24 @@ tasks:
       the empty stages make (make stage 8 draw once per tick so the stream is exercised), the
       queue and the hash. That is the point: the harness exists before the systems do.
 
+      Stage 14 is a flag, PublishDue, set on every second tick and read by Net, because the publish
+      reads the state and Sim cannot see Net; the other thirteen stages are the named functions, six
+      of them empty until M1. Stage 8 draws once a tick and keeps the roll in the state so the hash
+      covers the stream. Validation drops every order that names objects, since no system owns any,
+      and applies Surrender and Chat; an empty seat is defeated from tick 0 and a defeated seat's
+      orders are dropped; an order for a tick already advanced moves to the next tick rather than
+      being lost. The hash leaves the pending queue out so that a replay can be fed whole, and the
+      snapshot protects the queue and everything else with an FNV-1a digest over its own bytes; the
+      truncation test cuts the stream at every length and the alteration test flips every seventh
+      byte. Writing ADR-002 and ADR-003 as the next free numbers, as the plan's decision 5 requires,
+      made every 'ADR-002 (renderer)' to 'ADR-008 (snapshot)' in the design documents and plans
+      wrong; they now name an unwritten ADR by its subject and the §12 table numbers only what
+      exists. Twenty-two tests in the suite, run natively on Linux with the stand-in framework
+      before the push: the two ADR figures there (an empty tick 56 to 62 ns, the hash 43 to 49 ns, a
+      199-byte snapshot) are the session container's, and the MSVC Debug figure is read off CI's
+      TestResults artefact and written into ADR-002 by this task once the run has it. Sim contains
+      no floating-point type (grep) and no platform header (T6's rule).
+
   - id: T16
     title: Write Tools/LandscapeTool.py - the integer generator in Python, the size-class recipes, and the guarantee measurements
     intent: >
@@ -870,7 +888,7 @@ tasks:
     status: todo
 
   - id: T18
-    title: Client Direct3D 12 foundation - window, device with WARP, swap chain, scene target, present pass, capture; the shader pipeline; ADR-002
+    title: Client Direct3D 12 foundation - window, device with WARP, swap chain, scene target, present pass, capture; the shader pipeline; the renderer ADR
     intent: >
       The renderer exists in the shape TechnicalDesign.md §6.1 gives and AGENTS.md §5 requires:
       a scene target at the authored resolution presented scaled, and a headless capture on WARP
@@ -912,17 +930,17 @@ tasks:
       - Tests/ClientTests/ClientTests.vcxproj.filters
       - .gitignore
       - Design/ADR/README.md
-      - Design/ADR/ADR-002-renderer-foundation.md
+      - Design/ADR/ADR-<next>-renderer-foundation.md
       - Design/TechnicalDesign.md
       - AGENTS.md
     acceptance:
-      - "d3dx12.h is a single file vendored under Client/ with its MIT licence text beside it; ADR-002 names the release it was taken from and its SHA-256, and R14's sentence in AGENTS.md cites ADR-002"
+      - "d3dx12.h is a single file vendored under Client/ with its MIT licence text beside it; the renderer ADR names the release it was taken from and its SHA-256, and R14's sentence in AGENTS.md cites the renderer ADR"
       - "GraphicsDevice creates the D3D12 device on the first hardware adapter or, with --warp, on WARP; in Debug it enables the debug layer and drains the info queue every frame, and any error or warning message is logged and counted; winrt::com_ptr holds every COM object, and a grep for ComPtr, AddRef( or Release( in Client finds nothing"
       - One command queue, one command allocator per frame in flight, three frames in flight with a fence per frame, descriptor heaps managed by hand, a flip-model swap chain of three back buffers on the window
-      - SceneTarget is a colour target and a depth buffer at the authored resolution ADR-002 fixes, multisampled per ADR-002 and resolved before the present pass
+      - SceneTarget is a colour target and a depth buffer at the authored resolution the renderer ADR fixes, multisampled per the renderer ADR and resolved before the present pass
       - "ScaleMode is a pure function from (window client size, authored size) to (mode, destination rectangle) with the three cases AGENTS.md §5 lists, and ClientTests covers exact match, integer multiples, letterbox and pillarbox"
-      - "FrontierCommander shows a window per ADR-002 (the design assumes borderless over the primary monitor, with Escape and Alt+F4 owned by the game), clears the scene target, presents it scaled, and exits cleanly; --capture <frames> <directory> runs with no window and no swap chain, renders <frames> frames to the scene target, writes frame-<n>.bmp every hundredth through Core's BitmapWriter, and exits 0, or non-zero with the messages when the debug layer reported anything"
-      - "FXCompile items compile the two shaders into Client/CompiledShaders/PresentVS.h and PresentPS.h at build; CompiledShaders/ is ignored by git already and by every checker; ADR-002 records whether the pinned toolset's FXCompile drives dxc for shader model 6 or fxc for 5.1, which is what M0 was told to find out"
+      - "FrontierCommander shows a window per the renderer ADR (the design assumes borderless over the primary monitor, with Escape and Alt+F4 owned by the game), clears the scene target, presents it scaled, and exits cleanly; --capture <frames> <directory> runs with no window and no swap chain, renders <frames> frames to the scene target, writes frame-<n>.bmp every hundredth through Core's BitmapWriter, and exits 0, or non-zero with the messages when the debug layer reported anything"
+      - "FXCompile items compile the two shaders into Client/CompiledShaders/PresentVS.h and PresentPS.h at build; CompiledShaders/ is ignored by git already and by every checker; the renderer ADR records whether the pinned toolset's FXCompile drives dxc for shader model 6 or fxc for 5.1, which is what M0 was told to find out"
       - Captures/ is added to .gitignore
       - CI is green, including the new ClientTests
     verify:
@@ -937,7 +955,7 @@ tasks:
       winrt/base.h throws on a failed check_hresult and on as<T>(); decide the HRESULT policy
       here (check_hresult everywhere in Client is the simple answer, with the exception caught
       once at the frame loop and turned into a device-removed or fatal path) and write it into
-      ADR-002. A capture that cannot show a window is the only way this project's agent ever
+      the renderer ADR. A capture that cannot show a window is the only way this project's agent ever
       sees a frame, so treat --capture as a first-class path, not a test hook.
 
   - id: T19

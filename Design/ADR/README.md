@@ -5,10 +5,12 @@ One file per engineering decision, numbered from `ADR-001` in this repository (`
 | ADR | Decision | Date |
 |---|---|---|
 | [`ADR-001`](ADR-001-solution-layout.md) | The solution and project layout: the eight projects, their edges and namespaces, the settings every project carries, the test-project shape | 2026-09-17 |
+| [`ADR-002`](ADR-002-tick-and-numbers.md) | The 20 Hz tick, the 1/256 position unit and the fixed-point formats, the state hash's order, the order record; the empty tick measured | 2026-09-17 |
+| [`ADR-003`](ADR-003-snapshot-and-replay-formats.md) | The snapshot and replay formats: the stream layout, its digest, and the one-version rule until the first save ships | 2026-09-17 |
 
 ## When to write one
 
-A decision is anything a future reader would otherwise re-litigate: a file format, a wire protocol, a subsystem's shape, a project added, an exception to a rule in `AGENTS.md`, a figure the design left to measurement (the tick rate, the authored resolution). It is written **in the same commit as the change that implements it**, and a design document the decision settles is updated in that commit to cite it. `TechnicalDesign.md` §12 lists the first eight the work will meet.
+A decision is anything a future reader would otherwise re-litigate: a file format, a wire protocol, a subsystem's shape, a project added, an exception to a rule in `AGENTS.md`, a figure the design left to measurement (the tick rate, the authored resolution). It is written **in the same commit as the change that implements it**, and a design document the decision settles is updated in that commit to cite it. `TechnicalDesign.md` §12 lists the ones the work will meet, numbered as they are written.
 
 Not every choice is a decision. A local naming choice, a refactor that changes no boundary, and anything `AGENTS.md` already settles need none.
 

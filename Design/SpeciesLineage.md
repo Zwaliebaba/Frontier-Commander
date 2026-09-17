@@ -11,7 +11,7 @@
 `AGENTS.md` R14 already has the rule this falls under: third-party content compiled in is the owner's question, needs the owner's approval before it lands, and the licence text travels with the bytes. This document therefore sorts the content into three bins; the owner decided the middle one on 2026-09-17:
 
 - **Never**, whatever the owner decides about the rest, because it is licensed to Introversion from someone else or is Introversion's identity: the six soundtrack tracks (Tresk, Trash80, DMA-SC — 126.9 MB, *measured*), the Introversion and publisher logos and splash screens (`IvLogo.bmp`, `MsnOberonComboSplash.bmp`, `DmaCrew.bmp`, `ProgramDarwinia.bmp`, `DarwinResearchAssociates.bmp`), and the Sepulveda narration.
-- **Used, with the risk accepted (owner, 2026-09-17)**: Darwinia's effect sounds, terrain palettes, sprites, icons and fonts, and the Darwinia-derived code. The recommendation was to treat them as placeholders with a replacement plan; the owner chose to use them and to carry the provenance risk, and confirmed the same day that the acceptance covers handing them to other players in M3 and inside mods, against a recommendation to replace them before M3. ADR-006 records the decision in those terms and lists what came across. The fonts are the one item in this bin whose provenance is known rather than unresolved, and §4 says what it is.
+- **Used, with the risk accepted (owner, 2026-09-17)**: Darwinia's effect sounds, terrain palettes, sprites, icons and fonts, and the Darwinia-derived code. The recommendation was to treat them as placeholders with a replacement plan; the owner chose to use them and to carry the provenance risk, and confirmed the same day that the acceptance covers handing them to other players in M3 and inside mods, against a recommendation to replace them before M3. The provenance ADR (numbered when `m1-vertical-slice/C4` writes it) records the decision in those terms and lists what came across. The fonts are the one item in this bin whose provenance is known rather than unresolved, and §4 says what it is.
 - **Clean**: the engineering Species added on top — the input event system, the network transport, the XAudio2 backend, the slot maps, the checkers, the documents — which is the owner's own work.
 
 ---
@@ -121,7 +121,7 @@ Darwinia's game, 65,808 lines, and almost none of it is this game. What is worth
 
 ## 4. Art
 
-Every model and bitmap below was rendered and looked at on 2026-09-17 with a review tool written for the purpose: a parser matching `NeuronClient/Shape.cpp` (both triangle encodings, the fragment hierarchy, the basis normalisation), a flat-shaded software rasteriser, and labelled contact sheets. Extents are the world-space bounding box of the rendered geometry, width × height × depth in Species world units, *measured*. Every item came across under the owner's decision of 2026-09-17 (§1), which ADR-006 records.
+Every model and bitmap below was rendered and looked at on 2026-09-17 with a review tool written for the purpose: a parser matching `NeuronClient/Shape.cpp` (both triangle encodings, the fragment hierarchy, the basis normalisation), a flat-shaded software rasteriser, and labelled contact sheets. Extents are the world-space bounding box of the rendered geometry, width × height × depth in Species world units, *measured*. Every item came across under the owner's decision of 2026-09-17 (§1), which the provenance ADR records.
 
 ### Scale, before anything else
 

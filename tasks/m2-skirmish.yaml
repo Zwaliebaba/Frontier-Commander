@@ -140,7 +140,7 @@ tasks:
     blocked_by:
       - m1-vertical-slice/G3
     acceptance:
-      - Sounds.json carries an event per (object kind, event) with sample group, position type, loop type and parameter curves; ImportSounds.py has populated Content\Sounds under ADR-006's list; device loss parks silent and rebuilds
+      - Sounds.json carries an event per (object kind, event) with sample group, position type, loop type and parameter curves; ImportSounds.py has populated Content\Sounds under the provenance ADR's list; device loss parks silent and rebuilds
       - The pure parts (the event table, the curve evaluation) are unit-tested; the rest is run by the owner
     status: todo
 

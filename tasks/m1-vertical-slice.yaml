@@ -29,7 +29,7 @@ summary: >
   Placeholders: the owner makes the models (owner, 2026-09-17), and until they exist every
   model is a generated primitive with markers, so that composition at markers is exercised
   rather than faked. The Species palettes, icons and the Spectrum font come across under
-  ADR-006.
+  the provenance ADR.
 
 tasks:
   - id: D1
@@ -54,7 +54,7 @@ tasks:
     status: todo
 
   - id: C1
-    title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; ADR-005
+    title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
     intent: >
       Game data is JSON files under Content\ (TechnicalDesign.md §8) read into plain row
       aggregates by one loader that refuses a broken tree with a location, and the same code
@@ -100,7 +100,7 @@ tasks:
       - "DesignStats derives speed, hit points, armour, cost, build time and sight from a chassis, a drive and modules by the formulas of GameDesign.md §6, in integer arithmetic, and ContentTests reproduces the two worked examples (104 world units per second, 130 power, 13 seconds; 29, 490, 49) once C2's tables exist, against literal rows until then"
       - FrontierHost --validate [directory] loads and validates with that code and exits 0 or non-zero printing every diagnostic; it is a step in CI guarded on Content\\Components.json existing, added to the workflow in this task
       - 'ContentTests loads a tree written to a temporary directory by the test, never Content\ in place, and refuses each of a set of deliberately broken documents with the right file and line: a missing prerequisite, a cycle, an unknown model, a duplicate id, a number out of range, a malformed file'
-      - ADR-005 records the directory layout, every schema with a version field, the range of every numeric field, and the rule that a loader change and a content change ship together
+      - The content ADR, numbered when written, records the directory layout, every schema with a version field, the range of every numeric field, and the rule that a loader change and a content change ship together
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
@@ -165,13 +165,13 @@ tasks:
     status: todo
 
   - id: C4
-    title: Importers, placeholder models, the Species textures and font as DDS; ADR-006
+    title: Importers, placeholder models, the Species textures and font as DDS; the provenance ADR
     intent: >
       Models compose at markers (TechnicalDesign.md §8) and the owner authors them in OBJ, so
       ImportObj.py exists first; until the owner's models exist, generated primitives with
       markers stand in. The Species palettes, icons and Spectrum font come across as
       SpeciesLineage.md decided, converted to DDS because textures are DDS and nothing else
-      (owner, 2026-09-17), and ADR-006 records what came and the accepted risk in terms.
+      (owner, 2026-09-17), and the provenance ADR, numbered when written, records what came and the accepted risk in terms.
     project: Tools
     depends_on: [C1]
     files:
@@ -203,7 +203,7 @@ tasks:
       - Content/Textures/SpectrumFont.dds
       - Content/Textures/Icons.dds
       - Design/ADR/README.md
-      - Design/ADR/ADR-006-species-content.md
+      - Design/ADR/ADR-<next>-species-content.md
       - Design/SpeciesLineage.md
     acceptance:
       - "ImportObj.py converts a Wavefront OBJ with per-face material colours into a model JSON the C1 loader accepts, with an object named Marker<Name> becoming a marker at its origin with its orientation; a test OBJ committed beside it round-trips"
@@ -211,7 +211,7 @@ tasks:
       - "MakePlaceholderModels.py generates the M1 set as primitives: chassis boxes with MarkerMount and MarkerDrive markers scaled per class, drives as wheel cylinders or track boxes, modules with MarkerMuzzle, structures as boxes of their footprint with a team-colour slot, a shell, a wreck and a deposit; every model the tables name exists and validates"
       - ImportSounds.py selects and copies WAVs by the names a Sounds.txt references, ready for M2, and copies nothing now
       - "ImportTextures.py converts a Species BMP (24-bit, or 8-bit through its palette, a colour key becoming alpha where a sprite has one) to an uncompressed B8G8R8A8_UNORM DDS with no mip chain, writing the header and the pixels itself; the Species Default landscape palette, the Spectrum font atlas and the order icons come across through it under Content\\Textures, Core's TextureFile reads them, and SpeciesLineage.md §4 records them as taken"
-      - "ADR-006 lists every Species-derived file in the tree with its source path, states that the owner accepts the provenance risk including distribution to other players in M3 and inside mods (OpenQuestions.md R5), and repeats what is excluded regardless"
+      - "The provenance ADR lists every Species-derived file in the tree with its source path, states that the owner accepts the provenance risk including distribution to other players in M3 and inside mods (OpenQuestions.md R5), and repeats what is excluded regardless"
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Tools/MakePlaceholderModels.py Content/Models
@@ -687,7 +687,7 @@ tasks:
     status: todo
 
   - id: N2
-    title: Net host endpoint - interest sets, delta frames against acked baselines, history, fragmentation, join and rejoin; ADR-004
+    title: Net host endpoint - interest sets, delta frames against acked baselines, history, fragmentation, join and rejoin; the network ADR
     intent: >
       The host publishes to each client exactly its commander's interest set (TechnicalDesign.md
       §5.2 to §5.4), encoded against what the client acknowledged, so that the fog of war is
@@ -713,7 +713,7 @@ tasks:
       - Tests/NetTests/NetTests.vcxproj
       - Tests/NetTests/NetTests.vcxproj.filters
       - Design/ADR/README.md
-      - Design/ADR/ADR-004-replication-protocol.md
+      - Design/ADR/ADR-<next>-replication-protocol.md
       - Design/TechnicalDesign.md
     acceptance:
       - "Interest per client per publish, from the seat's fog grid: every object in a visible cell of the seat or an ally, every object the seat owns, ghosts from the ghost store when a structure leaves or re-enters visibility, the seat's own SeatState and fog deltas, and at join the landscape definition and settings; flatten deltas travel only inside a structure's record or ghost"
@@ -721,7 +721,7 @@ tasks:
       - "Join, rejoin with the same token, leave and timeout per §5.4, with the seat handed to AI control after the grace period MatchSettings gives; ReceiveOrders() hands validated-shape orders to Sim's queue for the next tick"
       - "The interest test: in a scripted match over LoopbackTransport, for every frame to every client, no record names an object outside the seat's visibility, own objects or ghost store, and no fog delta names another seat's cells"
       - "The conversation tests over loopback: join and full frame, deltas against an acked baseline, a lost frame recovered by the next delta, a full frame after history exhaustion, fragmentation and reassembly of a large frame, a slow client dropped to AI"
-      - ADR-004 records the model as decided, the publish rate, history length, quantisation and fragment size, the leak posture of §5.2, and the bytes per frame measured in the tests at 100 and 600 visible objects
+      - The network ADR records the model as decided, the publish rate, history length, quantisation and fragment size, the leak posture of §5.2, and the bytes per frame measured in the tests at 100 and 600 visible objects
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
