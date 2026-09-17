@@ -63,8 +63,8 @@ public:
     Neuron::Log::Write(Neuron::LogLevel::Warning, "later");
     Neuron::Log::Close();
     const std::string text = ReadWhole(scratch.file);
-    Assert::IsTrue(text.find("[tick 42] [info] hello\n") != std::string::npos, L"the tick line is missing");
-    Assert::IsTrue(text.find("] [warning] later\n") != std::string::npos, L"the warning line is missing");
+    Assert::IsTrue(text.find("[tick 42] [info] hello\r\n") != std::string::npos, L"the tick line is missing");
+    Assert::IsTrue(text.find("] [warning] later\r\n") != std::string::npos, L"the warning line is missing");
     Assert::IsTrue(text.find("[tick 42] [warning]") == std::string::npos, L"a line without a tick carried one");
   }
 
@@ -91,6 +91,7 @@ public:
     }
     Assert::IsTrue(Neuron::Log::BytesWritten() > 64);
     Neuron::Log::Close();
+    Assert::AreEqual(Neuron::Log::BytesWritten(), std::filesystem::file_size(scratch.file), L"the file holds exactly the bytes written");
     Assert::IsTrue(Neuron::Log::Open(scratch.file, 64));
     Neuron::Log::Write(Neuron::LogLevel::Info, "fresh");
     Neuron::Log::Close();

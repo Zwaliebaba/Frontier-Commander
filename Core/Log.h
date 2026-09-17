@@ -8,8 +8,9 @@
 // (TechnicalDesign.md §9). Lines carry the simulation tick when the host has set one, else a
 // wall-clock time of day; the host loop is the only caller of SetTick, so that the tick is the
 // clock wherever there is one (AGENTS.md R16). Safe to call before any window exists and before
-// Open, when only the debugger output receives the line. Not thread-safe: the host thread of
-// M1 gets its own log file.
+// Open, when only the debugger output receives the line. Lines end in CRLF, the Windows text
+// convention, written in binary mode so that the file holds exactly the bytes written. Not
+// thread-safe: the host thread of M1 gets its own log file.
 
 namespace Neuron
 {

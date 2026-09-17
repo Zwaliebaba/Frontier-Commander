@@ -69,7 +69,9 @@ bool Log::Open(const std::filesystem::path& _file, std::uintmax_t _rotateAtBytes
     std::filesystem::remove(rotated, ignored);
     std::filesystem::rename(_file, rotated, ignored);
   }
-  g_file.open(_file, std::ios::out | std::ios::app);
+  // Binary, so that the line ending is the one written here on every platform and the bytes
+  // written equal the file's growth; the CRT's text mode would rewrite '\n' as "\r\n".
+  g_file.open(_file, std::ios::out | std::ios::app | std::ios::binary);
   g_bytesWritten = 0;
   return g_file.is_open();
 }
@@ -100,7 +102,7 @@ void Log::Write(LogLevel _level, std::string_view _message)
   }
   std::string line = Prefix(_level);
   line.append(_message.data(), _message.size());
-  line.push_back('\n');
+  line.append("\r\n");
 #if defined(_DEBUG)
   ::OutputDebugStringA(line.c_str());
 #endif
