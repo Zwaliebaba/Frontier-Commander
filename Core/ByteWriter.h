@@ -45,7 +45,7 @@ public:
 
   void WriteBool(bool _value)
   {
-    Write<std::uint8_t>(_value ? 1 : 0);
+    Write(static_cast<std::uint8_t>(_value ? 1 : 0));
   }
 
   /// Raw bytes with no prefix; the reader must know the count.

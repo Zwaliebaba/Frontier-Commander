@@ -77,9 +77,9 @@ public:
     Assert::IsTrue(ReadRecord(reader, read));
     Assert::IsTrue(reader.AtEnd());
     Assert::IsFalse(reader.Failed());
-    Assert::AreEqual(written.a, read.a);
+    Assert::AreEqual(static_cast<int>(written.a), static_cast<int>(read.a));
     Assert::AreEqual(static_cast<int>(written.b), static_cast<int>(read.b));
-    Assert::AreEqual(written.c, read.c);
+    Assert::AreEqual(static_cast<int>(written.c), static_cast<int>(read.c));
     Assert::AreEqual(static_cast<int>(written.d), static_cast<int>(read.d));
     Assert::AreEqual(written.e, read.e);
     Assert::AreEqual(written.f, read.f);
@@ -158,7 +158,7 @@ public:
     {
       Neuron::ByteReader reader(writer.Bytes());
       Assert::IsTrue(reader.ReadHeader(0x46435350u, 1, 3, header));
-      Assert::AreEqual(std::uint16_t{3}, header.version);
+      Assert::AreEqual(3, static_cast<int>(header.version));
     }
     {
       Neuron::ByteReader reader(writer.Bytes());
