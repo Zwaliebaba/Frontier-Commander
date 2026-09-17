@@ -100,6 +100,8 @@
     <ClCompile Include="Assert.cpp" />
     <ClCompile Include="FixedPoint.cpp" />
     <ClCompile Include="BinaryAngle.cpp" />
+    <ClCompile Include="Random.cpp" />
+    <ClCompile Include="Hash.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -112,6 +114,8 @@
     <ClInclude Include="Point.h" />
     <ClInclude Include="BinaryAngle.h" />
     <ClInclude Include="SinTable.h" />
+    <ClInclude Include="Random.h" />
+    <ClInclude Include="Hash.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
