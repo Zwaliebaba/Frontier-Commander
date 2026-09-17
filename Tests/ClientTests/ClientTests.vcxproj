@@ -109,6 +109,8 @@
     <ClCompile Include="FrameInputTests.cpp" />
     <ClCompile Include="InputRouterTests.cpp" />
     <ClCompile Include="InputSubscriptionTests.cpp" />
+    <ClCompile Include="TerrainChunkTests.cpp" />
+    <ClCompile Include="CameraTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
