@@ -1,2 +1,2 @@
-# A self-test fixture of Build/CheckProjectFiles.py: the alternation omits Names, so that project's headers would go unchecked.
-HeaderFilterRegex: '(Clean|Shape|Registry|Moved|[A-Za-z0-9]+Tests)[/\\][A-Za-z0-9]+\.h$'
+# A self-test fixture of Build/CheckProjectFiles.py: the alternation omits Replica, so that project's headers would go unchecked.
+HeaderFilterRegex: '(Core|Content|Sim|Net|Client|Moved|[A-Za-z0-9]+Tests)[/\\][A-Za-z0-9]+\.h$'

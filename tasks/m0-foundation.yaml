@@ -301,6 +301,13 @@ tasks:
       its example command drops the macro-family defines, and Client/d3dx12.h joins Resource.h in
       ExcludeHeaderFilterRegex.
 
+      The first CI round (run 26) ran the 38 units in 28 seconds and found three
+      bugprone-exception-escape cases that the Linux pass could not see, because MSVC's STL marks
+      allocation as throwing inline where libstdc++ hides it behind a noreturn call: SlotMap::Erase
+      promised noexcept while growing the free list, and two test fixture destructors called
+      remove_all, whose path copies may throw. The promise is gone and the destructors swallow; a
+      Linux pass is a first filter, not the gate.
+
   - id: T6
     title: Add the layering check to CheckProjectFiles.py
     intent: >
@@ -324,6 +331,19 @@ tasks:
       - python3 Build/CheckProjectFiles.py --self-test
     parallel_safe: true
     status: in_progress
+    notes: >
+      Landed as five rules on the same script, with ADR-001's table as BUILT_ON, already closed as
+      the ADR writes it, and a suite built on its library and what that is built on. A quoted
+      include resolves the way cl.exe resolves it: the including file's directory first, then, for a
+      bare name, the projects that own a header of that name; a relative include (the suites'
+      ../../Core/pch.h) resolves against the file's directory. An include the tree does not own (an
+      SDK header written with quotes) is nobody's edge and is left alone; an angled include is never
+      an edge. The platform rule matches names, not resolution, so a portable library including
+      WindowsHeader.h fires whether or not the header exists. The fixtures were renamed to the real
+      projects' names so the table applies to them, and Sim carries the upward include, the
+      reference and the include directory to Net, and the platform header; Client carries the
+      sideways include of Replica. The real tree had no finding: every reference and include
+      directory of T2 already followed the table.
 
   - id: T7
     title: Core arithmetic - fixed point, integer geometry and binary angles

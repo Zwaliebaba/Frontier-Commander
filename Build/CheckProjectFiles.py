@@ -26,6 +26,11 @@ A finding is one line, `<file>:<line>: <rule>: <message>`, and any finding fails
   tidy-regex          .clang-tidy's HeaderFilterRegex does not name exactly the projects the solution lists
   suite-empty         a *Tests project with no TEST_METHOD and no SuiteSmoke.cpp (vstest passes an empty suite)
   suite-stale         SuiteSmoke.cpp beside real tests; it is deleted when the first real test lands
+  layering-unknown    a project the ADR-001 table in this script (BUILT_ON) has no row for; an edge is a decision
+  edge-reference      a ProjectReference to a project ADR-001 does not build this one on
+  edge-directory      an include directory naming a project ADR-001 does not build this one on
+  edge-include        a quoted include resolving into a project ADR-001 does not build this one on
+  platform-header     a platform header included from Content, Sim, Net or Replica, which stay portable
 
 Exit codes: 0 no finding; 1 at least one finding; 2 the tree could not be checked (no solution, or two).
 
@@ -99,6 +104,31 @@ CONFIGURATION_LINK = {
 CONFIGURATION_DEFINITION = {"Debug": "_DEBUG", "Release": "NDEBUG"}
 # The Windows macro family Core/WindowsHeader.h owns (AGENTS.md §4): a /D of any of these is C4005 under /WX.
 MACRO_FAMILY = {"NOMINMAX", "WIN32_LEAN_AND_MEAN", "NODRAWTEXT", "NOGDI", "NOBITMAP", "NOMCX", "NOSERVICE", "NOHELP"}
+
+# ADR-001's table, the one place the edges are written: what each project is built on, which is the whole
+# of what it may reference, put on its include path or include with a quoted include. The sets are
+# already closed (Net lists Sim's Content and Core), and a suite is built on its library and what that
+# is built on: a test reaches no further up than the code it covers. Edges point down only; two
+# libraries at one level share what is below them, never each other. A new edge is a superseding ADR
+# and a row here, in that order.
+BUILT_ON = {
+    "Core": set(),
+    "Content": {"Core"},
+    "Sim": {"Core", "Content"},
+    "Net": {"Core", "Content", "Sim"},
+    "Replica": {"Core", "Content", "Net", "Sim"},
+    "Client": {"Core", "Content"},
+    "FrontierCommander": {"Core", "Content", "Sim", "Net", "Replica", "Client"},
+    "FrontierHost": {"Core", "Content", "Sim", "Net"},
+}
+# The portable libraries include no platform header (ADR-001): Core may, in named files through
+# WindowsHeader.h, and Client, the executables and the suites may.
+PORTABLE = {"Content", "Sim", "Net", "Replica"}
+PLATFORM_HEADER_RE = re.compile(
+    r"^(windows\.h|WindowsHeader\.h|d3d12[A-Za-z0-9_]*\.h|d3dx12\.h|d3dcompiler\.h|dxgi[A-Za-z0-9_]*\.h|winsock2\.h|ws2tcpip\.h|xaudio2[A-Za-z0-9_]*\.h|winrt/.*|wrl/.*)$",
+    re.I,
+)
+INCLUDE_LINE_RE = re.compile(r"^\s*#\s*include\s*[<\"]([^>\"]+)[>\"]", re.M)
 
 # R2: the affixes clang-tidy cannot see. A definition only; a forward declaration of an SDK interface
 # (`struct ID3D12Device;`) is that interface's name, not ours.
@@ -508,6 +538,74 @@ def check_suite(project: Project) -> None:
         project.findings.append(Finding("suite-stale", project.relative, "SuiteSmoke.cpp beside real tests; delete it, the suite has its first test (AGENTS.md §3)"))
 
 
+def permitted_edges(name: str) -> set[str] | None:
+    """What ADR-001 builds the project on, or None when the table has no row for it."""
+    if name in BUILT_ON:
+        return BUILT_ON[name]
+    if name.endswith("Tests") and name[: -len("Tests")] in BUILT_ON:
+        library = name[: -len("Tests")]
+        return {library} | BUILT_ON[library]
+    return None
+
+
+def check_layering(root: Path, projects: list[Project]) -> None:
+    """The edges of ADR-001 (BUILT_ON) over references, include directories and quoted includes; the platform rule."""
+    by_name = {project.name: project for project in projects}
+    directories = {project.name: project.directory.resolve() for project in projects}
+    owners: dict[str, list[str]] = {}
+    for project in projects:
+        for path in sorted(project.directory.iterdir()):
+            if path.is_file() and path.suffix == ".h":
+                owners.setdefault(path.name, []).append(project.name)
+
+    for project in projects:
+        permitted = permitted_edges(project.name)
+        if permitted is None:
+            project.findings.append(Finding("layering-unknown", project.relative, "not in the ADR-001 table (BUILT_ON in Build/CheckProjectFiles.py); an edge is a decision, so the row comes with the ADR"))
+            continue
+        edge = lambda other: f"the edge it would need is {project.name} -> {other}, and ADR-001 builds {project.name} on {{{', '.join(sorted(permitted)) or 'nothing'}}}"  # noqa: E731
+
+        for item in project.items:
+            if item.kind == "ProjectReference":
+                other = Path(item.include.replace("\\", "/")).stem
+                if other not in permitted:
+                    project.findings.append(Finding("edge-reference", project.relative, f"references {other}; {edge(other)}"))
+        seen: set[str] = set()
+        for configuration in CONFIGURATIONS:
+            for entry in (project.configurations[configuration].compile("AdditionalIncludeDirectories") or "").split(";"):
+                entry = entry.strip()
+                if entry.startswith("$(SolutionDir)") and entry not in seen:
+                    seen.add(entry)
+                    other = entry[len("$(SolutionDir)"):]
+                    if other in by_name and other != project.name and other not in permitted:
+                        project.findings.append(Finding("edge-directory", project.relative, f"include directory '{entry}'; {edge(other)}"))
+
+        for path in sorted(project.directory.iterdir()):
+            if not path.is_file() or path.suffix not in CPP_SUFFIXES or path.relative_to(root).as_posix() in VENDORED:
+                continue
+            relative = path.relative_to(root).as_posix()
+            text = path.read_text(encoding="utf-8-sig", errors="replace")
+            for match in INCLUDE_LINE_RE.finditer(text):
+                include = match.group(1).replace("\\", "/")
+                line = line_of(text, match.start())
+                if project.name in PORTABLE and PLATFORM_HEADER_RE.match(include):
+                    project.findings.append(Finding("platform-header", relative, f"includes {include}; {project.name} is portable and includes no platform header (ADR-001)", line))
+                if match.group(0).rstrip().endswith(">"):
+                    continue  # an angled include is the SDK's or the standard library's
+                if "/" in include:
+                    resolved = (path.parent / include).resolve()
+                    owner = next((name for name, directory in directories.items() if resolved.parent == directory), None)
+                    if owner is not None and owner != project.name and owner not in permitted:
+                        project.findings.append(Finding("edge-include", relative, f"includes {include}, which is {owner}'s; {edge(owner)}", line))
+                    continue
+                if (project.directory / include).exists():
+                    continue  # its own, which the compiler finds first
+                candidates = owners.get(include, [])
+                if candidates and not any(candidate in permitted for candidate in candidates):
+                    owner = candidates[0]
+                    project.findings.append(Finding("edge-include", relative, f"includes {include}, which is {owner}'s; {edge(owner)}", line))
+
+
 def check_tidy_regex(root: Path, project_names: set[str]) -> list[Finding]:
     tidy = root / ".clang-tidy"
     relative = ".clang-tidy"
@@ -594,6 +692,8 @@ def check_tree(root: Path) -> tuple[list[Finding], int]:
         check_include_directories(project, project_names)
         check_registry(root, project)
         check_suite(project)
+    check_layering(root, projects)
+    for project in projects:
         findings.extend(project.findings)
     findings.extend(check_tidy_regex(root, project_names))
     return findings, len(projects)
@@ -604,22 +704,28 @@ SELF_TEST_EXPECTED = [
     ("solution-missing", "Fixture.slnx"),
     ("solution-unlisted", "Orphan/Orphan.vcxproj"),
     ("solution-directory", "Elsewhere/Moved.vcxproj"),
-    ("platform", "Shape/Shape.vcxproj"),
-    ("setting", "Shape/Shape.vcxproj"),
-    ("alignment", "Shape/Shape.vcxproj"),
-    ("include-directory", "Shape/Shape.vcxproj"),
-    ("macro-family", "Shape/Shape.vcxproj"),
-    ("unregistered", "Registry/Stray.cpp"),
-    ("missing", "Registry/Registry.vcxproj"),
-    ("filters", "Registry/Registry.vcxproj.filters"),
-    ("subdirectory", "Registry/Extra/Deep.h"),
-    ("compiled-shaders", "Registry/Registry.vcxproj"),
-    ("file-name", "Names/bad_name.cpp"),
-    ("type-affix", "Names/Names.h"),
-    ("spelling", "Names/Names.h"),
+    ("platform", "Content/Content.vcxproj"),
+    ("setting", "Content/Content.vcxproj"),
+    ("alignment", "Content/Content.vcxproj"),
+    ("include-directory", "Content/Content.vcxproj"),
+    ("macro-family", "Content/Content.vcxproj"),
+    ("unregistered", "Net/Stray.cpp"),
+    ("missing", "Net/Net.vcxproj"),
+    ("filters", "Net/Net.vcxproj.filters"),
+    ("subdirectory", "Net/Extra/Deep.h"),
+    ("compiled-shaders", "Net/Net.vcxproj"),
+    ("file-name", "Replica/bad_name.cpp"),
+    ("type-affix", "Replica/Replica.h"),
+    ("spelling", "Replica/Replica.h"),
     ("tidy-regex", ".clang-tidy"),
-    ("suite-empty", "Tests/EmptyTests/EmptyTests.vcxproj"),
-    ("suite-stale", "Tests/StaleTests/StaleTests.vcxproj"),
+    ("suite-empty", "Tests/CoreTests/CoreTests.vcxproj"),
+    ("suite-stale", "Tests/ContentTests/ContentTests.vcxproj"),
+    ("layering-unknown", "Elsewhere/Moved.vcxproj"),
+    ("edge-reference", "Sim/Sim.vcxproj"),
+    ("edge-directory", "Sim/Sim.vcxproj"),
+    ("edge-include", "Sim/Sim.cpp"),
+    ("edge-include", "Client/Client.cpp"),
+    ("platform-header", "Sim/Sim.cpp"),
 ]
 
 
