@@ -74,10 +74,21 @@ tasks:
     parallel_safe: false
     status: in_progress
     notes: >
-      Write the .vcxproj by hand from the MSBuild schema rather than from a wizard: the wizard's
-      output carries per-configuration duplication that CheckProjectFiles.py (T4) will later have
-      to prove aligned. Put every non-optimisation setting in one unconditional PropertyGroup and
-      ItemDefinitionGroup, and only the enumerated four differences under a Condition.
+      Written by hand from the MSBuild schema, in the shape ADR-001 describes: one unconditional
+      property group and item-definition group for everything that is not optimisation, and the
+      enumerated differences under a Condition. Two things the Species tree taught that the
+      acceptance did not say: the test project sets ProjectSubType NativeUnitTestProject and lists no
+      UnitTest\include directory, because the wizard's $(VCInstallDir)UnitTest\include does not exist
+      in Visual Studio 2026 and Microsoft.Cpp.UnitTest.props supplies the real paths; and the test
+      pch includes Core/pch.h, then WindowsHeader.h, then CppUnitTest.h, because the framework pulls
+      in windows.h and the macro family has to be set first. The SuiteSmoke test exercises
+      FRONTIER_VERIFY so that a suite whose library does not link cannot pass.
+
+      Nothing here was compiled in the session (OpenQuestions R1): Assert.h was syntax-checked with
+      clang under both _DEBUG and NDEBUG, the project files were parsed as XML, and CI on the pull
+      request is the first build. AGENTS.md's three sentences about an empty tree and the missing
+      ADRs were updated, and the .clang-tidy registry names all eight projects; .clang-tidy is CRLF
+      in the working tree per .gitattributes, and the edit kept it so.
 
   - id: T2
     title: Add the other seven projects and their five test projects along ADR-001's edges
@@ -179,6 +190,13 @@ tasks:
       - python3 Build/CheckFormat.py --clang-format clang-format-18
     parallel_safe: true
     status: in_progress
+    notes: >
+      Exercised in the session on an empty tree (exit 0, "nothing to check"), on a temporary tree
+      with a badly formatted file (exit 1, the file listed, x64/, CompiledShaders/ and
+      Client/d3dx12.h skipped), with --fix (rewritten, then exit 0) and with a missing binary (exit
+      2). The first real use was T1's own files, which it reformatted once (Assert.h's macro
+      continuation columns) and then passed. The AGENTS.md §6 sentence that said none of the
+      checkers exists yet was updated in T1's commit, which owns AGENTS.md in this plan.
 
   - id: T4
     title: Write Build/CheckProjectFiles.py, the build-shape and registry checker
@@ -600,9 +618,36 @@ tasks:
     parallel_safe: true
     status: in_progress
     notes: >
-      The Species float implementation is the reference for shape, not for bits: the integer
-      port will not reproduce Species heights and is not meant to. What matters is that the tool
-      and the C++ port (T17) agree bit for bit, and that the guarantees hold at a useful rate.
+      THE FILE LIST WAS SHORT BY TWO: Tools/FractalTable.py (the committed integer tables) and
+      Tools/GenerateFractalTable.py (the one place float computes them), because the tables have to
+      be literals that both ports read rather than values either recomputes.
+
+      Tuning record, Small, in the order it happened. The first draft of the recipe (island
+      desired 28-36) gave 17-41% land and passed 1 of 6 seeds. Raising the island alone (variants
+      with desired 60-120, a shift of 20) reached 4 of 10. The decisive structural change was an
+      EDGE FALLOFF on tiles, an addition to the Species algorithm written into the docstring: the
+      random-pair method drops to the tile border in a staircase, so a hill tile placed on land ended
+      in a straight cliff along its edge; pulling the border band toward the plain over a margin
+      fixed that and lifted the pass rate to 10 of 10 on ten seeds, but 77 of 100 on a hundred, all
+      on connectivity (bays cutting the island). The shift now precedes the falloff so that a lifted
+      island keeps its coast; the island is shift 48, lowland exponent 70, falloff extent/16; hills
+      use classic diamond-square (method 0) and ridges the Species random-pair method. The last
+      change, and the one that made the guarantee cheap: starts are chosen on one landmass by
+      construction (the landmass with the most candidate blocks, the same component for wheels,
+      tracks and hover), so connectivity fails only when no landmass has room for every start.
+      Midway deposits lie between their two nearest starts (within half again the start distance)
+      with a centroid fallback so the count is always met where there is land.
+
+      Pass rates on 2026-09-17: Small 100/100 seeds; Medium 20/20 (heights) and 10/10 after the
+      deposit rule changed; Large 5/5; Frontier run on 2 seeds (about six minutes a seed in Python,
+      which is why the sample is small; the result is appended below when the run finishes). Runtime
+      per seed on this session's machine: Small 0.9 s, Medium 4 s, Large 16 s.
+
+      What the C++ port must copy exactly, beyond the docstring: right shifts of negative values
+      are arithmetic (C++20), every division is on non-negative operands, and the three products
+      marked as 64-bit (noise times lowland, the rescale, the falloff) widen to int64. The definition
+      JSON the tool writes (--define) is the schema m1-vertical-slice/C1 adopts; it carries the tile
+      list explicitly, so the C++ generator needs the definition and not the recipe.
 
   - id: T17
     title: Sim landscape - the generator in C++ against the tool's golden fields, the derived grids, and flatten deltas

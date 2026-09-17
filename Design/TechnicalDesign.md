@@ -21,7 +21,7 @@ What the rules leave open, and this document decides: the projects, the simulati
 
 ## 2. Projects and layers
 
-Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS.md` §3 requires. The names are decided (owner, 2026-09-17). Arrows point at what a project is built on; every arrow points downward and none points sideways.
+Eight projects, one solution at the root, `x64` only, toolset `v145`, as `AGENTS.md` §3 requires. The names are decided (owner, 2026-09-17), and [`ADR-001`](ADR/ADR-001-solution-layout.md) records the layout as built (2026-09-17). Arrows point at what a project is built on; every arrow points downward and none points sideways.
 
 ```
             ┌────────────────────────────────────────────────┐

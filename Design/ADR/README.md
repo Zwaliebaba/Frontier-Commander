@@ -1,6 +1,10 @@
 # Architecture Decision Records
 
-One file per engineering decision, numbered from `ADR-001` in this repository (`AGENTS.md` §6). **There are none yet.** The numbering does not continue any other tree's.
+One file per engineering decision, numbered from `ADR-001` in this repository (`AGENTS.md` §6). The numbering does not continue any other tree's.
+
+| ADR | Decision | Date |
+|---|---|---|
+| [`ADR-001`](ADR-001-solution-layout.md) | The solution and project layout: the eight projects, their edges and namespaces, the settings every project carries, the test-project shape | 2026-09-17 |
 
 ## When to write one
 

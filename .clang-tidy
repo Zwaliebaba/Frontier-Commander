@@ -99,15 +99,15 @@ WarningsAsErrors: '*'
 # quietest way to lose a gate, which is why Build/CheckProjectFiles.py should be written to
 # compare this list against the solution rather than trusting anyone to remember.
 #
-# Only the product executable and the `<Something>Tests` convention are seeded, because that is
-# all this repository has agreed on so far.
+# The eight projects of ADR-001 and the `<Something>Tests` convention. A project added later is
+# added here in the same commit (ADR-001, Consequences).
 #
 # [/\\], not '/'. On a Windows Clang build the paths arrive with backslashes, so a filter anchored
 # on a forward slash matches no header at all and silently suppresses every in-build diagnostic.
 # The pattern matches headers sitting DIRECTLY in a project folder, which is every hand-written
 # one (AGENTS.md §2's flat-directory rule). A bare `.*` would also match build output and the
 # Windows SDK, and most of what it reported would be from headers nobody here wrote.
-HeaderFilterRegex: '(FrontierCommander|[A-Za-z0-9]+Tests)[/\\][A-Za-z0-9]+\.h$'
+HeaderFilterRegex: '(Core|Content|Sim|Net|Replica|Client|FrontierCommander|FrontierHost|[A-Za-z0-9]+Tests)[/\\][A-Za-z0-9]+\.h$'
 
 # A `Resource.h` is written by the Visual Studio resource editor, not by hand. Its
 # `#define IDC_STATIC -1` trips bugprone-macro-parentheses, and the fix would be undone the next

@@ -1,0 +1,9 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/CoreTests/CoreTests.vcxproj" Id="4ccaeb0e-a0eb-420c-a93b-bb9ee8686815" />
+  </Folder>
+  <Project Path="Core/Core.vcxproj" Id="73a1b550-9e49-4e36-9ed0-aecd1b53cfd6" />
+</Solution>

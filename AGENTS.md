@@ -4,14 +4,14 @@ Operating instructions for every agent (and human) writing code in this reposito
 
 *Frontier Commander* is a greenfield C++23 game and a hobby project with one developer: a Direct3D 12 client and an authoritative simulation, built on Windows with MSVC. This file is about **how code is written here** — naming, layout, build settings and the standing rules of the codebase. It is not the design: what the game *is* is in [`Design/`](Design/README.md) — `Design/GameDesign.md` and `Design/TechnicalDesign.md`, promoted by the owner on 2026-09-17.
 
-**The tree is empty.** This repository holds this file, the root configuration files, `.gitignore` and `.github/` — no solution, no projects, no source. Nothing below is a target to migrate towards; it describes the code as it must be written from the first line. There is no legacy here and nothing is grandfathered, so a whole-tree run of any checker comes back clean — trivially today, and by conformance from then on.
+**The tree is young.** The solution and its first project landed on 2026-09-17 ([`ADR-001`](Design/ADR/ADR-001-solution-layout.md)); what exists conforms, and nothing below is a target to migrate towards: it describes the code as it must be written from the first line. There is no legacy here and nothing is grandfathered, so a whole-tree run of any checker comes back clean — by conformance, from the first file on.
 
 **Where these rules come from.** They are carried over from two sibling repositories: `Outpost.Warzone`, where the formatter and linter settings were measured against roughly 223,000 lines, and `Nomad-Commander`. That lineage is why `.clang-format` and `.clang-tidy` are what they are, and it is why code can move between the trees without a rename or a reflow pass. **What did not come across is the other trees' design, their decisions or their plan.** A decision taken there binds nothing here.
 
 **What is authoritative, in order:**
 
 1. **This file** — conformance: naming, style, build settings, and how to work here.
-2. **`Design/ADR/`** — engineering decisions taken while building, one file per decision (§6). **There are none yet**; numbering starts at `ADR-001` in this repository and does not continue another's.
+2. **`Design/ADR/`** — engineering decisions taken while building, one file per decision (§6). Numbering starts at `ADR-001` (the solution layout, 2026-09-17) in this repository and does not continue another's.
 3. **The surrounding code** — for anything neither of the above covers, match the file you are editing.
 
 The design sits alongside rather than above: it says what is built and this file says how. A task that needs a design answer the design does not give asks the owner and gets the answer written into `Design/` before the code is.
@@ -137,7 +137,7 @@ private:
 
 ## 2. Repository shape
 
-The concrete layout — the solution, the projects and the edges between them — is settled when the first project is created, and recorded here and in an ADR at that point. Until then, these are the standing constraints any layout has to satisfy.
+The concrete layout is [`ADR-001`](Design/ADR/ADR-001-solution-layout.md) (2026-09-17): `FrontierCommander.slnx` at the root; eight projects — `Core`, `Content`, `Sim`, `Net`, `Replica` and `Client` as static libraries, `FrontierCommander` and `FrontierHost` as executables — each in a flat directory of its name, with `Tests/<Name>Tests` per library; the edges one way, as `Design/TechnicalDesign.md` §2 draws them; namespaces `Neuron` for the engine (`Core`, `Client`) and `Frontier` for the game. The constraints below are what that layout satisfies and what any change to it has to keep.
 
 **Project directories are flat, with exactly two sanctioned subdirectories.** C++ source lives directly in its project's folder. This is not taste: `.clang-tidy`'s `HeaderFilterRegex` matches headers exactly one level in, so **a header in a subdirectory is silently unchecked** — no findings, no warning, and nobody notices for months. The two exceptions are the shader pipeline:
 
@@ -249,7 +249,7 @@ Inside the simulation, additionally: no `float` where a fixed-point or integer q
 
 **Record decisions as ADRs.** An engineering decision — a file format, a wire protocol, a subsystem's shape, an exception to a rule here — goes in `Design/ADR/` as one file per decision, numbered in order from `ADR-001-<slug>.md`, stating the context, the decision and what it forecloses, in the same commit as the change that implements it. Figures in an ADR are measured, not estimated — if you quote one, say how you measured it. A decision nobody wrote down gets re-litigated every few months by whoever forgot it.
 
-**Write the checkers early.** `Build/CheckFormat.py`, `Build/CheckProjectFiles.py` and `Build/RunClangTidy.py` are what §1, §2 and §3 lean on, and **none of them exists yet.** Until each one lands, the rules it would enforce are review's problem — which is exactly why they are early work rather than housekeeping.
+**Write the checkers early.** `Build/CheckFormat.py`, `Build/CheckProjectFiles.py` and `Build/RunClangTidy.py` are what §1, §2 and §3 lean on. `CheckFormat.py` exists (2026-09-17); the other two do not yet, and until each one lands, the rules it would enforce are review's problem — which is exactly why they are early work rather than housekeeping.
 
 **What CI runs.** [`.github/workflows/build.yml`](.github/workflows/build.yml) has two jobs: a Windows job that checks the build shape, builds **Debug|x64**, runs the test suites and then clang-tidy; and a Linux job that checks formatting on a pinned clang-format. **Every step that has something to run blocks; a step whose input does not exist yet is skipped, not faked.** Each gate is guarded on the file it needs — the checker script, the solution, the built test DLLs — so the workflow is honest about today's empty tree and starts gating the moment that file lands. The guards are the only concession: nothing is `continue-on-error`, and a script that exists and fails still fails the build. Remove a guard once its input is permanently there, not before, and never add one to get past a red build.
 
