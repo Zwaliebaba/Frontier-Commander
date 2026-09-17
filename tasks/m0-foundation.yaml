@@ -1171,7 +1171,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       Drawn first on CI run 39 (a32e5d0): the Small landscape of the built-in definition, 513
       samples a side, 16 chunks at four strides, 386,624 vertices and 664,912 triangles built in
@@ -1185,7 +1185,10 @@ tasks:
       the CPU by the Species formula and handed on flat, the normal comes from the pixel shader's
       derivatives, both faces draw until the winding is confirmed on a running build, the meshes
       live in upload heaps, the water plane sits nine units under the sea level with the shore
-      dipped ten. The owner's run (T22) is the first on a GPU and the first with eyes on it.
+      dipped ten. Run 40 (d2eff07), the ADR's commit, drew the three frames with statistics
+      identical to run 39's under the reversed depth, with no debug-layer message, 171 tests and
+      84 translation units clean. The owner's run (T22) is the first on a GPU and the first with
+      eyes on it.
 
   - id: T21
     title: Add the capture job to CI
