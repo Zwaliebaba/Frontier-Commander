@@ -728,7 +728,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T15
     title: Sim skeleton - the tick, seats, the order queue, the hash, the snapshot, and the three determinism tests
