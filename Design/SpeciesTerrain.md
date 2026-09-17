@@ -1,6 +1,6 @@
 # Species Terrain — the landscape and the water, as a system
 
-**Status: DRAFT (2026-09-17).** A reference read from the Species repository at commit `d1add55`: how a landscape is defined, generated, merged, flattened, sampled, coloured and drawn, and how the water around it works, with the source line for each rule. Nothing was run; every figure is either the code's or arithmetic on it, and is labelled. Paths are relative to the Species repository.
+**Status: REFERENCE (2026-09-17).** Read from the Species repository at commit `d1add55`: how a landscape is defined, generated, merged, flattened, sampled, coloured and drawn, and how the water around it works, with the source line for each rule. Nothing was run; every figure is either the code's or arithmetic on it, and is labelled. Paths are relative to the Species repository.
 
 The terrain is the second half of the Species look and the one piece of Darwinia's game code *Frontier Commander* keeps as a design ([`SpeciesLineage.md`](SpeciesLineage.md) §3). This document is what the integer port in [`TechnicalDesign.md`](TechnicalDesign.md) §4.4 ports.
 

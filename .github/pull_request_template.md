@@ -36,7 +36,6 @@
 - [ ] Debug and Release still agree on everything AGENTS.md §3 says they must
 - [ ] No warning silenced, no `ConformanceMode`/`LanguageStandard`/`WarningLevel` changed
 - [ ] No new third-party dependency (R14)
-- [ ] No new runtime file dependency — the executable still ships alone (R13)
 - [ ] Only the lines the task required were changed
 
 ## Anything you had to bend

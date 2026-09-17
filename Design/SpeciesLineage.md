@@ -1,6 +1,6 @@
 # Species Lineage — what comes across, and what does not
 
-**Status: DRAFT (2026-09-17).** An inventory of the Species repository as read on 2026-09-17 at commit `d1add55`, with a disposition for each part: port, take the design, take the data, or leave. **Decision (owner, 2026-09-17): the models will be made new.** The Species meshes are therefore reference for scale and style only, and what carries is the configuration around them, written up in [`SpeciesLook.md`](SpeciesLook.md), [`SpeciesTerrain.md`](SpeciesTerrain.md) and [`SpeciesCanvas.md`](SpeciesCanvas.md). Paths in this document are relative to the Species repository unless they start with `Design/`. Figures marked *measured* were counted in that tree with the commands noted; nothing was built or run. `AGENTS.md` is explicit that a decision taken in a sibling tree binds nothing here — this document is about what is worth carrying, not what is inherited by default.
+**Status: ACCEPTED (2026-09-17).** An inventory of the Species repository as read on 2026-09-17 at commit `d1add55`, with a disposition for each part: port, take the design, take the data, or leave. **Decisions (owner, 2026-09-17): the models will be made new; the rest of the Species-derived content is used, with the provenance risk accepted as a private project's (§1).** The Species meshes are therefore reference for scale and style only, and what carries is the configuration around them, written up in [`SpeciesLook.md`](SpeciesLook.md), [`SpeciesTerrain.md`](SpeciesTerrain.md) and [`SpeciesCanvas.md`](SpeciesCanvas.md). Paths in this document are relative to the Species repository unless they start with `Design/`. Figures marked *measured* were counted in that tree with the commands noted; nothing was built or run. `AGENTS.md` is explicit that a decision taken in a sibling tree binds nothing here — this document is about what is worth carrying, not what is inherited by default.
 
 ---
 
@@ -8,10 +8,10 @@
 
 **Species is Darwinia.** Its `README.md` says so in terms: the codebase began as the Darwinia source by Introversion Software, and *"the licence covering the original source has not been established, so treat the provenance as unresolved rather than permissive."* Its `LICENSE` file, deleted in commit `eec3992`, described Species as an internal research project, not licensed for commercial use and not for distribution, and carried a *Provenance* section saying the same thing the README still says; commit `6fb1246` removed the README's licence section that pointed at it. The situation is not that the licence is permissive but that the project's own terms are gone and the original's were never established. The shapes, textures, sprites, sounds and level files under `GameData/` are Darwinia's art, and the code in `GameLogic/` is Darwinia's game.
 
-`AGENTS.md` R14 already has the rule this falls under: third-party content compiled in is the owner's question, needs the owner's approval before it lands, and the licence text travels with the bytes. This document therefore sorts the content into three bins and asks the owner to decide the middle one (Q5):
+`AGENTS.md` R14 already has the rule this falls under: third-party content compiled in is the owner's question, needs the owner's approval before it lands, and the licence text travels with the bytes. This document therefore sorts the content into three bins; the owner decided the middle one on 2026-09-17:
 
 - **Never**, whatever the owner decides about the rest, because it is licensed to Introversion from someone else or is Introversion's identity: the six soundtrack tracks (Tresk, Trash80, DMA-SC — 126.9 MB, *measured*), the Introversion and publisher logos and splash screens (`IvLogo.bmp`, `MsnOberonComboSplash.bmp`, `DmaCrew.bmp`, `ProgramDarwinia.bmp`, `DarwinResearchAssociates.bmp`), and the Sepulveda narration.
-- **The owner's call**: Darwinia's models, effect sounds, terrain palettes, sprites, icons and fonts, and the Darwinia-derived code. The recommendation is to use them as **placeholders with a replacement plan** — they are exactly the right shape for the vertical slice, and a game that is ever distributed needs its own — and to record that in ADR-006 with the plan. The fonts are the one item in this bin whose provenance is known rather than unresolved, and §4 says what it is.
+- **Used, with the risk accepted (owner, 2026-09-17)**: Darwinia's effect sounds, terrain palettes, sprites, icons and fonts, and the Darwinia-derived code. The recommendation was to treat them as placeholders with a replacement plan; the owner chose to use them and to carry the provenance risk as a private project's. ADR-006 records the decision and lists what came across. The fonts are the one item in this bin whose provenance is known rather than unresolved, and §4 says what it is.
 - **Clean**: the engineering Species added on top — the input event system, the network transport, the XAudio2 backend, the slot maps, the checkers, the documents — which is the owner's own work.
 
 ---
@@ -60,11 +60,11 @@ Disposition per module. *Port* means the code moves, renamed to `AGENTS.md` §1 
 | `SlotMap`, `FastSlotMap` | Design | The narrow handle-in, reference-out API is right; the two flavours exist to reproduce Darwinia's legacy index assignment, which this game does not need. One slot map with generation-checked handles, and ids that are not indices (`Design/TechnicalDesign.md` §4.3) |
 | `SliceWalker` | Leave | Slicing a frame into ten was Darwinia's way of spreading work; budgeted systems (`Design/TechnicalDesign.md` §4.5, §4.6) replace it |
 | `Transport`, `UdpTransport`, `LoopbackTransport`, `UdpSocket` | Port | Species' own work from `network-transport` T7–T11: the seam, the bounded reads, the polled socket, the loopback for tests. The best-tested networking in that tree |
-| `NetworkUpdate`, `ServerToClientLetter`, `ByteStream`, `ProtocolLimits`, `TeamControls` | Design, partly | The framing, versioning and sequence discipline come across as design; the 42-byte fixed packet, the thirteen update kinds, `NUM_TEAMS 4` and the Darwinia vocabulary (`RunProgram`, `AimBuilding`) do not. `Design/TechnicalDesign.md` §5.2 is the replacement |
+| `NetworkUpdate`, `ServerToClientLetter`, `ByteStream`, `ProtocolLimits`, `TeamControls` | Design, partly | The framing, versioning and sequence discipline come across as design; the 42-byte fixed packet, the thirteen update kinds, `NUM_TEAMS 4` and the Darwinia vocabulary (`RunProgram`, `AimBuilding`) do not. `Design/TechnicalDesign.md` §5.3 is the replacement |
 | `MathUtils` (`syncrand`, a Mersenne Twister), `Random` (an LCG) | Design | The two-streams rule, named and enforced. The generators are replaced (`Design/TechnicalDesign.md` §4.2) |
 | `NeuronMath` and the DirectXMath conventions | Port, renderer only | DirectXMath is SDK content and R14 allows it; it belongs on the render side and never in `Sim` |
 | `Debug` (`ASSERT`, `DebugTrace`, `Fatal`), `NeuronHelper` (`NonCopyable`, `ScopedHandle`) | Port | Small, Species-style, and exactly what `Core` needs first |
-| `FileSys`, `Preferences`, `Profiler`, `HiResTime`, `GameTime` | Leave | R13 removes the file system as a runtime concern; preferences are an ADR of their own; timing is the tick |
+| `FileSys`, `Preferences`, `Profiler`, `HiResTime`, `GameTime` | Design | Content and user files live in directories resolved from the executable's path and the user's profile (`Design/TechnicalDesign.md` §8, §9), which is `FileSys`'s job reshaped; preferences become a JSON file; timing is the tick |
 | `LookupTable`, `VectorUtils`, `2dArray` | Port where used | Utility |
 | `WorldObjectId` | Leave | A slot index on the wire is the design this game is explicitly not repeating |
 
@@ -73,13 +73,14 @@ Disposition per module. *Port* means the code moves, renamed to `AGENTS.md` §1 
 | Module | Disposition | Why |
 |---|---|---|
 | The input system: `Input`, `InputDriverWin32`, `InputEvents`, `InputRouter`, the `InputDriver*` binding stack, `TargetCursor`, `KeyDefs`, `KeyNames` | Port | Species' own work (`input-native-events`); `Design/TechnicalDesign.md` §6.5 takes its rules as the specification. The rebinding stack and its preferences syntax are worth keeping |
-| `SoundSystem`, `SoundInstance`, `SoundParameter`, `SoundLibrary3d`, `SoundLibraryXAudio2`, `SoundStreamDecoder`, `SampleCache` | Port | Species' own `sound-xaudio2` work: one XAudio2 backend, X3DAudio, device-loss recovery. The WAV loader becomes a memory reader over embedded data |
+| `SoundSystem`, `SoundInstance`, `SoundParameter`, `SoundLibrary3d`, `SoundLibraryXAudio2`, `SoundStreamDecoder`, `SampleCache` | Port | Species' own `sound-xaudio2` work: one XAudio2 backend, X3DAudio, device-loss recovery. The WAV loader and the sample cache stay file loaders, reading `Content\Sounds` |
 | `Eclipse`, `EclWindow`, `EclButton`, `InputField`, `ScrollBar`, `DropDownMenu` | Design | The windowing model and the input-first routing are right; the drawing is OpenGL immediate mode and Darwinia-derived |
-| `Shape`, `ShapeFragment`, `ShapeMarker` | Leave; the *format* moves to the baker | Runtime parsing of text models is what R13 forbids; `Tools/BakeModels.py` reads `.shp` and writes headers. The marker concept — a named attachment point with a transform in the fragment tree — is kept in the baked output |
+| `Shape`, `ShapeFragment`, `ShapeMarker` | Design; the format is the reference | Models are JSON files under `Content\Models` holding the same records — positions, colours, vertices, triangles from either encoding, markers, a fragment tree — and `Tools/ImportShp.py` converts a `.shp` into one. The marker concept — a named attachment point with a transform in the fragment tree — is kept |
 | `TextRenderer` | Design | Bitmap-font quads; rewritten for D3D12 and a new atlas |
-| `Bitmap`, `Texture`, `Resource`, `OGLExtensions`, `RenderUtils`, `SphereRenderer`, `3dSprite`, `GlVertex`, `2dSurfaceMap` | Leave | OpenGL and runtime loading |
+| `Bitmap` (the 4-, 8- and 24-bit BMP reader), `Resource` (a name-keyed cache of loaded bitmaps, sounds and shapes) | Port | Content is files, and these are the two pieces of Species that load them |
+| `Texture`, `OGLExtensions`, `RenderUtils`, `SphereRenderer`, `3dSprite`, `GlVertex`, `2dSurfaceMap` | Leave | OpenGL |
 | `WindowManagerWin32`, `Win32EventHandler` | Design | A borderless window that owns Escape and Alt+F4 (`AGENTS.md` §5) is a different window; the message-pump-once rule comes across |
-| `ClientToServer` | Design | The client endpoint of the lockstep conversation, reshaped around the protocol of `Design/TechnicalDesign.md` §5.2 |
+| `ClientToServer` | Design | The client endpoint of Species' lockstep conversation; here the client endpoint receives state frames and sends orders (`Design/TechnicalDesign.md` §5) |
 | `LanguageTable` and the `_kbd` phrase mechanism | Design, later | A phrase keyed by whether it names a binding is a good idea; localisation is not in the first version |
 | `SystemInfo`, `UserInfo`, `FilePaths`, `FilesysUtils`, `FileWriter` | Leave | |
 | The `*Access` interfaces (`RendererAccess`, `CameraAccess`, `LocationAccess`, …) | Leave | The dependency inversions Species needed to unpick Darwinia's single binary; this tree's layering never has the problem |
@@ -88,7 +89,7 @@ Disposition per module. *Port* means the code moves, renamed to `AGENTS.md` §1 
 
 | Module | Disposition | Why |
 |---|---|---|
-| `Server`, `ServerToClient` | Design | Client registry, sequence counter, per-sequence sync values, history pruning, server-assigned ids, liveness: the host of `Design/TechnicalDesign.md` §5 is this with a snapshot path added and the Darwinia vocabulary removed |
+| `Server`, `ServerToClient` | Design | Client registry, sequence counter, per-sequence sync values, history pruning, server-assigned ids, liveness: the host endpoint of `Design/TechnicalDesign.md` §5 keeps the registry, the ids and the liveness and replaces the sequenced-intent broadcast with per-client state frames, the owner having chosen replication over lockstep (2026-09-17) |
 
 ### GameLogic
 
@@ -105,7 +106,7 @@ Darwinia's game, 65,808 lines, and almost none of it is this game. What is worth
 | `GunTurret`, `Building` (markers as entrances, docks and ports) | Read | How a building uses `.shp` markers is the pattern for turrets and muzzles |
 | `Camera` (in `Species/`) | Design | A free RTS camera with mounts; the control feel is the target |
 | `LevelFile` | Leave; the map format is a reference for stamps | The `Landscape_StartDefinition` block — size, cell size, outside height, palette names, tile list — is a landscape definition already |
-| Everything else — `Citizen`, `Engineer`, `Officer`, `Spirit*`, `Virii`, `Centipede`, `SoulDestroyer`, `Spider`, `ArmyAnt`, `AntHill`, `Triffid`, `Incubator`, `TrunkPort`, `TaskManager`, `GlobalWorld`, `Ai`, the in-game windows | Leave | Darwinia's mechanics, Darwinia's fiction, Darwinia's code. The neutral faction (Q11), if it comes, is designed fresh with these as a mood board |
+| Everything else — `Citizen`, `Engineer`, `Officer`, `Spirit*`, `Virii`, `Centipede`, `SoulDestroyer`, `Spider`, `ArmyAnt`, `AntHill`, `Triffid`, `Incubator`, `TrunkPort`, `TaskManager`, `GlobalWorld`, `Ai`, the in-game windows | Leave | Darwinia's mechanics, Darwinia's fiction, Darwinia's code. The neutral faction comes in M4 (owner, 2026-09-17), designed fresh with these as a mood board |
 
 ### Tests and tools
 
@@ -120,7 +121,7 @@ Darwinia's game, 65,808 lines, and almost none of it is this game. What is worth
 
 ## 4. Art
 
-Every model and bitmap below was rendered and looked at on 2026-09-17 with a review tool written for the purpose: a parser matching `NeuronClient/Shape.cpp` (both triangle encodings, the fragment hierarchy, the basis normalisation), a flat-shaded software rasteriser, and labelled contact sheets. Extents are the world-space bounding box of the rendered geometry, width × height × depth in Species world units, *measured*. Every item is a placeholder until ADR-006 says otherwise (Q5).
+Every model and bitmap below was rendered and looked at on 2026-09-17 with a review tool written for the purpose: a parser matching `NeuronClient/Shape.cpp` (both triangle encodings, the fragment hierarchy, the basis normalisation), a flat-shaded software rasteriser, and labelled contact sheets. Extents are the world-space bounding box of the rendered geometry, width × height × depth in Species world units, *measured*. Every item came across under the owner's decision of 2026-09-17 (§1), which ADR-006 records.
 
 ### Scale, before anything else
 
@@ -177,15 +178,15 @@ Every model and bitmap below was rendered and looked at on 2026-09-17 with a rev
 | | `ConstructionYard`, `ConstructionYardRung`, `PrimaryUpgradePort`, `MasterSpawnPoint` | 270, 204, 636, 180 | up to 401×255×529 | direct | Platforms and rings at set-piece scale: stamp centrepieces |
 | | `BridgeEnd`, `BridgeTower`, `FeedingTube`, `SpiritProcessor`, `SpawnPoint`, `AntHill` | 76, 20, 368, 432, 152, 396 | | with work | A gate, a bollard, a ring on a stand, a lamp on a rock, an angular pod, two termite mounds — the last a nest for the neutral faction |
 | Markers | `AiTarget` | 84 | 16×30×2 | direct | A red flag on a pole: a rally point |
-| Not for this game | `ArmyAnt*`, `Centipede*`, `SoulDestroyer*`, `Spider*`, `Tripod*`, `Triffid*`, `SporeGenerator`, `Spam`, `FlyingEgg`, `SpaceInvader` | | | | The creatures; a mood board for Q11 |
+| Not for this game | `ArmyAnt*`, `Centipede*`, `SoulDestroyer*`, `Spider*`, `Tripod*`, `Triffid*`, `SporeGenerator`, `Spam`, `FlyingEgg`, `SpaceInvader` | | | | The creatures; a mood board for the M4 neutral faction |
 | | `Citizen`, `Engineer`, `Officer`, `LaserTroop` | 76, 72, 58, 392 | 7×9×1 and similar | | Flat cross-shaped or wedge figures; the sprites do the same job better |
 | | `GlobalWorldInner`, `GlobalWorldMiddle`, `GlobalWorldOuter`, `Camera`, `Help`, `GoldenScroll`, `GarbageCollector`, `BoxKite`, `MinePolygon1`, `MinePrimitive1`, `MineCart`, `GodDish`, `SpiritReceiver`, `SpiritReceiverHead` | | | | The campaign globe (21,654 triangles between them), editor gizmos and primitives, Darwinia's spirit machinery |
 
-Two things the sheets make plain that the names did not. The set is strongest in industrial structures, defences and set-pieces and weakest exactly where the vertical slice needs it most: there is one tank, one turret and one soldier, and the model named `Factory` is not one. And the models were made for a game with no grid, so footprints are the baker's problem: `PowerStation` sits in 2×2 cells at native scale, `Refinery` needs 0.6× to fit 3×3, `Mine` 0.45× to fit 1×1, and a per-model scale in the content table is the mechanism.
+Two things the sheets make plain that the names did not. The set is strongest in industrial structures, defences and set-pieces and weakest exactly where the vertical slice needs it most: there is one tank, one turret and one soldier, and the model named `Factory` is not one. And the models were made for a game with no grid, so footprints are the content's problem: `PowerStation` sits in 2×2 cells at native scale, `Refinery` needs 0.6× to fit 3×3, `Mine` 0.45× to fit 1×1, and a per-model scale in `Structures.json` is the mechanism.
 
 ### Textures, sprites, icons
 
-Magenta (255, 0, 255) is the colour key throughout; the baker turns it into alpha.
+Magenta (255, 0, 255) is the colour key throughout; the texture loader turns it into alpha.
 
 | Item | Seen | Disposition |
 |---|---|---|
@@ -196,9 +197,9 @@ Magenta (255, 0, 255) is the colour key throughout; the baker turns it into alph
 | `Textures/Glow`, `CloudyGlow`, `Fuel`, `Starburst`, `MuzzleFlash`, `RadarSignal`, `Laser`, `LaserFence`, `LaserFence2`, `GodRay`, `Particle` | Soft blobs, a beam, a streak, a cloud, a 16×16 grey square | Take: effect sprites |
 | `Textures/ShapeWireframe`, `SkyWireframe`, `TriangleOutline`, `Clouds` | A diagonal-line tile, a bordered black square, a triangle-outline tile, a 16×16 noise mask | Take: the wireframe overlay and the sky are part of the look |
 | `Textures/Deform1c`, `Deform36c` | Distortion maps for shockwaves | Take |
-| `Textures/EditorFont*` (6), `SpeccyFont*` (4) | Two pixel fonts, each with accented variants | Owner's call: Q16 |
+| `Textures/EditorFont*` (6), `SpeccyFont*` (4) | Two pixel fonts, each with accented variants | The Spectrum font is the game's (owner, 2026-09-17); §4 below says what both are |
 | `Textures/IvLogo`, `MsnOberonComboSplash`, `DmaCrew`, `SpeccyScreen`, `ProgramDarwinia`, `Campaign`, `Prologue` | Logos, a publisher splash, the Darwinia loading screen, campaign paintings | **Never**: branding and Darwinia's campaign art |
-| `Sprites/Citizen`, `LaserTrooper` (32×32×24) | Stick figures, magenta-keyed, the trooper with a gun: the Species population | Take, if Q6 wants the population |
+| `Sprites/Citizen`, `LaserTrooper` (32×32×24) | Stick figures, magenta-keyed, the trooper with a gun: the Species population | Take: the population is confirmed as a visual (owner, 2026-09-17) |
 | `Sprites/Virii`, `Egg`, `Ghost`, `SantaHat`, `Sound` | A triangle, an egg, a ghost figure, a hat, an editor speaker icon | Leave |
 | `Icons/Banner*` (6, 64×64) | Order glyphs on a blue field: gather, deploy, follow, go to, none, unload | Take: order icons, nearly as they are |
 | `Icons/Icon*` (15, 128×128×8) | White glyphs on dark-blue discs: Darwinia's programs | Take the style and the generic glyphs (`Delete`, `NoTask`, `Rocket`, `Grenade`, `Laser`, `Shadow`); leave the rest |
@@ -221,9 +222,9 @@ Magenta (255, 0, 255) is the colour key throughout; the baker turns it into alph
 
 The eleven largest are the six soundtrack tracks (126.9 MB), the Spectrum tape loader, `Pang`, `TwoAtaris`, `Altitude1` and `Evil`, none of which is an effect. The 1–4 MB bucket is ambience loops, the `Theramin` and `High` drones, crate and spawn-point stingers — Darwinia set dressing.
 
-**What this game would take** is the short effects: weapons (`ABlaster`, the laser and rocket sets), explosions, engine and hover loops (`TankHover`), construction and power-up stings (`GeneratorOnline` and `PowerStationOnline` are 2 MB each and would be cut down), damage and death sets, interface clicks. `Sounds.txt` references 163 distinct sample names across 109 sample groups, which is the natural first selection: the effects Darwinia actually wires to events. Estimate: 150–250 files, 20–40 MB of PCM, becoming 3–6 MB after MS-ADPCM at 22.05 kHz — the budget `Design/TechnicalDesign.md` §8 works from. Arithmetic, not measurement; the baker will measure.
+**What this game would take** is the short effects: weapons (`ABlaster`, the laser and rocket sets), explosions, engine and hover loops (`TankHover`), construction and power-up stings (`GeneratorOnline` and `PowerStationOnline` are 2 MB each and would be cut down), damage and death sets, interface clicks. `Sounds.txt` references 163 distinct sample names across 109 sample groups, which is the natural first selection: the effects Darwinia actually wires to events. Estimate: 150–250 files and 20–40 MB of PCM as WAV files under `Content\Sounds`, a directory rather than a budget now that content is files (`Design/TechnicalDesign.md` §8); MS-ADPCM at 22.05 kHz would cut it to 3–6 MB if the install size ever matters. Arithmetic, not measurement.
 
-**`Sounds.txt` itself is worth more than the samples.** Its model — an event per (object kind, event name) naming a sample group, a source type, a position type, an instance and a loop type, a minimum distance, and volume and frequency as parameter curves (`TypeFixedValue`, `TypeRangedRandom`, updated constantly or once per loop) — is a complete, proven design for a game's sound events, and it becomes a `constexpr` table in `Content`.
+**`Sounds.txt` itself is worth more than the samples.** Its model — an event per (object kind, event name) naming a sample group, a source type, a position type, an instance and a loop type, a minimum distance, and volume and frequency as parameter curves (`TypeFixedValue`, `TypeRangedRandom`, updated constantly or once per loop) — is a complete, proven design for a game's sound events, and it becomes `Content\Sounds.json`.
 
 ---
 
@@ -237,7 +238,7 @@ The eleven largest are the six soundtrack tracks (126.9 MB), the Spectrum tape l
 | `Game.txt`, `GameUnlockAll.txt`, `Locations.txt`, the missions and scripts | Leave |
 | `docs/ARCHITECTURE.md`, *Input* and *Runtime model* | Take as specification (`Design/TechnicalDesign.md` §6.5 and §5) |
 | `docs/TESTING.md` | Take its rules: a test never reads `GameData/` in place, never writes into the source tree, and never opens a socket, a window or an audio device |
-| `tasks/_openworld-prompt.md` | Read for the questions it asks, which are Q1's questions; its answers were for a persistent world, which this game is not unless Q1 says so |
+| `tasks/_openworld-prompt.md` | Read for the questions it asks; its answers were for a persistent world, which this game is not (owner, 2026-09-17: match-based) |
 | `AGENTS.md`, *What working looks like* (the Garden run) | Take the practice: presentation work is done when the owner has run it, not when CI is green — which `AGENTS.md` §3 here already says |
 
 ---
@@ -254,4 +255,4 @@ Recorded here so this tree does not pay for them again. Each is in the Species `
 6. **A layering allowlist grows to 628 entries and then has to be deleted.** No allowlist, ever; an upward include fails.
 7. **vstest reports "no tests found" as a pass.** `AGENTS.md` here already carries the `SuiteSmoke` rule.
 8. **An enumerator nothing can produce holds up 1,400 lines.** `InputMode::GAMEPAD` and the whole control-help overlay behind it. A controller is an event source, not a mode.
-9. **Renaming a name that content spells is a content change.** Species freezes its domain names until the game runs again. This tree has no content that spells a code name — tables are code — which is one more thing compiled-in content buys.
+9. **Renaming a name that content spells is a content change.** Species freezes its domain names until the game runs again. This tree's content is files too, so the same rule applies from the first JSON file: a name a content file spells is renamed in one commit with the files that spell it, and `Build/CheckContent.py` is what catches the one that was missed.
