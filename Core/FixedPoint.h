@@ -20,6 +20,14 @@ inline constexpr int SUBUNITS_PER_CELL_SHIFT = 14;
 
 static_assert(SUBUNITS_PER_CELL == (1 << SUBUNITS_PER_CELL_SHIFT));
 
+/// The tick rate (ADR-002): the simulation's only clock, 50 ms a tick. Every duration under Sim/
+/// is a tick count and every rate is per tick; this constant is what a table authored in seconds
+/// is converted by, once, in Content.
+inline constexpr std::int32_t TICKS_PER_SECOND = 20;
+inline constexpr std::int32_t TICK_MILLISECONDS = 1000 / TICKS_PER_SECOND;
+
+static_assert(TICKS_PER_SECOND * TICK_MILLISECONDS == 1000, "a tick is a whole number of milliseconds");
+
 /// A 16.16 fixed-point unit: what the sine table and the fractal tables are scaled by.
 inline constexpr std::int32_t FIXED_16_ONE = 65536;
 

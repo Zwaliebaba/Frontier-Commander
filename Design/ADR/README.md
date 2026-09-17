@@ -9,6 +9,7 @@ One file per engineering decision, numbered from `ADR-001` in this repository (`
 | [`ADR-003`](ADR-003-snapshot-and-replay-formats.md) | The snapshot and replay formats: the stream layout, its digest, and the one-version rule until the first save ships | 2026-09-17 |
 | [`ADR-004`](ADR-004-renderer-foundation.md) | The renderer foundation: 1920×1080 authored, a borderless window over the primary monitor, a 4× multisampled scene target resolved and presented scaled; the `HRESULT` policy; `d3dx12.h` pinned at DirectX-Headers v1.606.3; shader model 6.0 through `FXCompile` and `dxc` | 2026-09-17 |
 | [`ADR-005`](ADR-005-fog-and-lighting.md) | Fog and lighting: the Species lighting unchanged; team-colour slots neither lit nor fogged; distance desaturation over the Species fog scaled to the landscape, chosen on two captured frames, the owner confirming or overriding at T22; the far plane scaling with the landscape and the reversed depth that follow | 2026-09-17 |
+| [`ADR-006`](ADR-006-content-format.md) | The content format: one plain row aggregate per table with integer fields in the unit their names say, a version per file refused by name, fail-fast loading and exhaustive validation, a line on every diagnostic including the ones that span files, `FrontierHost --validate` as CI's gate, and `DesignStats` as the one derivation | 2026-09-17 |
 
 ## When to write one
 

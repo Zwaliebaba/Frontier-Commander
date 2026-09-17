@@ -214,6 +214,20 @@ jobs:
           if (Test-Path 'Tools\DescribeCapture.py') { python Tools\DescribeCapture.py Captures }
           if ($process.ExitCode -ne 0) { throw "FrontierCommander --capture exited with $($process.ExitCode)." }
 
+      # The content tables, read and checked by the same code the game runs before its first tick
+      # (ADR-006), so that a table edit that would break the game breaks the build first. Guarded
+      # on the tables existing, because they arrive with m1-vertical-slice/C2 and the loader is
+      # already here; the executable is guarded on separately, so a build that produced neither
+      # skips this rather than failing on a missing file.
+      - name: Validate the content
+        if: hashFiles('Content/Components.json') != '' && hashFiles('x64/Debug/FrontierHost.exe') != ''
+        shell: pwsh
+        run: |
+          # A console subsystem executable, so PowerShell waits for it and its diagnostics land in
+          # this log, which is where a failing table is read from.
+          & 'x64\Debug\FrontierHost.exe' --validate Content
+          if ($LASTEXITCODE -ne 0) { throw "FrontierHost --validate exited with $LASTEXITCODE." }
+
       # After the build, so that a compile error is reported as a compile error rather than as
       # forty linter findings about a file that does not parse.
       - name: Run clang-tidy

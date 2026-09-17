@@ -112,8 +112,28 @@ public:
   /// Sets a member, replacing one of the same key in place; returns the stored value.
   JsonValue& Set(std::string _key, JsonValue _value);
 
+  /// Where this value began in the document it was parsed from, 1-based, or 0 for a value that
+  /// was built rather than parsed. A reader that refuses a value for what it means rather than
+  /// for its syntax — a duplicate id, a number out of range, a name nothing defines — reports
+  /// this, so that every diagnostic the content tools print names a line (m1-vertical-slice/C1).
+  [[nodiscard]] int Line() const noexcept
+  {
+    return m_line;
+  }
+  [[nodiscard]] int Column() const noexcept
+  {
+    return m_column;
+  }
+  void SetPosition(int _line, int _column) noexcept
+  {
+    m_line = _line;
+    m_column = _column;
+  }
+
 private:
   JsonKind m_kind = JsonKind::Null;
+  int m_line = 0;
+  int m_column = 0;
   bool m_bool = false;
   std::int64_t m_integer = 0;
   double m_double = 0.0;

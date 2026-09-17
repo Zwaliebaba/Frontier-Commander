@@ -51,7 +51,16 @@ tasks:
     verify:
       - python3 Tools/CheckTaskDag.py
     parallel_safe: true
-    status: in_progress
+    status: done
+    notes: >
+      Design/Interface.md, written 2026-09-17. Its §11 lists eleven things no document supplied,
+      each against the task that owns it, four of which block K4: the inverse of FitAuthored, what
+      Core/RenderView.h must grow for R2, a wire record for the order rejections S2 already
+      computes, and the chrome palette file. Its §12 lists nine rulings, three against a reference
+      document: text at 16 pixels in one face rather than Species's 12 and 13, one-pixel borders,
+      and the right button giving orders while the middle button aims the camera, which M0 had
+      bound the other way and G1 changes. The owner's merge of the pull request is the acceptance
+      of all nine.
 
   - id: C1
     title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
@@ -108,7 +117,15 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
+    notes: >
+      ADR-006 is the content ADR. Two things it needed did not exist: Neuron::TICKS_PER_SECOND,
+      which ADR-002 had fixed at 20 and no code had yet declared, now in Core/FixedPoint.h beside
+      the other units; and a line on a JsonValue, so that a fault in what a value means rather
+      than in its syntax points at the value. ContentTree::origins records the file and line of
+      every row as it is read, which is how a duplicate id or a missing prerequisite names a line
+      although it spans files. The CI step is guarded on Content\Components.json, which C2 writes,
+      so it skips until then.
 
   - id: C2
     title: Author the M1 content tables
