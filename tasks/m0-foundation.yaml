@@ -628,6 +628,21 @@ tasks:
       TextureFile.cpp from the documentation rather than including ddraw.h, which pulls in far
       more than a reader needs.
 
+      The reader keeps the documented DDS structures as its own constants and reads them field by
+      field through ByteReader, so nothing is ever cast from the file's bytes; every refusal names
+      the byte it stopped at and the rule. The legacy FourCCs DXT1 and DXT5 map to BC1 and BC3; DXT3
+      maps to BC2 and is refused by that name; the masked formats are matched on their exact masks
+      including the alpha mask, so an X8R8G8B8 file is refused rather than read as if it had alpha.
+      The mip count is bounded by the extent, the chain is computed per level from the block size,
+      and the payload must equal the sum exactly: a file with trailing bytes is refused, because the
+      importer writes exact files and a surplus is a sign of the wrong tool. WAV: all 1,332 Species
+      files were scanned against the rules before they were fixed (16-bit mono PCM, 44.1 kHz but two
+      at 22.05, RIFF sizes exact, and six kinds of extra chunk in every file, CSET, id3, LIST, DISP,
+      bext and cart), so the skip rule is what real files need and nothing more; chunks end where
+      the RIFF says, and a byte an editor left after it is ignored. ByteReader gained Skip for the
+      chunk walk. The BMP writer is the capture's and is pinned byte for byte against a 70-byte
+      literal. Sixty-two Core tests pass natively before the push.
+
   - id: T13
     title: Core paths and logging
     intent: >

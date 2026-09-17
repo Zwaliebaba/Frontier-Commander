@@ -53,8 +53,7 @@ Frontier::Sim Reload(const Frontier::Sim& _sim)
   std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(_sim));
   if (!reloaded.has_value())
   {
-    Assert::Fail(L"the snapshot did not read back");
-    return Frontier::Sim(_sim.Settings());
+    Assert::Fail(L"the snapshot did not read back"); // noreturn, which is what the optional access below relies on
   }
   return *reloaded;
 }

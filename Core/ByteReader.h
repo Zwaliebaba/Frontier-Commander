@@ -114,6 +114,17 @@ public:
     return true;
   }
 
+  /// Advances over _count bytes without reading them; false, and failed from then on, when fewer remain.
+  [[nodiscard]] bool Skip(std::size_t _count) noexcept
+  {
+    if (!Require(_count))
+    {
+      return false;
+    }
+    m_position += _count;
+    return true;
+  }
+
   [[nodiscard]] bool Failed() const noexcept
   {
     return m_failed;
