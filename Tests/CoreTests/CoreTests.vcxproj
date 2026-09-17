@@ -115,6 +115,8 @@
     <ClCompile Include="SlotMapTests.cpp" />
     <ClCompile Include="ByteStreamTests.cpp" />
     <ClCompile Include="JsonTests.cpp" />
+    <ClCompile Include="PathsTests.cpp" />
+    <ClCompile Include="LogTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

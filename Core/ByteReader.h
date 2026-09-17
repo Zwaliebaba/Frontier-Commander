@@ -30,15 +30,14 @@ public:
     {
       return false;
     }
-    using Unsigned = std::make_unsigned_t<T>;
-    Unsigned bits = 0;
+    // Assemble in a 64-bit value, so that no shift ever lands on a narrow operand (MSVC C4333).
+    std::uint64_t bits = 0;
     for (std::size_t index = 0; index < sizeof(T); ++index)
     {
-      bits =
-        static_cast<Unsigned>(bits | (static_cast<Unsigned>(std::to_integer<std::uint8_t>(m_bytes[m_position + index])) << (8 * index)));
+      bits |= static_cast<std::uint64_t>(std::to_integer<std::uint8_t>(m_bytes[m_position + index])) << (8 * index);
     }
     m_position += sizeof(T);
-    _out = static_cast<T>(bits);
+    _out = static_cast<T>(static_cast<std::make_unsigned_t<T>>(bits));
     return true;
   }
 

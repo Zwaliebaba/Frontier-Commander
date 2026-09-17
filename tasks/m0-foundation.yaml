@@ -484,6 +484,19 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      A recursive-descent parser over a string_view with a byte offset; the error's line and
+      column are derived from the offset at failure by counting newlines, so every position in
+      the fixtures follows one rule (the offending character, or the end when the document stops
+      short). Numbers are validated against the grammar before std::from_chars converts them,
+      because from_chars would accept a leading zero; an integer that does not fit int64 becomes
+      a double. Strings are validated as UTF-8 byte by byte, with overlongs, surrogates and
+      values above U+10FFFF refused; a high surrogate escape must be followed by a low one.
+      Duplicate keys are refused, stricter than the RFC's SHOULD, because a content file with
+      two values for one key is a bug. The object keeps parallel key and value vectors rather
+      than a member struct, so that JsonValue can hold vectors of itself without an incomplete
+      pair type. The writer uses std::to_chars for both integer and shortest-round-trip double.
+      Forty-four documents that must parse and forty-eight that must fail with their positions.
 
   - id: T12
     title: Core DDS and wave readers, and a BMP writer for captures
@@ -562,6 +575,15 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      Paths asks Windows only in Paths.cpp (GetModuleFileNameW with a growing buffer, and
+      LOCALAPPDATA through GetEnvironmentVariableW rather than a shell-folder API, which would
+      pull in far more); the header includes no platform header, so Sim may use it. The override
+      for tests replaces both roots, and the tests build their scratch under the system temporary
+      directory keyed by process id. Log is a static file with levels, a tick set by the host loop
+      or a time of day formatted by hand (std::format's chrono support is not in every standard
+      library the syntax aid runs on), rotation to .1 on Open, and OutputDebugStringA in Debug;
+      not thread-safe, which the host thread of M1 will need to address with its own file.
 
   - id: T14
     title: Core transport seam, datagram framing, liveness and the loopback transport
