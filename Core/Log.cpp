@@ -20,8 +20,8 @@ namespace
 // exception from it could not be caught (bugprone-throwing-static-initialization).
 [[nodiscard]] std::ofstream& File()
 {
-  static std::ofstream file;
-  return file;
+  static std::ofstream g_file;
+  return g_file;
 }
 std::uintmax_t g_bytesWritten = 0;
 LogLevel g_minimumLevel = LogLevel::Info;

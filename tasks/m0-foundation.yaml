@@ -282,6 +282,9 @@ tasks:
     parallel_safe: true
     status: in_progress
     notes: >
+      Windows only by nature (it needs the MSVC headers); the agent cannot run it in a session and
+      reads its result off the PR. Test it by pushing.
+
       The runner imports CheckProjectFiles.py's project parser, so the two scripts read a .vcxproj
       one way; the switches it adds beyond the project file are the ones ADR-001 fixes
       (/std:c++latest, /EHsc, /permissive-, /arch:AVX2, /fp:precise) and the Unicode character set
@@ -292,15 +295,11 @@ tasks:
       naming it. --dry-run prints the commands, which is how the enumeration was checked on Linux,
       where the MSVC driver cannot run. A pass with the pinned clang-tidy 22.1.8 from pip over Core
       and CoreTests, through the GNU driver against stand-in windows.h and CppUnitTest.h headers,
-      found two defects before CI did: a namespace-scope std::ofstream in Log.cpp (bugprone-
-      throwing-static-initialization) and a default argument multiplied in unsigned int then widened
+      found two defects before CI did: a namespace-scope std::ofstream in Log.cpp (bugprone-throwing-static-initialization) and a default argument multiplied in unsigned int then widened
       in Log.h; both are fixed. That pass is an approximation, and CI's run through the MSVC driver
       is the answer that counts. .clang-tidy's comments no longer describe the runner as unwritten,
       its example command drops the macro-family defines, and Client/d3dx12.h joins Resource.h in
       ExcludeHeaderFilterRegex.
-    notes: >
-      Windows only by nature (it needs the MSVC headers); the agent cannot run it in a session and
-      reads its result off the PR. Test it by pushing.
 
   - id: T6
     title: Add the layering check to CheckProjectFiles.py
