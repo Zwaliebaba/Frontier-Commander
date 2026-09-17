@@ -238,7 +238,7 @@ tasks:
       - python3 Build/CheckProjectFiles.py
       - python3 Build/CheckProjectFiles.py --self-test
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T5
     title: Write Build/RunClangTidy.py
