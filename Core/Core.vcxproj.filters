@@ -124,5 +124,11 @@
     <ClInclude Include="Liveness.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="HeightView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderView.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -47,7 +47,7 @@ public:
   /// _u the slope term and _v the height term, both 0 to 1, clamped.
   [[nodiscard]] std::uint32_t Lookup(float _u, float _v) const noexcept;
 
-  std::array<std::uint32_t, SIDE * SIDE> colors{};
+  std::array<std::uint32_t, static_cast<std::size_t>(SIDE) * SIDE> colors{};
 };
 
 struct TerrainMesh

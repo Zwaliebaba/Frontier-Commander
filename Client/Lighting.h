@@ -23,7 +23,8 @@ struct SceneLighting
 
 /// The Garden's pair until Content\Biomes.json carries one per biome (SpeciesLook.md §11): a near
 /// white key at 23 degrees and a horizontal orange sun at three and a half times white.
-inline constexpr SceneLighting GARDEN_LIGHTING = {{{0.04f, 0.39f, -0.92f}, {1.06f, 0.96f, 0.72f}}, {{0.57f, 0.0f, -0.82f}, {3.58f, 0.79f, 0.14f}}};
+inline constexpr SceneLighting GARDEN_LIGHTING = {{{0.04f, 0.39f, -0.92f}, {1.06f, 0.96f, 0.72f}},
+                                                  {{0.57f, 0.0f, -0.82f}, {3.58f, 0.79f, 0.14f}}};
 
 /// THE UNLIT TEAM-COLOUR SLOT (TechnicalDesign.md §6.4; OpenQuestions.md R4): a vertex whose colour
 /// carries this alpha is a team-colour slot, and the pixel shader writes its colour as it is, so

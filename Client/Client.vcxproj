@@ -129,6 +129,7 @@
     <ClCompile Include="InputRouter.cpp" />
     <ClCompile Include="InputSubscription.cpp" />
     <ClCompile Include="RawMouse.cpp" />
+    <ClCompile Include="TerrainChunk.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -150,6 +151,8 @@
     <ClInclude Include="InputRouter.h" />
     <ClInclude Include="InputSubscription.h" />
     <ClInclude Include="RawMouse.h" />
+    <ClInclude Include="Lighting.h" />
+    <ClInclude Include="TerrainChunk.h" />
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shaders\PresentPS.hlsl">

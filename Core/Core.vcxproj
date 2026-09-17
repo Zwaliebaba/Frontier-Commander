@@ -138,6 +138,8 @@
     <ClInclude Include="Datagram.h" />
     <ClInclude Include="LoopbackTransport.h" />
     <ClInclude Include="Liveness.h" />
+    <ClInclude Include="HeightView.h" />
+    <ClInclude Include="RenderView.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -15,7 +15,7 @@ namespace
 
 [[nodiscard]] std::uint32_t PackColor(float _r, float _g, float _b, float _a) noexcept
 {
-  const auto channel = [](float _value) { return static_cast<std::uint32_t>(std::clamp(_value, 0.0f, 1.0f) * 255.0f + 0.5f); };
+  const auto channel = [](float _value) { return static_cast<std::uint32_t>(std::lround(std::clamp(_value, 0.0f, 1.0f) * 255.0f)); };
   return channel(_r) | (channel(_g) << 8) | (channel(_b) << 16) | (channel(_a) << 24);
 }
 
@@ -43,12 +43,17 @@ namespace
 
 /// The Species colour of a vertex (SpeciesTerrain.md §6): the slope from the central differences
 /// of the samples around it, the height against the highest, and the noise that fades with altitude.
-[[nodiscard]] std::uint32_t VertexColor(const HeightView& _view, std::uint32_t _x, std::uint32_t _y, std::uint32_t _stride, const TerrainPalette& _palette) noexcept
+[[nodiscard]] std::uint32_t VertexColor(const HeightView& _view, std::uint32_t _x, std::uint32_t _y, std::uint32_t _stride,
+                                        const TerrainPalette& _palette) noexcept
 {
   const float spacing = static_cast<float>(_view.spacingWorldUnits) * static_cast<float>(_stride);
   const float height = SampleHeight(_view, _x, _y);
-  const float slopeX = (SampleHeight(_view, static_cast<std::int64_t>(_x) + _stride, _y) - SampleHeight(_view, static_cast<std::int64_t>(_x) - _stride, _y)) / (2.0f * spacing);
-  const float slopeY = (SampleHeight(_view, _x, static_cast<std::int64_t>(_y) + _stride) - SampleHeight(_view, _x, static_cast<std::int64_t>(_y) - _stride)) / (2.0f * spacing);
+  const float slopeX =
+    (SampleHeight(_view, static_cast<std::int64_t>(_x) + _stride, _y) - SampleHeight(_view, static_cast<std::int64_t>(_x) - _stride, _y)) /
+    (2.0f * spacing);
+  const float slopeY =
+    (SampleHeight(_view, _x, static_cast<std::int64_t>(_y) + _stride) - SampleHeight(_view, _x, static_cast<std::int64_t>(_y) - _stride)) /
+    (2.0f * spacing);
   const float normalY = 1.0f / std::sqrt(1.0f + slopeX * slopeX + slopeY * slopeY);
   const float u = std::pow(1.0f - normalY, 0.4f);
   const float above = std::max(height - static_cast<float>(_view.waterLevel), 0.0f);
@@ -97,9 +102,8 @@ TerrainPalette TerrainPalette::BuiltIn()
 
 std::uint32_t TerrainPalette::Lookup(float _u, float _v) const noexcept
 {
-  const auto index = [](float _value) {
-    return static_cast<std::uint32_t>(std::clamp(_value * static_cast<float>(SIDE), 0.0f, static_cast<float>(SIDE - 1)));
-  };
+  const auto index = [](float _value)
+  { return static_cast<std::uint32_t>(std::clamp(_value * static_cast<float>(SIDE), 0.0f, static_cast<float>(SIDE - 1))); };
   return colors[index(_v) * SIDE + index(_u)];
 }
 
@@ -112,7 +116,8 @@ std::uint32_t ChunksPerSide(const HeightView& _view) noexcept
   return (_view.samplesPerSide - 2) / CHUNK_STEPS + 1;
 }
 
-TerrainMesh BuildTerrainChunk(const HeightView& _view, std::uint32_t _chunkX, std::uint32_t _chunkY, std::uint32_t _stride, const TerrainPalette& _palette)
+TerrainMesh BuildTerrainChunk(const HeightView& _view, std::uint32_t _chunkX, std::uint32_t _chunkY, std::uint32_t _stride,
+                              const TerrainPalette& _palette)
 {
   TerrainMesh mesh{};
   const std::uint32_t stride = std::clamp<std::uint32_t>(_stride, 1, 8);
@@ -184,13 +189,15 @@ TerrainMesh BuildTerrainChunk(const HeightView& _view, std::uint32_t _chunkX, st
   // The skirt: a copy of each border vertex hung SKIRT_DEPTH under the water, and a quad from each
   // border edge down to it, so that a neighbouring chunk at another stride leaves no crack.
   const float skirtY = water - SKIRT_DEPTH;
-  const auto skirt = [&mesh, skirtY](std::uint16_t _border) {
+  const auto skirt = [&mesh, skirtY](std::uint16_t _border)
+  {
     TerrainVertex vertex = mesh.vertices[_border];
     vertex.y = skirtY;
     mesh.vertices.push_back(vertex);
     return static_cast<std::uint16_t>(mesh.vertices.size() - 1);
   };
-  const auto wall = [&mesh, &skirt](std::uint16_t _a, std::uint16_t _b) {
+  const auto wall = [&mesh, &skirt](std::uint16_t _a, std::uint16_t _b)
+  {
     const std::uint16_t skirtA = skirt(_a);
     const std::uint16_t skirtB = skirt(_b);
     mesh.indices.push_back(_a);
