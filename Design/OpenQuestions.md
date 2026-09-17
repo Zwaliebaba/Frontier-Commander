@@ -6,7 +6,7 @@
 |---|---|---|---|---|
 | Q1 | Match or world? | Match-based, designed so that a long-running host is reachable later without a rewrite | Yes | `GameDesign.md` §1, §10 |
 | Q2 | Network model | **Host-authoritative state replication**: only the host simulates; each client holds a replica of what its commander can see | **No** — the draft recommended lockstep; `TechnicalDesign.md` §5.1 records what the choice buys and what it costs | `TechnicalDesign.md` §2, §3, §5, §10, §11; `GameDesign.md` §10 |
-| Q3 | What "moddable" means against R13 | **R13 withdrawn as obsolete**; game data lives in files beside the executable and a mod is a directory that overrides them by path | Beyond the recommendation, which kept R13 and added a mod directory by ADR | `AGENTS.md` §5 (R13), `TechnicalDesign.md` §1, §8; `GameDesign.md` §6 |
+| Q3 | What "moddable" means against R13 | **R13 withdrawn as obsolete**; game data lives in files beside the executable and a mod is a directory that overrides them by path | Beyond the recommendation, which kept R13 and added a mod directory by ADR | `AGENTS.md` (R13 deleted by the owner), `TechnicalDesign.md` §1, §8; `GameDesign.md` §6 |
 | Q4 | Content format, reframed once R13 went | JSON, with a reader written into `Core` under R14 | No — text tables in the Species tradition were recommended | `TechnicalDesign.md` §8 |
 | Q5 | The Species-derived content other than models | Used, with the provenance risk accepted as a private project's; the soundtrack, branding and narration stay excluded | No — placeholders with a replacement plan were recommended | `SpeciesLineage.md` §1; ADR-006 when written |
 | Q6 | The reading of the Species look | Confirmed, with the sprite population added as a visual | Yes | `GameDesign.md` §11 |

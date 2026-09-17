@@ -13,7 +13,7 @@ Four `AGENTS.md` rules shape everything below, and this document does not re-arg
 - **R16** — the simulation is deterministic and holds no floats: integers and fixed point, a pinned PRNG, the tick as the only clock. Floats live in the renderer and in the client's replica.
 - **§2** — flat project directories, one-way edges, project files as source.
 
-**R13 was withdrawn by the owner on 2026-09-17.** The executable no longer ships alone: game data lives in files under `Content\` beside it and mods override them (§8), and what the game writes goes under the user's profile (§9). Two of R13's sentences survive in `AGENTS.md` on their own: shaders are compiled at build time, never at runtime, and a path resolves from the executable's directory or the user's profile, never from the working directory.
+**R13 was removed by the owner on 2026-09-17** (its number is not reused; `AGENTS.md` §5 says R18 and up are reserved without renumbering). The executable no longer ships alone: game data lives in files under `Content\` beside it and mods override them (§8), and what the game writes goes under the user's profile (§9). Two things the old rule also said hold here as design: shaders are compiled at build time, never at runtime (`AGENTS.md` §2 still says so), and a path resolves from the executable's directory or the user's profile, never from the working directory (§8, §9).
 
 What the rules leave open, and this document decides: the projects, the simulation's representation, the network model, the renderer's shape, the content layout, and where files live.
 
