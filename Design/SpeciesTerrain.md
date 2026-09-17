@@ -236,4 +236,4 @@ with `t` in seconds: two sums of sines, separable in x and z, up to ±25 units i
 
 **Two things the Species terrain does not have that a Frontier landscape needs.** Level of detail: the Species mesh is one strip drawn whole, fine at 344 samples a side and impossible at 8,193. And chunking for incremental rebuilds when a structure flattens its footprint. Both are in `TechnicalDesign.md` §6.2; neither changes the look.
 
-**One convention worth keeping.** `outsideHeight` below sea level, an island, and no sea drawn beyond the shore band: it is the Species composition, it makes the edge of the world a coast instead of a wall, and for a landscape 131,072 units across it is also the cheapest possible horizon.
+**One convention worth keeping.** `outsideHeight` below sea level, an island, and no sea drawn beyond the shore band: it is the Species composition, it makes the edge of the world a coast instead of a wall, and for a landscape 65,536 units across it is also the cheapest possible horizon.

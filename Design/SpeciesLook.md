@@ -151,7 +151,7 @@ A `CheckOpenGLState` that asserted all of this exists and is disabled; the comme
 
 **Drift**: `Clouds::Advance` adds (0.03, 0, −0.01) to the texture offset per 0.1-second server tick, which is 0.3 repeats per second on the first layer — about 570 world units per second across the 17,000-unit square, by arithmetic. Each quad is split 4×4 to keep per-vertex fog from banding.
 
-**Sizes are absolute, not map-relative.** 14,000 and 17,000 units were chosen for maps up to 5,400 across. A *Frontier Commander* landscape of 131,072 units needs these to scale with the map, or to become a camera-relative sky.
+**Sizes are absolute, not map-relative.** 14,000 and 17,000 units were chosen for maps up to 5,400 across. A *Frontier Commander* landscape of 65,536 units needs these to scale with the map, or to become a camera-relative sky.
 
 ---
 
@@ -239,6 +239,6 @@ Negative gravity rises: fire and control flashes float up. The `Particle.bmp` te
 
 **Carry as rules for the pixel shader.** Lambert only; no ambient; two directional lights whose colours may exceed 1.0, summed and clamped after the sum; one normal per triangle; one colour per triangle. That is a shader of a dozen lines, and it is the whole of the lighting.
 
-**Decide, in the first renderer ADR.** The sky and cloud planes and the fog range are absolute distances sized for maps up to 5,400 units; a Frontier landscape is 24 times that. Either they scale with the landscape, or the fog becomes the edge of visibility and the sky follows the camera. The pixel effect is a post pass that D3D12 does more cheaply as a render target than the copy-to-texture trick, and whether the game wants it at all is a look decision to take with a running build.
+**Decide, in the first renderer ADR.** The sky and cloud planes and the fog range are absolute distances sized for maps up to 5,400 units; a Frontier landscape is twelve times that. Either they scale with the landscape, or the fog becomes the edge of visibility and the sky follows the camera. The pixel effect is a post pass that D3D12 does more cheaply as a render target than the copy-to-texture trick, and whether the game wants it at all is a look decision to take with a running build. The owner ruled on 2026-09-17 (`OpenQuestions.md` R4): zero ambient stays, team-colour slots are drawn unlit, and the fog scales with the landscape or becomes distance desaturation, ADR-002 choosing between those two on a captured frame.
 
 **Do not carry.** The fixed-function specifics (display lists, colour-material, the state-restoration dance every pass performs), `RenderLandscapeDetail` changing the simulation, and preferences read without defaults.

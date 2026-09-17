@@ -148,7 +148,7 @@ The concrete layout — the solution, the projects and the edges between them �
 
 **The project files are part of the source.** Adding, removing or moving a file means editing the owning `.vcxproj` **and** its `.filters`. A file that compiles locally but is missing from the project fails only in CI — or worse, links a stale object nobody notices.
 
-**There are no vendored SDKs and no package manager.** The build depends on the Windows SDK and the MSVC standard library, and on nothing else. See R14.
+**There are no vendored SDKs and no package manager.** The build depends on the Windows SDK and the MSVC standard library, and on nothing else but the one header R14 names. See R14.
 
 **Build and IDE output is never committed** — `x64/`, `.vs/`, `*.user`, and anything a build step generates.
 
@@ -223,11 +223,11 @@ python Build\RunClangTidy.py          # needs a Developer PowerShell (INCLUDE mu
 - **A scale is not free, and text is what it costs.** A glyph authored as a bit pattern, or baked to an exact pixel height, reaches the glass resampled unless the scale is exactly 1. In a dense interface full of small type that is the real cost of the whole arrangement, which is why the 1:1 path exists and why it is worth keeping common.
 - **A decorated window cannot have a client area as tall as the monitor it is on.** A caption and borders add roughly 6×37 pixels, so asking for a 1080-pixel client area on a 1080p desktop asks for a window taller than the screen. A borderless `WS_POPUP` covering the primary monitor is the usual answer, and it is not free either: with no close box, something has to own Escape and Alt+F4 as the only ways out.
 
-**R14 — No third-party dependencies and no package manager.** The Windows SDK and the MSVC standard library, and nothing else. If you believe something is unavoidable, propose it in your report with what it buys and what it costs — do not add it. This is a closed list, not a high bar.
+**R14 — No third-party dependencies and no package manager.** The Windows SDK and the MSVC standard library, and nothing else — with one named exception, decided by the owner on 2026-09-17: `d3dx12.h`, the Direct3D 12 helper header, vendored under `Client/` as a single pinned file with its MIT licence text beside it, never fetched by the build. If you believe something else is unavoidable, propose it in your report with what it buys and what it costs — do not add it. This is a closed list, not a high bar.
 
 **It binds what the executable is built from, not what a development tool needs.** Scripts under `Build/` and `Tools/` never ship and never link, so a baker that needs Pillow does not reopen this rule. **Third-party *content* is a different question and it is the owner's**: art, fonts and sound are content, not dependencies, and anything under a licence needs the owner's approval before it lands, with the licence text travelling with the bytes.
 
-For Direct3D that list means what the Windows SDK installs: `d3d12.h`, `dxgi1_6.h`, `DirectXMath.h`, `wrl/client.h` (`Microsoft::WRL::ComPtr` is the COM smart pointer R12 asks for) and the `fxc`/`dxc` compilers that `FXCompile` drives. It excludes what a D3D12 sample reaches for by reflex, because each is NuGet or GitHub content and not SDK content: the DirectX Agility SDK and its `d3dx12.h`, DirectX-Headers, DirectXTK12, DirectXTex, and the DirectX Shader Compiler as a redistributable. Resource barriers and heap descriptions are written by hand.
+For Direct3D that list means what the Windows SDK installs: `d3d12.h`, `dxgi1_6.h`, `DirectXMath.h`, `winrt/base.h` (`winrt::com_ptr` is the COM smart pointer R12 asks for; WRL's `ComPtr` is not used) and the `fxc`/`dxc` compilers that `FXCompile` drives. It excludes what a D3D12 sample reaches for by reflex, because each is NuGet or GitHub content and not SDK content: the DirectX Agility SDK, DirectX-Headers, DirectXTK12, DirectXTex, the DirectX Shader Compiler as a redistributable, and the C++/WinRT NuGet package — `winrt/base.h` is SDK content and needs none of it. The one exception is `d3dx12.h` on its own, as R14 says: its structures describe barriers, heaps and root signatures, and the header is a file in the tree, not a package.
 
 **R15 — Memory is plain C++.** `new`/`delete` where it must be, RAII everywhere, standard containers by default. No pool, slab or free-list allocator without a decision recorded in `Design/ADR/`.
 
