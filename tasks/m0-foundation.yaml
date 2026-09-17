@@ -280,7 +280,7 @@ tasks:
       - python3 Tools/CheckTaskDag.py
       - python Build\RunClangTidy.py
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       Windows only by nature (it needs the MSVC headers); the agent cannot run it in a session and
       reads its result off the PR. Test it by pushing.
@@ -308,6 +308,9 @@ tasks:
       remove_all, whose path copies may throw. The promise is gone and the destructors swallow; a
       Linux pass is a first filter, not the gate.
 
+      Landed in CI run 27 (35267026044): the clang-tidy step ran the 38 units clean through the MSVC
+      driver in about half a minute.
+
   - id: T6
     title: Add the layering check to CheckProjectFiles.py
     intent: >
@@ -330,7 +333,7 @@ tasks:
       - python3 Build/CheckProjectFiles.py
       - python3 Build/CheckProjectFiles.py --self-test
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       Landed as five rules on the same script, with ADR-001's table as BUILT_ON, already closed as
       the ADR writes it, and a suite built on its library and what that is built on. A quoted
@@ -344,6 +347,9 @@ tasks:
       reference and the include directory to Net, and the platform header; Client carries the
       sideways include of Replica. The real tree had no finding: every reference and include
       directory of T2 already followed the table.
+
+      Landed in CI run 27 (35267026044), with the twenty-five-rule self-test green on Windows as
+      well as Linux.
 
   - id: T7
     title: Core arithmetic - fixed point, integer geometry and binary angles
