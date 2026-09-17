@@ -16,7 +16,13 @@ namespace Neuron
 namespace
 {
 
-std::ofstream g_file;
+// A function-local static: the stream's constructor runs on first use, not before main where an
+// exception from it could not be caught (bugprone-throwing-static-initialization).
+[[nodiscard]] std::ofstream& File()
+{
+  static std::ofstream file;
+  return file;
+}
 std::uintmax_t g_bytesWritten = 0;
 LogLevel g_minimumLevel = LogLevel::Info;
 std::uint32_t g_tick = Log::NO_TICK;
@@ -71,16 +77,16 @@ bool Log::Open(const std::filesystem::path& _file, std::uintmax_t _rotateAtBytes
   }
   // Binary, so that the line ending is the one written here on every platform and the bytes
   // written equal the file's growth; the CRT's text mode would rewrite '\n' as "\r\n".
-  g_file.open(_file, std::ios::out | std::ios::app | std::ios::binary);
+  File().open(_file, std::ios::out | std::ios::app | std::ios::binary);
   g_bytesWritten = 0;
-  return g_file.is_open();
+  return File().is_open();
 }
 
 void Log::Close()
 {
-  if (g_file.is_open())
+  if (File().is_open())
   {
-    g_file.close();
+    File().close();
   }
 }
 
@@ -106,17 +112,17 @@ void Log::Write(LogLevel _level, std::string_view _message)
 #if defined(_DEBUG)
   ::OutputDebugStringA(line.c_str());
 #endif
-  if (g_file.is_open())
+  if (File().is_open())
   {
-    g_file.write(line.data(), static_cast<std::streamsize>(line.size()));
-    g_file.flush();
+    File().write(line.data(), static_cast<std::streamsize>(line.size()));
+    File().flush();
     g_bytesWritten += line.size();
   }
 }
 
 bool Log::IsOpen()
 {
-  return g_file.is_open();
+  return File().is_open();
 }
 
 std::uintmax_t Log::BytesWritten()

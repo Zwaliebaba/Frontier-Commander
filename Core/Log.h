@@ -28,7 +28,8 @@ class Log
 public:
   /// Opens the file, creating its directory; a file already larger than _rotateAtBytes is
   /// renamed to <name>.1 first, replacing an older .1, so a log never grows without bound.
-  [[nodiscard]] static bool Open(const std::filesystem::path& _file, std::uintmax_t _rotateAtBytes = 4u * 1024u * 1024u);
+  [[nodiscard]] static bool Open(const std::filesystem::path& _file,
+                                 std::uintmax_t _rotateAtBytes = static_cast<std::uintmax_t>(4) * 1024 * 1024);
   static void Close();
 
   /// Lines below the minimum are dropped; Info by default.
