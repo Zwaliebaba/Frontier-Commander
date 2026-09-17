@@ -34,7 +34,7 @@ Content under `GameData/`, *measured* with `ls`, `du`, `file` and a Python pass 
 
 | Content | Count | Size | Format |
 |---|---|---|---|
-| `Shapes/` | 106 files, 301 fragments, 29,637 positions, 32,253 triangles; 75 files carry markers, none carries normals | 2.4 MB as text | Text `.shp`: per fragment a transform, a position table, a colour table, vertices as (position, colour) pairs, triangles; named markers |
+| `Shapes/` | 106 files, 301 fragments, 29,637 positions, 53,193 triangles; 75 files carry markers, none carries normals; 40 files encode their triangles as strips | 2.4 MB as text | Text `.shp`: per fragment a transform, a position table, a colour table, vertices as (position, colour) pairs, triangles; named markers |
 | `Textures/` | 37 | 3.7 MB, of which 2.5 MB is two splash screens | 24-bit and 8-bit BMP; ten 8-bit font bitmaps at 256×224 (one at 256×208) |
 | `Terrain/` | 18 | 276 KB | Eight 64×64×24 landscape palettes, three 128×128×8 water textures, seven wave textures |
 | `Sprites/` | 7 | 44 KB | 32×32×24 BMP |
@@ -45,7 +45,7 @@ Content under `GameData/`, *measured* with `ls`, `du`, `file` and a Python pass 
 | `Sounds.txt` | 16 entity, 29 building and 10 other blocks; 109 sample groups; 163 distinct sound names | | The event-to-sample model |
 | `Stats.txt` | 19 rows | | Health, speed and rate of fire per entity type |
 
-Five shape files (`Ark`, `Armour`, `BattleCannonBase`, `BattleCannonFull`, `BoxKite`) parse to zero triangles by the grep used here; `Ark.shp` has fragments with positions, so the count is a quirk of the grep and not of the files. Verify by reading before counting on any of the five.
+The `.shp` format has two triangle encodings, `Triangles:` lists and `Strips:` triangle strips, and 40 of the 106 files use strips only. An earlier draft of this table counted only the lists and reported 32,253 triangles and five geometry-free files; the figure above comes from a parser that handles both, as `Shape.cpp` does, and the one genuinely geometry-free file is `BattleCannonBase.shp`: eight markers laying out the ports and status lights of the assembled cannon.
 
 ---
 
@@ -120,33 +120,90 @@ Darwinia's game, 65,808 lines, and almost none of it is this game. What is worth
 
 ## 4. Art
 
+Every model and bitmap below was rendered and looked at on 2026-09-17 with a review tool written for the purpose: a parser matching `NeuronClient/Shape.cpp` (both triangle encodings, the fragment hierarchy, the basis normalisation), a flat-shaded software rasteriser, and labelled contact sheets. Extents are the world-space bounding box of the rendered geometry, width × height × depth in Species world units, *measured*. Every item is a placeholder until ADR-006 says otherwise (Q5).
+
+### Scale, before anything else
+
+**The Species models are ten times larger than the first draft of `GameDesign.md` assumed.** A soldier (`Squad.shp`) is 14 units tall, a tank body 49 long, a wall segment 46 wide, a power station 82 × 74 × 103, a generator 192 across, and the largest set-piece (`ConstructionYard.shp`) 401 × 255 × 529. The draft had set a cell at 4 world units and structure footprints at one to three cells, which would have made a power station 25 cells wide. `GameDesign.md` §3 now defines the world unit as the Species unit and a cell as 64 of them — one tank, one wall segment — so the models import at their native scale, with a per-model factor in the content table for the few that need one. That is the single most useful thing the review found.
+
 ### Shapes
 
-Of the 106 models, those that are the right kind of thing for this game, grouped by the `Design/GameDesign.md` catalogue entries they could stand in for. Every one is a placeholder until ADR-006 says otherwise.
+Grouped by what they can stand in for, with the measured triangle count and extent. *Fit* is how well a model reads as the thing without rework: **direct** means it does; **with work** means it needs scaling, recolouring or a part removed; **weak** means the name promises more than the geometry delivers.
 
-| For | Species shapes |
-|---|---|
-| Devices: chassis and drives | `TankBody`, `Wheel`, `Armour`, `Squad`, `Tripod` (a legs reference), `Lander` (a lift reference) |
-| Devices: modules | `TankTurret`, `TurretBase`, `TurretBarrel`, `TurretShell`, `BattleCannonBase`, `BattleCannonBarrel`, `BattleCannonTurret`, `BattleCannonFull`, `FieldGun`, `FieldGunShell`, `Missile`, `Rocket`, `RadarDish` (a sensor), `ControlTowerDish` |
-| Structures | `Factory`, `Generator`, `PowerStation`, `SolarPanel`, `FuelGenerator`, `FuelGeneratorPump`, `FuelStation`, `FuelPipe`, `FuelPipeBase`, `Refinery`, `Mine`, `MineCart`, `Pylon`, `Wall`, `LaserFence`, `FenceSwitch`, `GunTurret`, `ControlTower`, `ControlPad`, `DisplayScreen`, `Library`, `BlueprintConsole`, `BlueprintRelay`, `BlueprintStore`, `ConstructionYard`, `ConstructionYardRung`, `ResearchItem`, `TrunkPort`, `BridgeEnd`, `BridgeTower`, `UpgradePort`, `PrimaryUpgradePort` |
-| Features | `Temple1`–`Temple4`, `Cave`, `RockHead`, `Plant`, `TrackLink` |
-| Infantry-scale, if sprites are not used | `Citizen`, `Engineer`, `Officer`, `LaserTroop` |
-| Not for this game | `Spider*`, `Centipede*`, `SoulDestroyer*`, `TriffidEgg`, `TriffidHead`, `SporeGenerator`, `ArmyAnt*`, `AntHill`, `SpaceInvader`, `Ark`, `FlyingEgg`, `GarbageCollector`, `GodDish`, `GoldenScroll`, `Help`, `Camera`, `Throwable`, `BoxKite`, `SpawnPoint`, `SpawnLink`, `MasterSpawnPoint`, `ReceiverLink`, `SpiritProcessor`, `SpiritReceiver*`, `Incubator`, `Spam`, `FeedingTube`, `AiTarget`, `GlobalWorld*` |
+| For | Shape | Triangles | Extent (W×H×D) | Fit | Seen |
+|---|---|---|---|---|---|
+| Command post | `BlueprintConsole` | 460 | 69×79×69 | direct | A blue many-legged console with a dish on top; reads as a headquarters |
+| | `ControlTower` | 308 | 32×49×26 | direct | A light-blue tower with an antenna; small; also a sensor tower |
+| | `ControlPad` | 264 | 39×32×34 | with work | A sloped console with a hexagonal screen |
+| | `DisplayScreen` | 84 | 94×43×84 | with work | A large sloped screen; base decoration |
+| Extractor | `FuelPipeBase` | 96 | 48×97×41 | direct | A hexagonal base with a pipe rising from it: a wellhead |
+| | `FuelGeneratorPump` | 126 | 28×230×28 | with work | A tall pump rod; the extractor's moving part |
+| | `Mine` | 616 | 143×86×74 | with work | A cluster of sheds and cranes; needs scaling for a small footprint |
+| Generator | `PowerStation` | 1,248 | 82×74×103 | direct | Cooling towers and red chimneys; the best structure in the set |
+| | `Generator` | 2,376 | 192×151×178 | with work | A spiked machine with two rotors; large and busy |
+| | `SolarPanel` | 648 | 92×120×42 | direct | A panel on a pole; a lighter alternative |
+| | `FuelGenerator` | 252 | 129×178×123 | with work | A dark industrial block |
+| Factory | `Refinery` | 1,152 | 273×140×155 | with work | A pink hall with cranes; a factory at half scale |
+| | `Incubator` | 376 | 57×55×95 | with work | An angular grey building; usable at native scale |
+| | `Factory` | 1,364 | 29×25×18 | weak | Two red pillars with blue rings and a yellow bud; does not read as a factory, and the name misleads |
+| Research lab | `BlueprintStore` | 704 | 83×41×82 | direct | A hub with three dish petals |
+| | `Library` | 800 | 70×23×70 | direct | A ring with spikes |
+| | `ResearchItem` | 784 | 17×17×17 | direct | A lattice cube: a research crate |
+| Repair bay | `UpgradePort` | 636 | 72×31×82 | direct | A wide platform with a spiral fixture: a pad |
+| Sensor tower | `RadarDish` | 248 | 36×51×35 | direct | A dish on a blocky base |
+| | `ControlTowerDish` | 156 | 14×12×6 | direct | The dish alone |
+| Uplink | `BlueprintRelay` | 400 | 42×38×79 | direct | A satellite with two solar wings |
+| | `TrunkPort` | 292 | 123×147×23 | with work | A blue ring portal; a gate |
+| Hardpoint, tower | `GunTurret` | 292 | 17×11×8 | direct | A twin-barrel turret on a base; the classic |
+| | `TurretBase`, `TurretBarrel` | 320, 132 | 45×27×42, 21×10×22 | direct | A crown base and a quad-barrel assembly; `TurretBase` is the same geometry as `SpiritReceiver` |
+| | `FenceSwitch` | 240 | 49×60×47 | with work | A pointed blue tower with petals |
+| Bunker, artillery | `FieldGun` | 288 | 79×58×91 | direct | A star-footed emplacement with a long barrel |
+| | `BattleCannonFull`, `BattleCannonTurret`, `BattleCannonBarrel` | 168, 88, 80 | 31×33×27 | with work | A blocky heavy cannon in rough grey, unfinished-looking; `BattleCannonBase` is eight markers and no geometry |
+| Wall | `Wall` | 132 | 46×54×6 | direct | One dark panel, one cell wide |
+| | `LaserFence` | 54 | 10×77×22 | direct | A post with a bent head: a fence post or a light |
+| Power lines, pipelines | `Pylon`, `FuelPipe`, `FuelStation`, `TrackLink`, `ReceiverLink`, `SpawnLink` | 96, 72, 344, 53, 72, 152 | 10×140×38 and similar | direct | Poles, pipes, a branching junction and a gantry: the generator-to-extractor link made visible |
+| Device chassis | `TankBody` | 158 | 49×12×49 | direct | A flat angular hover tank in green, one cell long; the green is the team-colour slot |
+| | `Armour` | 96 | 29×15×32 | direct | A boxy transport body |
+| | `Lander` | 24 | 14×12×29 | with work | A plain wedge |
+| | `Wheel` | 288 | 51×51×19 | with work | A spoked wheel at building scale; scaled down it is a wheel |
+| Device modules | `TankTurret` | 174 | 14×15×36 | direct | A turret with a long barrel, matched to `TankBody` |
+| Infantry | `Squad` | 1,036 | 8×14×8 | direct | A proper three-dimensional soldier with a rifle: the only humanoid model, and the reason infantry need not be sprites |
+| Projectiles | `Missile`, `FieldGunShell`, `Throwable`, `TurretShell` | 120, 286, 286, 8 | 7×7×20 and smaller | direct | A finned missile, two bombs, an octahedral shell |
+| Features | `Temple1`–`Temple4` | 156, 128, 236, 128 | 110×111×39 and smaller | direct | Arches and pillars: ruins |
+| | `RockHead` | 540 | 60×156×63 | direct | A stone head |
+| | `Cave` | 60 | 12×15×23 | direct | A cave mouth |
+| | `Plant` | 192 | 31×53×19 | direct | A rose: biome dressing |
+| | `Ark`, `Rocket` | 136, 4,992 | 110×202×105, 167×297×171 | direct | A lander tower and a rocket: stamp centrepieces |
+| | `ConstructionYard`, `ConstructionYardRung`, `PrimaryUpgradePort`, `MasterSpawnPoint` | 270, 204, 636, 180 | up to 401×255×529 | direct | Platforms and rings at set-piece scale: stamp centrepieces |
+| | `BridgeEnd`, `BridgeTower`, `FeedingTube`, `SpiritProcessor`, `SpawnPoint`, `AntHill` | 76, 20, 368, 432, 152, 396 | | with work | A gate, a bollard, a ring on a stand, a lamp on a rock, an angular pod, two termite mounds — the last a nest for the neutral faction |
+| Markers | `AiTarget` | 84 | 16×30×2 | direct | A red flag on a pole: a rally point |
+| Not for this game | `ArmyAnt*`, `Centipede*`, `SoulDestroyer*`, `Spider*`, `Tripod*`, `Triffid*`, `SporeGenerator`, `Spam`, `FlyingEgg`, `SpaceInvader` | | | | The creatures; a mood board for Q11 |
+| | `Citizen`, `Engineer`, `Officer`, `LaserTroop` | 76, 72, 58, 392 | 7×9×1 and similar | | Flat cross-shaped or wedge figures; the sprites do the same job better |
+| | `GlobalWorldInner`, `GlobalWorldMiddle`, `GlobalWorldOuter`, `Camera`, `Help`, `GoldenScroll`, `GarbageCollector`, `BoxKite`, `MinePolygon1`, `MinePrimitive1`, `MineCart`, `GodDish`, `SpiritReceiver`, `SpiritReceiverHead` | | | | The campaign globe (21,654 triangles between them), editor gizmos and primitives, Darwinia's spirit machinery |
 
-The triangle budget of the reusable set is a few thousand in total; the largest, `Generator.shp`, is 2,376 triangles and `Refinery.shp` 1,152. Everything is well inside what an instanced flat-shaded pass draws without thought.
+Two things the sheets make plain that the names did not. The set is strongest in industrial structures, defences and set-pieces and weakest exactly where the vertical slice needs it most: there is one tank, one turret and one soldier, and the model named `Factory` is not one. And the models were made for a game with no grid, so footprints are the baker's problem: `PowerStation` sits in 2×2 cells at native scale, `Refinery` needs 0.6× to fit 3×3, `Mine` 0.45× to fit 1×1, and a per-model scale in the content table is the mechanism.
 
 ### Textures, sprites, icons
 
-| Item | Disposition |
-|---|---|
-| `Terrain/Landscape*.bmp` (8 palettes), `Water*.bmp` (3), `Waves*.bmp` (7) | Take: they are the terrain look |
-| `Textures/Particle`, `Glow`, `CloudyGlow`, `Starburst`, `MuzzleFlash`, `Laser`, `LaserFence*`, `RadarSignal`, `TriangleOutline`, `ShapeWireframe`, `SkyWireframe`, `Clouds`, `Deform*`, `GodRay`, `Fuel` | Take, as effect sprites and sky |
-| `Textures/Interface*` | Take as reference for the UI look |
-| `Textures/SpeccyFont*` (4), `EditorFont*` (6) | Owner's call, and Q16 puts it to the owner. Rendering the glyphs settles what they are: `SpeccyFont` is the Sinclair ZX Spectrum character set at twice its size, and `EditorFont` is a distinct, bolder pixel face with no sign of a third-party origin. Neither is a legal obstacle — a bitmap typeface design is not copyrightable in the United States, the United Kingdom's design right on a 1982 typeface expired decades ago, and Amstrad has long permitted redistribution of the Spectrum ROM for emulation — but the Spectrum font is the house face of every Introversion game, and with Darwinia's models and palettes beside it this game would read as one of theirs. That is a question of identity, not of law, and it is the owner's |
-| `Textures/IvLogo`, `MsnOberonComboSplash`, `DmaCrew`, `ProgramDarwinia`, `Campaign`, `Prologue`, `SpeccyScreen` | **Never**: branding and Darwinia's campaign art |
-| `Sprites/Citizen`, `LaserTrooper`, `Egg`, `Ghost`, `Virii`, `SantaHat`, `Sound` | `Citizen` and `LaserTrooper` are the infantry-scale sprite reference; the rest are not for this game |
-| `Icons/Mouse*` (10 cursors), `Compass`, `ScrollBar`, `SelectionArrow`, `Background` | Take |
-| `Icons/Gesture*`, `Icon*` (program icons), `Banner*`, `DarwinResearchAssociates` | Leave: Darwinia's task-manager vocabulary and branding |
+Magenta (255, 0, 255) is the colour key throughout; the baker turns it into alpha.
+
+| Item | Seen | Disposition |
+|---|---|---|
+| `Terrain/Landscape*.bmp` (8, 64×64×24) | Colour ramps: Default is the blue-green-white Darwinia is known for, Desert sand, Earth green and white, Icecaps white and grey, Launchpad teal, Mine purple and blue, Mine2 dark green, Containment blue-green | Take: eight biomes |
+| `Terrain/Water*.bmp` (3, 128×128×8) | Caustic patterns; Default is Darwinia's pink water, Icecaps and Launchpad blue | Take |
+| `Terrain/Waves*.bmp` (7, 400×10×24) | Horizontal colour ramps for the shoreline | Take |
+| `Textures/InterfaceGrey`, `InterfaceRed` (64×512×8), `InterfaceDivider` (16×32) | Vertical gradients: the Eclipse window background and its red variant | Take: they are the interface look |
+| `Textures/Glow`, `CloudyGlow`, `Fuel`, `Starburst`, `MuzzleFlash`, `RadarSignal`, `Laser`, `LaserFence`, `LaserFence2`, `GodRay`, `Particle` | Soft blobs, a beam, a streak, a cloud, a 16×16 grey square | Take: effect sprites |
+| `Textures/ShapeWireframe`, `SkyWireframe`, `TriangleOutline`, `Clouds` | A diagonal-line tile, a bordered black square, a triangle-outline tile, a 16×16 noise mask | Take: the wireframe overlay and the sky are part of the look |
+| `Textures/Deform1c`, `Deform36c` | Distortion maps for shockwaves | Take |
+| `Textures/EditorFont*` (6), `SpeccyFont*` (4) | Two pixel fonts, each with accented variants | Owner's call: Q16 |
+| `Textures/IvLogo`, `MsnOberonComboSplash`, `DmaCrew`, `SpeccyScreen`, `ProgramDarwinia`, `Campaign`, `Prologue` | Logos, a publisher splash, the Darwinia loading screen, campaign paintings | **Never**: branding and Darwinia's campaign art |
+| `Sprites/Citizen`, `LaserTrooper` (32×32×24) | Stick figures, magenta-keyed, the trooper with a gun: the Species population | Take, if Q6 wants the population |
+| `Sprites/Virii`, `Egg`, `Ghost`, `SantaHat`, `Sound` | A triangle, an egg, a ghost figure, a hat, an editor speaker icon | Leave |
+| `Icons/Banner*` (6, 64×64) | Order glyphs on a blue field: gather, deploy, follow, go to, none, unload | Take: order icons, nearly as they are |
+| `Icons/Icon*` (15, 128×128×8) | White glyphs on dark-blue discs: Darwinia's programs | Take the style and the generic glyphs (`Delete`, `NoTask`, `Rocket`, `Grenade`, `Laser`, `Shadow`); leave the rest |
+| `Icons/Mouse*` (9, 128×128), `SelectionArrow`, `ScrollBar`, `Compass`, `Background` | Pointer, placement, selection corners, move-here, turret and missile reticles, disabled, highlight | Take |
+| `Icons/Gesture*` (10), `DarwinResearchAssociates` | Mouse-gesture strokes; a Vitruvian-citizen logo | Leave |
 
 ---
 

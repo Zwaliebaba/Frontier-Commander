@@ -31,7 +31,7 @@
 | Condition | Ends the match when | For |
 |---|---|---|
 | Annihilation | Every enemy structure and every enemy builder is destroyed | The default, and the *Warzone 2100* rule |
-| Dominance | One side has held at least 60% of the landscape's deposits for 10 continuous minutes | Large landscapes, where hunting the last builder across eight kilometres is not a game |
+| Dominance | One side has held at least 60% of the landscape's deposits for 10 continuous minutes | Large landscapes, where hunting the last builder across a landscape sixty Gardens wide is not a game |
 | Survival | The clock runs out; the side that extracted the most power wins | Short matches and AI stress tests |
 
 Alliances are fixed in the lobby; allied commanders share vision and victory and cannot attack each other.
@@ -40,16 +40,16 @@ Alliances are fixed in the lobby; allied commanders share vision and victory and
 
 ## 3. The landscape
 
-**The landscape is a heightfield on a grid of cells, and it is large.** One cell is 4 world units on a side; a world unit reads as roughly a metre. Sizes, as proposed defaults:
+**The landscape is a heightfield on a grid of cells, and it is large.** The world unit is the Species unit, so that the Species models import at their native scale: a soldier is 14 units tall, a tank body 49 long, a wall segment 46 wide, a power station 82 by 103 (`SpeciesLineage.md` §4 has the measurements). One cell is 64 world units on a side, which is one tank or one wall segment; the first draft of this document had a cell at 4 units, and the art review corrected it. Sizes, as proposed defaults:
 
 | Class | Cells per side | World units per side | Deposits | Commanders |
 |---|---|---|---|---|
-| Small | 256 | 1,024 | 24 | 2 |
-| Medium | 512 | 2,048 | 60 | 2–4 |
-| Large | 1,024 | 4,096 | 160 | 4–8 |
-| Frontier | 2,048 | 8,192 | 500 | 4–8 |
+| Small | 256 | 16,384 | 24 | 2 |
+| Medium | 512 | 32,768 | 60 | 2–4 |
+| Large | 1,024 | 65,536 | 160 | 4–8 |
+| Frontier | 2,048 | 131,072 | 500 | 4–8 |
 
-For scale: the largest Species map, the Garden, is 2,002 world units across at 10.66 per cell (188 cells); *Warzone 2100* maps run up to 250 tiles a side, and a tile is comparable to the cell proposed here. A Large landscape is therefore about sixteen times the area of the largest *Warzone* map, and a Frontier one over sixty times. "Large" is the point of the game (pillar 2), and it is also the single biggest technical risk in it: pathing, visibility and the terrain renderer are all sized by it (`TechnicalDesign.md` §4, §6).
+For scale: the largest Species map, the Garden, is 2,002 world units across, which is 31 of these cells, so a Small landscape is eight Gardens across and a Large one thirty-three; *Warzone 2100* maps run up to 250 tiles a side, and a tile is one tank, the same as the cell proposed here. A Large landscape is therefore about sixteen times the area of the largest *Warzone* map, and a Frontier one over sixty times. "Large" is the point of the game (pillar 2), and it is also the single biggest technical risk in it: pathing, visibility and the terrain renderer are all sized by it (`TechnicalDesign.md` §4, §6).
 
 **Terrain has three properties the simulation reads:** height, slope and water. Height sets sight (§8) and, for indirect fire, range. Slope is the gradient between neighbouring cells; each drive class has a maximum it can climb (§6), and cliffs are slopes nothing climbs. Water is any cell below the water level — the Species `outsideHeight` — and only hover and lift drives cross it. Nothing else about the terrain is simulated: no soil types, no destruction, no terraforming. Q8 asks whether that should change later, and the delta format in `TechnicalDesign.md` §4.4 is chosen so it can.
 
@@ -246,7 +246,7 @@ Structures with weapons take a target-priority stance only. Orders are given to 
 
 **The look is Species, pinned to five things.** Q6 asks the owner to confirm this reading of "the look and feel of Species", because the phrase could mean more or less than this.
 
-1. **Geometry is flat-shaded and vertex-coloured.** Models carry a colour per vertex and no texture, and are lit per face by one or two directional lights — the Species `.shp` format with its `Colours:` table and no normals in any of its 106 files, which is how Darwinia's models have always read. Polygon budgets follow the Species models: the largest game object in that tree (`Generator.shp`) is 2,376 triangles and most are a few hundred. Team colour is a designated colour slot in each model, replaced by the commander's colour at draw time.
+1. **Geometry is flat-shaded and vertex-coloured.** Models carry a colour per vertex and no texture, and are lit per face by one or two directional lights — the Species `.shp` format with its `Colours:` table and no normals in any of its 106 files, which is how Darwinia's models have always read. Polygon budgets follow the Species models: structures run from 60 to 2,400 triangles, vehicles from 24 to 300, the one soldier is 1,036, and the largest set-piece (`Rocket.shp`) is 4,992 (`SpeciesLineage.md` §4). Team colour is a designated colour slot in each model, replaced by the commander's colour at draw time.
 2. **The landscape is coloured by its shape.** Each terrain vertex takes its colour from a 64×64 palette bitmap indexed by slope raised to the power 0.4 on one axis and normalised height on the other, with a little noise — the Species `GetLandscapeColour` formula, ported as is. Water is a flat plane at the water level drawn with the Species wave texture; the sky is a dark gradient. Eight terrain palettes and three water palettes come across (`SpeciesLineage.md` §4), and a palette is a landscape's biome.
 3. **Small things are sprites.** Anything infantry-sized — crews, the neutral faction's swarm if it comes, the population that walks between structures if the owner wants that Species feel — is a billboarded 32×32 sprite, the way Citizens are. Devices and structures are geometry.
 4. **The interface is a terminal.** Flat rectangles with one-pixel borders, a pixel font, monochrome icons with one accent colour, windows that open over the world rather than a fixed HUD strip: the Species *Eclipse* toolkit as it looks, rewritten for this renderer. The design screen, the research screen and the minimap are windows the operator opens. The font is one of the two Species pixel fonts if the owner takes them (Q16), because the typeface is as much a part of the Species look as the terrain palette, and a new one drawn in the same spirit otherwise.
@@ -287,7 +287,8 @@ Collected, with options and recommendations, in [`OpenQuestions.md`](OpenQuestio
 | **Commander** | A player, human or AI, in a match |
 | **Match** | One landscape, its commanders, and the simulation from the first tick to victory |
 | **Landscape** | The heightfield, water, deposits and features of a match; generated from a seed and stamps |
-| **Cell** | The landscape's grid unit, 4 world units square |
+| **World unit** | The Species unit, in which a soldier is 14 and a tank 49 |
+| **Cell** | The landscape's grid unit, 64 world units square: one tank |
 | **Deposit** | A point on the landscape where an extractor may be built |
 | **Power** | The one currency |
 | **Structure** | A built, immobile thing: command post, extractor, generator, factory, lab, repair bay, sensor tower, wall, hardpoint, tower, bunker, uplink |

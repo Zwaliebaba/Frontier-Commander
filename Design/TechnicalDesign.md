@@ -101,7 +101,7 @@ Everything in `Sim`, in the order R16 forces.
 
 | Quantity | Representation | Range | Note |
 |---|---|---|---|
-| Position (x, z) | `std::int32_t` in 1/256 world unit | ±8.3 million world units | A Frontier landscape is 8,192 across; the range is not the constraint, the arithmetic is |
+| Position (x, z) | `std::int32_t` in 1/256 world unit | ±8.3 million world units | A Frontier landscape is 131,072 across; the range is not the constraint, the arithmetic is |
 | Height (y) | `std::int32_t`, same unit | | Terrain samples and object heights share it |
 | Velocity | position units per tick | | No per-second quantity ever enters the simulation; the tick is the unit |
 | Angle | `std::uint16_t` binary angle | 65,536 per turn | `sin` and `cos` from a 1,024-entry integer table with linear interpolation, in `Core` |
@@ -109,7 +109,7 @@ Everything in `Sim`, in the order R16 forces.
 | Percentages, multipliers | `std::int32_t` hundredths | | `armorPercent`, `speedFactorHundredths` — the unit in the name (R6) |
 | Time | ticks, `std::uint32_t` | 6.8 years at 20 Hz | Build times, cooldowns and research durations are tick counts in the tables |
 
-The 1/256 subunit is chosen so that a cell of 4 world units is 1,024 subunits and cell arithmetic is a shift, and so that the slowest interesting speed — a heavy on tracks at 2 world units per second — is 25 subunits per tick, with room to scale by hundredths without rounding to zero. **A product of two positions overflows `int32`**: every such product is done in `std::int64_t`, and `Core` provides the fixed-point helpers (`MulDiv`, `Sqrt`, `Dot`, `LengthSquared`) so nobody writes the widening by hand twice.
+The 1/256 subunit is chosen so that a cell of 64 world units is 16,384 subunits and cell arithmetic is a shift, and so that the slowest interesting speed — a heavy on tracks at 20 world units per second, a third of the Species `Armour` — is 256 subunits per tick, with room to scale by hundredths without rounding to zero. **A product of two positions overflows `int32`**: every such product is done in `std::int64_t`, and `Core` provides the fixed-point helpers (`MulDiv`, `Sqrt`, `Dot`, `LengthSquared`) so nobody writes the widening by hand twice.
 
 ### 4.2 Randomness
 
@@ -130,7 +130,7 @@ The generator is a small, well-known algorithm written into `Core` from its spec
 
 **Heights are generated, integer, and identical everywhere.** The Species generator — diamond-square tiles with a fractal dimension, height scale and desired height each, merged into one map and smoothed under a guide grid — is ported from the Species repository's `GameLogic/Landscape.cpp` into integer arithmetic on the simulation stream. The Species code draws from the cosmetic LCG and computes its noise as `sfrand(powf(length × 10, fractalDimension))` in `float`; that is exactly what R16 forbids, and it is why Species records a landscape that changed shape across a compiler migration. The port replaces `powf` with a fixed-point table over the handful of fractal dimensions a landscape may use, and the LCG with the simulation stream keyed by tile seed. **The heightfield is simulation state**: pathing, slope, water and line of sight all read it, so it is under R16 without exception. The palette lookup that colours it (§6.4) is not, and stays in float on the renderer side.
 
-**Storage.** One `std::int32_t` per sample and 1,025 × 1,025 samples for a Large landscape (cells plus one) is 4.2 MB; a Frontier landscape is 16.8 MB. Derived grids, each one byte or one bit per cell: slope class, water, obstruction (a structure or feature occupies the cell), and per-commander visibility at two bits for its three states. Eight commanders on a Frontier landscape is 8 × 4.2 million cells × 2 bits = 8.4 MB of visibility. Arithmetic, not measurement.
+**Storage.** Heights are sampled every 16 world units — four samples per cell edge, close to the Species spacing of 10.66 — and stored as `std::int16_t` whole units, which covers the height range of any Species landscape many times over. A Large landscape is 4,097 × 4,097 samples, 33.6 MB; a Frontier one 8,193 × 8,193, 134 MB, which is memory rather than a problem on the machines this game targets, and it is one of the numbers that make Frontier-class landscapes M4 work rather than M1. Derived grids are per cell, not per sample, each one byte or one bit: slope class, water, obstruction (a structure or feature occupies the cell), and per-commander visibility at two bits for its three states. Eight commanders on a Frontier landscape is 8 × 4.2 million cells × 2 bits = 8.4 MB of visibility. Arithmetic, not measurement.
 
 **Stamps** are authored patches: a rectangle of relative heights and a list of features, applied after generation at a position the generator chooses. Their format is the same as a snapshot's landscape section, so the tool that authors one is the game with an editor window. **Terrain deltas at runtime** — flatten under a structure today, terraforming if Q8 ever says yes — are recorded as a list of rectangular height edits applied over the generated base, so a snapshot carries the seed plus the deltas rather than the heights, and the answer to Q8 can change without a new snapshot format.
 
@@ -279,7 +279,7 @@ R13 says content is compiled in and a generated header is committed, not built. 
 
 | Content | Source | Baker | Output | Size, estimated |
 |---|---|---|---|---|
-| Models | Species `.shp` text files, and new ones in the same format | `Tools/BakeModels.py` | One header per model: `constexpr` position, colour, index and marker arrays | The 106 Species shapes total 32,253 triangles and 29,637 positions; at 6 bytes each that is about 360 KB for all of them, and the game uses a subset |
+| Models | Species `.shp` text files, and new ones in the same format | `Tools/BakeModels.py` | One header per model: `constexpr` position, colour, index and marker arrays | The 106 Species shapes total 53,193 triangles and 29,637 positions; at 6 bytes each that is about 500 KB for all of them, and the game uses a subset |
 | Terrain palettes, water, waves | Species 64×64 and 128×128 BMPs | `Tools/BakeImages.py` | `constexpr` RGB arrays | 8 palettes at 12 KB, 3 water and 7 wave textures: about 250 KB |
 | Sprites, icons, cursors | 32×32 and 128×128 BMPs | the same | `constexpr` arrays, 8-bit indexed where the source is | Under 500 KB |
 | Font | A Species font bitmap (256×224, 8-bit) or a new one | the same | One atlas | Under 100 KB |
