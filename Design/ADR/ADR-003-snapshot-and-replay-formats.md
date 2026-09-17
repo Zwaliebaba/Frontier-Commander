@@ -15,11 +15,12 @@ The determinism tests of `TechnicalDesign.md` §10 need a snapshot from M0: a `S
 | Field | Bytes | Note |
 |---|---|---|
 | magic | 4 | `"FCSP"`, `SNAPSHOT_MAGIC` = 0x50534346 |
-| version | 2 | `SNAPSHOT_VERSION`, 1 |
+| version | 2 | `SNAPSHOT_VERSION`, 2 since the landscape section (`m0-foundation/T17`) |
 | settings | 34 | seed (8), size class, seat count, base level, power level, technology tiers, victory (1 each), survival ticks (4), then eight seats' kind and alliance (2 each): the lobby, verbatim |
 | tick | 4 | |
 | Random state | 16 | the four xoshiro128\*\* words |
 | seat count, then per seat | 1 + 7 each | kind, alliance, power in hundredths (4), defeated |
+| landscape | 1, then the definition and the deltas when there is one | a created flag; the definition's version (4), size class (1), cells per side (4), seed (8), palette as a length-prefixed span, the tile count (4) and each tile's ten fields (37), the start and deposit counts and positions (4 + 8 each); then the delta count (4) and each delta's rectangle (16) and `int16` heights. The samples are never written: the definition and the deltas reproduce every one of them (`TechnicalDesign.md` §4.4) |
 | object maps | — | one count and its records per kind, in ascending id order, in the order the kinds are added to `Sim` from M1; each addition bumps the version |
 | last targeting roll | 4 | stage 8's draw, so that the hash reads back |
 | applied and dropped order counts | 8 | |
@@ -28,7 +29,7 @@ The determinism tests of `TechnicalDesign.md` §10 need a snapshot from M0: a `S
 | next arrival, pending count, then per pending order | 8 + 26 each | the arrival number (4) and the order (22, below); arrival numbers are what keep a reloaded queue in the original's order |
 | digest | 8 | FNV-1a 64 over every byte before it |
 
-The reader builds nothing until it has refused nothing: a different magic or version, a value outside its enumeration, a seat count outside `MIN_SEATS`..`MAX_SEATS` or different from the settings', a pending count over 2^20, a stream that ends early or runs on, or a digest that differs, and `Read` returns nothing. A snapshot is host-side only (§4.9): a client never holds one.
+The reader builds nothing until it has refused nothing: a different magic or version, a value outside its enumeration, a seat count outside `MIN_SEATS`..`MAX_SEATS` or different from the settings', a landscape the generator refuses or a delta outside it, more than 4,096 tiles or positions, a palette over 256 bytes, a pending count over 2^20, a stream that ends early or runs on, or a digest that differs, and `Read` returns nothing. A snapshot is host-side only (§4.9): a client never holds one.
 
 **An order in a stream** (`Sim/Order.h`, `WriteOrder`/`ReadOrder`): the tick (4), four operands (4 each), the seat (1) and the kind (1), 22 bytes, `ORDER_STREAM_BYTES`. The same bytes in the snapshot's queue, in a replay and on the wire (the network ADR cites this one); a kind outside the twenty is refused.
 
@@ -45,4 +46,4 @@ The reader builds nothing until it has refused nothing: a different magic or ver
 
 ## Measurements
 
-The snapshot of the three-seat match `SimTests::SnapshotTests` builds (50 ticks, one seat surrendered, three orders pending) is 199 bytes, as `Snapshot::Write` returns it and the test prints it; arithmetic on the table above gives the same: 6 + 34 + 4 + 16 + 1 + 21 + 4 + 8 + 3 + 8 + 8 + 78 + 8. Nothing rests on the round-trip time and it is not measured.
+The snapshot of the three-seat match `SimTests::SnapshotTests` builds (50 ticks, one seat surrendered, three orders pending, no landscape) is 200 bytes at version 2, as `Snapshot::Write` returns it and the test prints it; arithmetic on the table above gives the same: 6 + 34 + 4 + 16 + 1 + 21 + 1 + 4 + 8 + 3 + 8 + 8 + 78 + 8. With a Small landscape and one flatten delta of 25 samples the snapshot stays under 4 KB where the samples alone would be 526 KB, which `SimTests::LandscapeTests` asserts. Nothing rests on the round-trip time and it is not measured.

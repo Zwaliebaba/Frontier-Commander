@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "sizeClass": "Small",
+  "cellsPerSide": 128,
+  "samplesPerSide": 513,
+  "sampleSpacingWorldUnits": 16,
+  "outsideHeight": -26,
+  "seed": 9,
+  "palette": "Default",
+  "tiles": [
+    {
+      "x": 0,
+      "y": 0,
+      "extent": 512,
+      "fractalDimensionHundredths": 170,
+      "amplitude": 90,
+      "desiredHeight": 100,
+      "heightShift": 48,
+      "lowlandExponentHundredths": 70,
+      "method": 1,
+      "edgeFalloff": 32
+    },
+    {
+      "x": -16,
+      "y": 63,
+      "extent": 256,
+      "fractalDimensionHundredths": 190,
+      "amplitude": 90,
+      "desiredHeight": 105,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 304,
+      "y": 193,
+      "extent": 256,
+      "fractalDimensionHundredths": 230,
+      "amplitude": 90,
+      "desiredHeight": 105,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 80,
+      "method": 0,
+      "edgeFalloff": 16
+    },
+    {
+      "x": -5,
+      "y": 406,
+      "extent": 128,
+      "fractalDimensionHundredths": 270,
+      "amplitude": 90,
+      "desiredHeight": 130,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 175,
+      "y": 144,
+      "extent": 128,
+      "fractalDimensionHundredths": 290,
+      "amplitude": 90,
+      "desiredHeight": 130,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    },
+    {
+      "x": 63,
+      "y": 196,
+      "extent": 128,
+      "fractalDimensionHundredths": 290,
+      "amplitude": 90,
+      "desiredHeight": 150,
+      "heightShift": 0,
+      "lowlandExponentHundredths": 87,
+      "method": 1,
+      "edgeFalloff": 16
+    }
+  ],
+  "starts": [
+    {
+      "cellX": 28,
+      "cellY": 36
+    },
+    {
+      "cellX": 108,
+      "cellY": 108
+    }
+  ],
+  "deposits": [
+    {
+      "cellX": 22,
+      "cellY": 30
+    },
+    {
+      "cellX": 27,
+      "cellY": 30
+    },
+    {
+      "cellX": 32,
+      "cellY": 30
+    },
+    {
+      "cellX": 22,
+      "cellY": 35
+    },
+    {
+      "cellX": 102,
+      "cellY": 102
+    },
+    {
+      "cellX": 107,
+      "cellY": 102
+    },
+    {
+      "cellX": 112,
+      "cellY": 102
+    },
+    {
+      "cellX": 102,
+      "cellY": 107
+    },
+    {
+      "cellX": 80,
+      "cellY": 78
+    },
+    {
+      "cellX": 80,
+      "cellY": 83
+    },
+    {
+      "cellX": 83,
+      "cellY": 73
+    },
+    {
+      "cellX": 52,
+      "cellY": 68
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "LandscapeDefinition.h"
+
 #include <array>
 #include <cstdint>
 
@@ -16,16 +18,7 @@ inline constexpr std::uint8_t MAX_SEATS = 8;
 /// An alliance number no seat has: the answer when nobody has won.
 inline constexpr std::uint8_t NO_ALLIANCE = 0xFF;
 
-/// The landscape sizes of GameDesign.md §3; SIZE_CLASS_CELLS is the extent of each, in cells.
-enum class SizeClass : std::uint8_t
-{
-  Small,
-  Medium,
-  Large,
-  Frontier
-};
-
-inline constexpr std::array<std::uint32_t, 4> SIZE_CLASS_CELLS = {128, 256, 512, 1024};
+// SizeClass and SIZE_CLASS_CELLS are Content's (LandscapeDefinition.h): the landscape is defined below the lobby.
 
 /// What a commander starts with (GameDesign.md §2).
 enum class BaseLevel : std::uint8_t

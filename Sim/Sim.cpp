@@ -26,6 +26,16 @@ Sim::Sim(const MatchSettings& _settings)
   }
 }
 
+bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
+{
+  return m_landscape.Create(_definition);
+}
+
+bool Sim::FlattenTerrain(const HeightDelta& _delta)
+{
+  return m_landscape.ApplyDelta(_delta);
+}
+
 void Sim::Submit(Order _order)
 {
   if (_order.tick <= m_tick)
@@ -62,6 +72,11 @@ std::uint64_t Sim::ComputeHash() const noexcept
   for (const Seat& seat : m_seats)
   {
     hash.AddSeat(seat);
+  }
+  hash.AddBool(m_landscape.Created());
+  if (m_landscape.Created())
+  {
+    m_landscape.AddToHash(hash);
   }
   // The object maps go here, each in ascending id order, as the systems arrive (ADR-002).
   hash.Add(m_lastRoll);

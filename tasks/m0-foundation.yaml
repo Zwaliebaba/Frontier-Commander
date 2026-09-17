@@ -825,7 +825,9 @@ tasks:
 
       Landed in CI run 29 (35269932954): 84 tests across the suites, the 22 of Sim among them, after
       one round for MSVC's C4702 on a return placed after the framework's noreturn Assert::Fail. The
-      MSVC Debug figures for ADR-002 are read off that run's TestResults artefact.
+      MSVC Debug figures for ADR-002 could not be read off that run's TestResults artefact, whose
+      blob host the session's egress proxy refuses; T14 made CI's vstest log test output to the
+      console, and the figures are read off run 30's log instead.
 
   - id: T16
     title: Write Tools/LandscapeTool.py - the integer generator in Python, the size-class recipes, and the guarantee measurements

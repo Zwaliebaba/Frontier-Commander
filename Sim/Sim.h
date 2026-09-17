@@ -1,5 +1,7 @@
 #pragma once
 
+#include "HeightDelta.h"
+#include "Landscape.h"
 #include "MatchSettings.h"
 #include "Order.h"
 #include "OrderQueue.h"
@@ -28,6 +30,19 @@ public:
   /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed.
   explicit Sim(const MatchSettings& _settings);
 
+  /// Generates the landscape from its definition: the heightfield the systems of M1 read. False,
+  /// with no landscape, for a definition the generator refuses.
+  [[nodiscard]] bool CreateLandscape(const LandscapeDefinition& _definition);
+
+  /// Applies a height delta over the base (a flatten under a structure); false when the
+  /// rectangle is refused. Until the construction system of M1 owns it, the host calls it.
+  [[nodiscard]] bool FlattenTerrain(const HeightDelta& _delta);
+
+  [[nodiscard]] const Landscape& Terrain() const noexcept
+  {
+    return m_landscape;
+  }
+
   /// Enqueues an order. One for a tick already advanced is moved to the next tick, so that a late
   /// order is applied rather than lost, and the queue keeps its arrival order.
   void Submit(Order _order);
@@ -47,8 +62,8 @@ public:
     return m_hash;
   }
 
-  /// The stage-13 computation over the state as it is now: the tick, the Random state, every seat
-  /// and the match's outcome, in that order (ADR-002). The pending order queue is not state and is
+  /// The stage-13 computation over the state as it is now: the tick, the Random state, every seat,
+  /// the landscape's definition and deltas, and the match's outcome, in that order (ADR-002). The pending order queue is not state and is
   /// left out, so that a match fed its orders early hashes as one fed them on time.
   [[nodiscard]] std::uint64_t ComputeHash() const noexcept;
 
@@ -127,6 +142,7 @@ private:
   std::uint32_t m_tick = 0;
   Neuron::Random m_random;
   std::vector<Seat> m_seats;
+  Landscape m_landscape;
   OrderQueue m_orders;
   std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
   std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.

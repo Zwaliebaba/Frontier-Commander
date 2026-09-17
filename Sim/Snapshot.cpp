@@ -64,6 +64,136 @@ template <class Enum> [[nodiscard]] bool ReadEnum(Neuron::ByteReader& _reader, E
   return true;
 }
 
+void WriteLandscape(Neuron::ByteWriter& _writer, const Landscape& _landscape)
+{
+  _writer.WriteBool(_landscape.Created());
+  if (!_landscape.Created())
+  {
+    return;
+  }
+  const LandscapeDefinition& definition = _landscape.Definition();
+  _writer.Write(definition.version);
+  _writer.Write(definition.sizeClass);
+  _writer.Write(definition.cellsPerSide);
+  _writer.Write(definition.seed);
+  _writer.WriteSpan(std::as_bytes(std::span<const char>(definition.palette.data(), definition.palette.size())));
+  _writer.Write(static_cast<std::uint32_t>(definition.tiles.size()));
+  for (const LandscapeTile& tile : definition.tiles)
+  {
+    _writer.Write(tile.x);
+    _writer.Write(tile.y);
+    _writer.Write(tile.extent);
+    _writer.Write(tile.fractalDimensionHundredths);
+    _writer.Write(tile.amplitude);
+    _writer.Write(tile.desiredHeight);
+    _writer.Write(tile.heightShift);
+    _writer.Write(tile.lowlandExponentHundredths);
+    _writer.Write(tile.method);
+    _writer.Write(tile.edgeFalloff);
+  }
+  for (const std::vector<CellPosition>* positions : {&definition.starts, &definition.deposits})
+  {
+    _writer.Write(static_cast<std::uint32_t>(positions->size()));
+    for (const CellPosition& position : *positions)
+    {
+      _writer.Write(position.x);
+      _writer.Write(position.y);
+    }
+  }
+  _writer.Write(static_cast<std::uint32_t>(_landscape.Deltas().size()));
+  for (const HeightDelta& delta : _landscape.Deltas())
+  {
+    _writer.Write(delta.x);
+    _writer.Write(delta.y);
+    _writer.Write(delta.width);
+    _writer.Write(delta.height);
+    for (const std::int16_t height : delta.heights)
+    {
+      _writer.Write(height);
+    }
+  }
+}
+
+[[nodiscard]] bool ReadPositions(Neuron::ByteReader& _reader, std::vector<CellPosition>& _out)
+{
+  std::uint32_t count = 0;
+  if (!_reader.Read(count) || count > Snapshot::MAX_POSITIONS)
+  {
+    return false;
+  }
+  _out.resize(count);
+  for (CellPosition& position : _out)
+  {
+    if (!_reader.Read(position.x) || !_reader.Read(position.y))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+/// False when the stream is refused; _landscape is left untouched when there is none to restore.
+[[nodiscard]] bool ReadLandscape(Neuron::ByteReader& _reader, Landscape& _landscape)
+{
+  bool created = false;
+  if (!_reader.ReadBool(created))
+  {
+    return false;
+  }
+  if (!created)
+  {
+    return true;
+  }
+  LandscapeDefinition definition{};
+  std::span<const std::byte> palette;
+  std::uint32_t tileCount = 0;
+  if (!_reader.Read(definition.version) || !ReadEnum(_reader, definition.sizeClass, 4) || !_reader.Read(definition.cellsPerSide) ||
+      !_reader.Read(definition.seed) || !_reader.ReadSpan(Snapshot::MAX_PALETTE_BYTES, palette) || !_reader.Read(tileCount) ||
+      tileCount > Snapshot::MAX_TILES)
+  {
+    return false;
+  }
+  definition.palette.assign(reinterpret_cast<const char*>(palette.data()), palette.size());
+  definition.tiles.resize(tileCount);
+  for (LandscapeTile& tile : definition.tiles)
+  {
+    if (!_reader.Read(tile.x) || !_reader.Read(tile.y) || !_reader.Read(tile.extent) || !_reader.Read(tile.fractalDimensionHundredths) ||
+        !_reader.Read(tile.amplitude) || !_reader.Read(tile.desiredHeight) || !_reader.Read(tile.heightShift) ||
+        !_reader.Read(tile.lowlandExponentHundredths) || !_reader.Read(tile.method) || !_reader.Read(tile.edgeFalloff))
+    {
+      return false;
+    }
+  }
+  if (!ReadPositions(_reader, definition.starts) || !ReadPositions(_reader, definition.deposits))
+  {
+    return false;
+  }
+  std::uint32_t deltaCount = 0;
+  if (!_reader.Read(deltaCount) || deltaCount > Snapshot::MAX_DELTAS)
+  {
+    return false;
+  }
+  const std::uint64_t side = SamplesPerSide(definition.cellsPerSide);
+  std::vector<HeightDelta> deltas(deltaCount);
+  for (HeightDelta& delta : deltas)
+  {
+    if (!_reader.Read(delta.x) || !_reader.Read(delta.y) || !_reader.Read(delta.width) || !_reader.Read(delta.height) ||
+        delta.width > side || delta.height > side)
+    {
+      return false;
+    }
+    delta.heights.resize(static_cast<std::size_t>(delta.width) * delta.height);
+    for (std::int16_t& height : delta.heights)
+    {
+      if (!_reader.Read(height))
+      {
+        return false;
+      }
+    }
+  }
+  return _landscape.Restore(definition, deltas);
+}
+
 } // namespace
 
 void Snapshot::Write(const Sim& _sim, Neuron::ByteWriter& _writer)
@@ -84,6 +214,7 @@ void Snapshot::Write(const Sim& _sim, Neuron::ByteWriter& _writer)
     _writer.Write(seat.powerHundredths);
     _writer.WriteBool(seat.defeated);
   }
+  WriteLandscape(_writer, _sim.m_landscape);
   // The object maps go here, one count and its records per kind, as the systems arrive (ADR-003).
   _writer.Write(_sim.m_lastRoll);
   _writer.Write(_sim.m_appliedOrders);
@@ -150,6 +281,10 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes)
     {
       return std::nullopt;
     }
+  }
+  if (!ReadLandscape(reader, sim.m_landscape))
+  {
+    return std::nullopt;
   }
   std::uint32_t nextArrival = 0;
   std::uint32_t pending = 0;
