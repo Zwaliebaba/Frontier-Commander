@@ -754,7 +754,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       With no objects yet, the determinism tests exercise the tick counter, the Random draws
       the empty stages make (make stage 8 draw once per tick so the stream is exercised), the
