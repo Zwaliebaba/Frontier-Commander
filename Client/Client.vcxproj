@@ -85,6 +85,14 @@
       <EntryPointName>main</EntryPointName>
       <HeaderFileOutput>$(ProjectDir)CompiledShaders\%(Filename).h</HeaderFileOutput>
       <VariableName>g_%(Filename)</VariableName>
+      <!--
+        Debug information in both configurations, embedded in the container: dxc warns when /Zi
+        has nowhere to write a PDB, and /warnaserror makes the warning fatal; the toolset would
+        otherwise pass /Zi in Debug alone, and a shader step that differs between the two
+        configurations is what AGENTS.md §3 rules out.
+      -->
+      <EnableDebuggingInformation>true</EnableDebuggingInformation>
+      <AdditionalOptions>-Qembed_debug %(AdditionalOptions)</AdditionalOptions>
     </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
