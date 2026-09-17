@@ -24,6 +24,7 @@ A finding is one line, `<file>:<line>: <rule>: <message>`, and any finding fails
   shadow              a header named like a C runtime or SDK header, which an angled include of that name then finds first
   type-affix          R2: a class, struct or enum defined with a prefix or suffix
   spelling            R11: an identifier in the other half of a spelling family
+  sdk-macro           an identifier spelled like a Windows SDK macro, which the preprocessor rewrites wherever <windows.h> is in scope
   tidy-regex          .clang-tidy's HeaderFilterRegex does not name exactly the projects the solution lists
   suite-empty         a *Tests project with no TEST_METHOD and no SuiteSmoke.cpp (vstest passes an empty suite)
   suite-stale         SuiteSmoke.cpp beside real tests; it is deleted when the first real test lands
@@ -168,6 +169,31 @@ SPELLING_STEMS = {
     "cancelling": "canceling",
 }
 IDENTIFIER_RE = re.compile(r"[A-Za-z_]\w*")
+# The SDK's macros spelled like ordinary words, with the header that defines each. <windows.h> is in
+# scope on the whole Client side and in every test suite, and the preprocessor rewrites these names
+# before the compiler sees them: `near` and `far` expand to nothing, so `const XMVECTOR near = ...`
+# lost its name, once (2026-09-17). A portable layer only finds out when a test includes it.
+SDK_MACRO_NAMES = {
+    "near": "minwindef.h",
+    "far": "minwindef.h",
+    "pascal": "minwindef.h",
+    "cdecl": "minwindef.h",
+    "NEAR": "minwindef.h",
+    "FAR": "minwindef.h",
+    "PASCAL": "minwindef.h",
+    "CDECL": "minwindef.h",
+    "CONST": "minwindef.h",
+    "IN": "minwindef.h",
+    "OUT": "minwindef.h",
+    "OPTIONAL": "minwindef.h",
+    "VOID": "winnt.h",
+    "DELETE": "winnt.h",
+    "IGNORE": "winbase.h",
+    "interface": "combaseapi.h",
+    "PURE": "combaseapi.h",
+    "small": "rpcndr.h",
+    "hyper": "rpcndr.h",
+}
 
 TEST_METHOD_RE = re.compile(r"\bTEST_METHOD\s*\(")
 SMOKE_FILE = "SuiteSmoke.cpp"
@@ -442,7 +468,7 @@ def line_of(text: str, offset: int) -> int:
 
 
 def check_source(project: Project, file: Path, relative: str) -> None:
-    """R2 and R11 over one .cpp or .h."""
+    """R2, R11 and the SDK's macro names over one .cpp or .h."""
     code = strip_comments_and_literals(file.read_text(encoding="utf-8-sig", errors="replace"))
     for match in TYPE_DEFINITION_RE.finditer(code):
         name = match.group(1)
@@ -452,6 +478,12 @@ def check_source(project: Project, file: Path, relative: str) -> None:
     for match in IDENTIFIER_RE.finditer(code):
         identifier = match.group(0)
         if identifier in reported:
+            continue
+        if identifier in SDK_MACRO_NAMES:
+            reported.add(identifier)
+            project.findings.append(
+                Finding("sdk-macro", relative, f"identifier '{identifier}' is a macro of the Windows SDK ({SDK_MACRO_NAMES[identifier]}); the preprocessor rewrites it wherever <windows.h> is in scope (AGENTS.md §3)", line_of(code, match.start()))
+            )
             continue
         lowered = identifier.lower()
         for stem, sdk in SPELLING_STEMS.items():
@@ -737,6 +769,7 @@ SELF_TEST_EXPECTED = [
     ("shadow", "Replica/Math.h"),
     ("type-affix", "Replica/Replica.h"),
     ("spelling", "Replica/Replica.h"),
+    ("sdk-macro", "Replica/Replica.h"),
     ("tidy-regex", ".clang-tidy"),
     ("suite-empty", "Tests/CoreTests/CoreTests.vcxproj"),
     ("suite-stale", "Tests/ContentTests/ContentTests.vcxproj"),

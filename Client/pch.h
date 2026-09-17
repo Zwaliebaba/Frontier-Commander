@@ -27,8 +27,8 @@
 #include <unknwn.h>
 #include <winrt/base.h>
 
-// The state-object helpers are the only part of d3dx12.h that includes WRL's ComPtr, which R14
-// excludes, and the feature-support class is the part that tracks the newest SDK; without both the
+// The state-object helpers are the only part of d3dx12.h that includes WRL's smart pointer, which
+// R14 excludes, and the feature-support class is the part that tracks the newest SDK; without both the
 // header needs the SDK's d3d12.h and the standard library alone, and neither is used here.
 #define D3DX12_NO_STATE_OBJECT_HELPERS
 #define D3DX12_NO_CHECK_FEATURE_SUPPORT_CLASS

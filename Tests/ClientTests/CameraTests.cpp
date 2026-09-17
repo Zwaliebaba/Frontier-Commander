@@ -28,12 +28,12 @@ public:
     Assert::AreEqual(1.0f / std::tan(30.0f * 3.14159265f / 180.0f), projection._22, TOLERANCE, L"the vertical field of view is 60 degrees");
     Assert::AreEqual(projection._22 * 9.0f / 16.0f, projection._11, TOLERANCE);
     // A point on the near plane lands at depth 0 and one on the far plane at depth 1.
-    const DirectX::XMVECTOR near =
+    const DirectX::XMVECTOR nearPoint =
       DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, Neuron::CAMERA_NEAR, 1.0f), camera.Projection(1.0f));
-    const DirectX::XMVECTOR far =
+    const DirectX::XMVECTOR farPoint =
       DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, Neuron::CAMERA_FAR, 1.0f), camera.Projection(1.0f));
-    Assert::AreEqual(0.0f, DirectX::XMVectorGetZ(near), TOLERANCE);
-    Assert::AreEqual(1.0f, DirectX::XMVectorGetZ(far), TOLERANCE);
+    Assert::AreEqual(0.0f, DirectX::XMVectorGetZ(nearPoint), TOLERANCE);
+    Assert::AreEqual(1.0f, DirectX::XMVectorGetZ(farPoint), TOLERANCE);
   }
 
   TEST_METHOD(TheHeightIsClampedAboveTheGroundAndBelowTheCeiling)

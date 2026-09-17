@@ -1129,13 +1129,14 @@ tasks:
       - Client/Camera.h
       - Client/Camera.cpp
       - Client/Lighting.h
+      - Client/SceneConstants.h
+      - Client/pch.h
       - Client/Shaders/TerrainVS.hlsl
       - Client/Shaders/TerrainPS.hlsl
       - Client/Shaders/WaterVS.hlsl
       - Client/Shaders/WaterPS.hlsl
       - Client/Client.vcxproj
       - Client/Client.vcxproj.filters
-      - FrontierCommander/App.h
       - FrontierCommander/App.cpp
       - FrontierCommander/CameraController.h
       - FrontierCommander/CameraController.cpp
@@ -1145,6 +1146,12 @@ tasks:
       - Tests/ClientTests/CameraTests.cpp
       - Tests/ClientTests/ClientTests.vcxproj
       - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Build/CheckProjectFiles.py
+      - Build/Fixtures/ProjectFiles/Replica/Replica.h
+      - Build/Fixtures/ProjectFiles/README.md
+      - AGENTS.md
+      - Design/ADR/ADR-004-renderer-foundation.md
+      - Design/ADR/ADR-005-fog-and-lighting.md
       - Design/ADR/README.md
       - Design/TechnicalDesign.md
       - Design/SpeciesLook.md
@@ -1185,7 +1192,7 @@ tasks:
     verify:
       - python3 Tools/CheckTaskDag.py
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       The first capture on CI, run 35 (0f1501e): the runner's WARP is the Microsoft Basic Render
       Driver, its SDK layers are installed so the debug layer was on, the scene target got its four
@@ -1195,7 +1202,8 @@ tasks:
       own. The step prints capture.log, and, from the next run, Tools/DescribeCapture.py's account of
       each frame (size, mean colour, near-black share, per-band statistics, a luminance thumbnail and
       a hue-class thumbnail), because the session that has to judge a frame cannot fetch the artefact
-      through its proxy and the job log is what it reads.
+      through its proxy and the job log is what it reads. Run 37 (5327f9e) printed that account
+      for the three frames of the empty scene, and the step has fed every judgement since.
   - id: T22
     title: The owner's run - M0 accepted on a real GPU
     intent: >

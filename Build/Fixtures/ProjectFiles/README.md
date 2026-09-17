@@ -29,6 +29,7 @@ firing anywhere else is a defect in the checker rather than in the fixture.
 | | `Math.h`, named like the C runtime's `<math.h>`. | `shadow` |
 | | `class IThing` in `Replica.h`. | `type-affix` |
 | | `m_colour` in `Replica.h`. | `spelling` |
+| | `near` as a member in `Replica.h`, the SDK's macro. | `sdk-macro` |
 | `Sim/` | A `ProjectReference` to `Net`, which is built on `Sim` and not the reverse. | `edge-reference` |
 | | `$(SolutionDir)Net` on the include path. | `edge-directory` |
 | | `#include "Net.h"` in `Sim.cpp`, the upward include. | `edge-include` |

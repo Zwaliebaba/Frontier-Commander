@@ -179,6 +179,8 @@ msbuild <Solution>.slnx /p:Configuration=Release /p:Platform=x64 /m /v:minimal /
 
 **No header is named like a C runtime or SDK header.** The other projects' directories sit on the include path ahead of the SDK, MSVC searches them for an angled include too, and it matches the name case-insensitively: `Core/Assert.h` was what DirectXMath's `<assert.h>` found, once (2026-09-17). `Build/CheckProjectFiles.py` refuses the runtime's names and the SDK headers this tree reaches for.
 
+**No identifier is spelled like a Windows SDK macro.** `<windows.h>` is in scope on the whole Client side and in every test suite, and the preprocessor rewrites `near`, `far`, `pascal`, `cdecl`, `interface`, `small`, `hyper`, `IN`, `OUT`, `OPTIONAL`, `CONST`, `VOID`, `PURE`, `DELETE`, `IGNORE` and the upper-case twins of the first four before the compiler sees them: `const XMVECTOR near` lost its name, once (2026-09-17), and a portable layer only finds out when a test includes it. `Build/CheckProjectFiles.py` refuses the names in every project.
+
 **A project does not put its own directory on the include path.** `cl.exe` already searches the directory of the including file first for a quoted include, so `#include "FileSys.h"` from a `.cpp` in the same folder resolves without help. Only the directories of *other* projects are listed, as `$(SolutionDir)<Project>`.
 
 **Run the tests**, through `vstest.console.exe`, over every suite the build produced.
