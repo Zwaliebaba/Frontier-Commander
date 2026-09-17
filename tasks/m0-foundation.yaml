@@ -1011,7 +1011,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       ADR-004 records the decisions. Client/pch.h precompiles the platform (WindowsHeader.h, then
       d3d12.h, d3d12sdklayers.h, dxgi1_6.h, unknwn.h before winrt/base.h, then d3dx12.h with the
@@ -1029,7 +1029,14 @@ tasks:
       right that a zero D3D12_CULL_MODE is not a value. Verified in the session with clang against
       DirectX-Headers' d3d12.h over its WSL stubs, mingw-w64's DXGI headers and hand-written stand-ins
       for windows.h, winrt/base.h and shellapi.h, for syntax and with the pinned clang-tidy; only CI
-      compiles the real thing, and the shaders only compile there.
+      compiles the real thing, and the shaders only compile there. CI run 34 (cd89a79) was green on
+      MSVC 14.51.36231 (Visual Studio 18 Enterprise) with the Windows SDK 10.0.26100.0, whose dxc
+      compiled the shaders at 6.0. Three rounds before it: dxc warned that /Zi had nowhere to write a
+      PDB and /warnaserror made that fatal, so both configurations embed the PDB; then winrt/base.h
+      pulled in DirectXMath, whose <assert.h> resolved to Core/Assert.h, because a project directory
+      sits on the include path ahead of the SDK and MSVC matches the name case-insensitively, so the
+      header is Assertion.h now and the checker refuses headers named like the runtime's (ADR-001
+      records it). The acceptance grep, excluding the vendored header, finds nothing.
 
   - id: T19
     title: Client input - the event system from the Species input-native-events design
@@ -1052,6 +1059,11 @@ tasks:
       - Client/InputSubscription.cpp
       - Client/RawMouse.h
       - Client/RawMouse.cpp
+      # The procedure that enqueues, and the frame loop that derives, routes and masks. Added during
+      # the work: the list was written from where the pipeline lives, and the work is where it is hooked.
+      - Client/Window.h
+      - Client/Window.cpp
+      - FrontierCommander/App.cpp
       - Client/Client.vcxproj
       - Client/Client.vcxproj.filters
       - Tests/ClientTests/FrameInputTests.cpp
@@ -1073,7 +1085,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T20
     title: Client terrain pass and camera - FrontierCommander draws the generated landscape, and the fog and lighting ADR is written on captured frames
@@ -1153,7 +1165,7 @@ tasks:
     verify:
       - python3 Tools/CheckTaskDag.py
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T22
     title: The owner's run - M0 accepted on a real GPU
