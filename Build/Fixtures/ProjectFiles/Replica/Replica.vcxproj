@@ -93,6 +93,7 @@
   <ItemGroup>
     <ClInclude Include="Replica.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Math.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.vcxproj">

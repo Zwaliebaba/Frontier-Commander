@@ -128,7 +128,7 @@ private:
 | Rule | Enforced by |
 |---|---|
 | The naming table, R1, R3, R5, R8 | [`.clang-tidy`](.clang-tidy), gated in CI over the whole tree |
-| R2 affixes, R7 file names and project registration, R11 spellings, §2 flat directories | `Build/CheckProjectFiles.py`, gated in CI |
+| R2 affixes, R7 file names and project registration, R11 spellings, §2 flat directories, §3 no header named like a runtime or SDK header | `Build/CheckProjectFiles.py`, gated in CI |
 | R4, R6, R9, R10 | Review. Check your own diff against the table before handing it back. |
 
 `Build/CheckProjectFiles.py` exists (2026-09-17) and gates in CI; `python Build\CheckProjectFiles.py --self-test` proves that each of its rules fires on the deliberately broken projects under `Build/Fixtures/ProjectFiles/`, and the README there says what each fixture breaks. `.clang-tidy` gates in CI through `Build/RunClangTidy.py` (2026-09-17), which runs the pinned clang-tidy over every translation unit the solution builds; `python Build\RunClangTidy.py <file>` runs it over the file you just wrote, before you push.
@@ -176,6 +176,8 @@ msbuild <Solution>.slnx /t:<ProjectName> /p:Configuration=Debug /p:Platform=x64 
 # Release, before you claim anything about it.
 msbuild <Solution>.slnx /p:Configuration=Release /p:Platform=x64 /m /v:minimal /nologo
 ```
+
+**No header is named like a C runtime or SDK header.** The other projects' directories sit on the include path ahead of the SDK, MSVC searches them for an angled include too, and it matches the name case-insensitively: `Core/Assert.h` was what DirectXMath's `<assert.h>` found, once (2026-09-17). `Build/CheckProjectFiles.py` refuses the runtime's names and the SDK headers this tree reaches for.
 
 **A project does not put its own directory on the include path.** `cl.exe` already searches the directory of the including file first for a quoted include, so `#include "FileSys.h"` from a `.cpp` in the same folder resolves without help. Only the directories of *other* projects are listed, as `$(SolutionDir)<Project>`.
 

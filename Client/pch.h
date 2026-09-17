@@ -33,4 +33,4 @@
 #define D3DX12_NO_CHECK_FEATURE_SUPPORT_CLASS
 #include "d3dx12.h"
 
-#include "Assert.h"
+#include "Assertion.h"

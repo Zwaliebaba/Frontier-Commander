@@ -26,6 +26,7 @@ firing anywhere else is a defect in the checker rather than in the fixture.
 | | `Extra/Deep.h`, C++ in a subdirectory. | `subdirectory` |
 | | `CompiledShaders\ShapeVS.h` listed as a header. | `compiled-shaders` |
 | `Replica/` | `bad_name.cpp`, not PascalCase. | `file-name` |
+| | `Math.h`, named like the C runtime's `<math.h>`. | `shadow` |
 | | `class IThing` in `Replica.h`. | `type-affix` |
 | | `m_colour` in `Replica.h`. | `spelling` |
 | `Sim/` | A `ProjectReference` to `Net`, which is built on `Sim` and not the reverse. | `edge-reference` |

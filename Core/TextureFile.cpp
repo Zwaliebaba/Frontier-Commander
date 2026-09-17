@@ -2,7 +2,7 @@
 
 #include "TextureFile.h"
 
-#include "Assert.h"
+#include "Assertion.h"
 #include "ByteReader.h"
 
 #include <array>

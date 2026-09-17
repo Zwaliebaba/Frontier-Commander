@@ -44,8 +44,8 @@ tasks:
       - Core/pch.h
       - Core/pch.cpp
       - Core/WindowsHeader.h
-      - Core/Assert.h
-      - Core/Assert.cpp
+      - Core/Assertion.h
+      - Core/Assertion.cpp
       - Tests/CoreTests/CoreTests.vcxproj
       - Tests/CoreTests/CoreTests.vcxproj.filters
       - Tests/CoreTests/pch.h

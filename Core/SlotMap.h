@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include "Assert.h"
+#include "Assertion.h"
 
 // Storage per object kind (TechnicalDesign.md §4.3): a slot map over a std::vector (AGENTS.md R15)
 // whose handles carry a generation, so that a handle to an erased element resolves to nothing

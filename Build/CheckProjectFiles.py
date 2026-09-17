@@ -21,6 +21,7 @@ A finding is one line, `<file>:<line>: <rule>: <message>`, and any finding fails
   subdirectory        a C++ file in a subdirectory, where clang-tidy's header filter never looks
   compiled-shaders    CompiledShaders\\ listed as source; it is build output
   file-name           R7: a file that is not PascalCase.cpp or .h (the wizard's names excepted)
+  shadow              a header named like a C runtime or SDK header, which an angled include of that name then finds first
   type-affix          R2: a class, struct or enum defined with a prefix or suffix
   spelling            R11: an identifier in the other half of a spelling family
   tidy-regex          .clang-tidy's HeaderFilterRegex does not name exactly the projects the solution lists
@@ -59,6 +60,20 @@ COMPILED_SHADER_DIRECTORY = "CompiledShaders"
 CPP_SUFFIXES = {".cpp", ".h"}
 UNUSED_CPP_SUFFIXES = {".hpp", ".hh", ".hxx", ".cc", ".cxx", ".c", ".inl", ".inc", ".ipp"}
 WIZARD_FILE_NAMES = {"pch.h", "pch.cpp", "framework.h", "targetver.h", "Resource.h"}
+# Every project directory is on the include path of the projects built on it, ahead of the SDK, and MSVC
+# searches /I directories for an angled include too, case-insensitively: Core/Assert.h was what DirectXMath's
+# <assert.h> found (2026-09-17). So no header is named like one of the C runtime's or like an SDK header the
+# tree reaches for (AGENTS.md §3). The runtime's list is the UCRT's and vcruntime's public headers.
+RUNTIME_HEADER_NAMES = {
+    "assert.h", "complex.h", "conio.h", "crtdbg.h", "ctype.h", "direct.h", "dos.h", "errno.h", "fcntl.h", "fenv.h", "float.h",
+    "fpieee.h", "inttypes.h", "io.h", "iso646.h", "limits.h", "locale.h", "malloc.h", "math.h", "mbctype.h", "mbstring.h",
+    "memory.h", "minmax.h", "new.h", "process.h", "safeint.h", "search.h", "setjmp.h", "share.h", "signal.h", "stdalign.h",
+    "stdarg.h", "stdbool.h", "stddef.h", "stdint.h", "stdio.h", "stdlib.h", "stdnoreturn.h", "string.h", "tchar.h", "tgmath.h",
+    "time.h", "uchar.h", "wchar.h", "wctype.h", "intrin.h", "excpt.h", "eh.h", "typeinfo.h", "vadefs.h", "sal.h",
+    "windows.h", "windef.h", "winbase.h", "winuser.h", "winnt.h", "winerror.h", "unknwn.h", "objbase.h", "shellapi.h",
+    "d3d12.h", "d3d12sdklayers.h", "d3dcommon.h", "d3dcompiler.h", "directxmath.h", "dxgi.h", "dxgi1_6.h", "dxgiformat.h",
+    "dxgicommon.h", "winsock2.h", "ws2tcpip.h", "xaudio2.h", "x3daudio.h",
+}
 FILE_NAME_RE = re.compile(r"^[A-Z][A-Za-z0-9]*\.(cpp|h)$")
 
 # ADR-001's settings table. Every project states these explicitly, and both configurations read them.
@@ -474,6 +489,10 @@ def check_registry(root: Path, project: Project) -> None:
         on_disk["ClInclude" if path.suffix == ".h" else "ClCompile"].add(path.name)
         if path.name not in WIZARD_FILE_NAMES and not FILE_NAME_RE.match(path.name):
             findings.append(Finding("file-name", relative, "a file is PascalCase, named for its primary type (R7)"))
+        if path.suffix == ".h" and path.name.lower() in RUNTIME_HEADER_NAMES:
+            findings.append(
+                Finding("shadow", relative, f"named like the C runtime's or the SDK's <{path.name.lower()}>; this directory is on the include path ahead of the SDK, so an angled include of that name finds this file first (AGENTS.md §3)")
+            )
         check_source(project, path, relative)
 
     listed = {"ClCompile": set(), "ClInclude": set()}
@@ -715,6 +734,7 @@ SELF_TEST_EXPECTED = [
     ("subdirectory", "Net/Extra/Deep.h"),
     ("compiled-shaders", "Net/Net.vcxproj"),
     ("file-name", "Replica/bad_name.cpp"),
+    ("shadow", "Replica/Math.h"),
     ("type-affix", "Replica/Replica.h"),
     ("spelling", "Replica/Replica.h"),
     ("tidy-regex", ".clang-tidy"),

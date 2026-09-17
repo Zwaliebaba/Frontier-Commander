@@ -34,7 +34,7 @@ Edges point downward only; a library never references one beside it (`Client` an
 
 - The render-view and height-view aggregates live in `Core`, in the engine namespace, so that `Replica` produces them and `Client` consumes them without an edge between the two (`TechnicalDesign.md` §6.3).
 - `LandscapeDefinition` is a `Content` aggregate from M0, with its loader arriving in M1, because `Sim` reads `Content` and a type that started in `Sim` would have to move.
-- `FRONTIER_ASSERT` and `FRONTIER_VERIFY` live in `Core/Assert.h`, reporting through `Core/Assert.cpp`, so that every project above `Core` asserts the same way.
+- `FRONTIER_ASSERT` and `FRONTIER_VERIFY` live in `Core/Assertion.h`, reporting through `Core/Assertion.cpp`, so that every project above `Core` asserts the same way. (Named `Assert.h` until 2026-09-17, when DirectXMath's `<assert.h>` found it first: a project directory sits on the include path ahead of the SDK, and MSVC matches the name case-insensitively, so no header is named like a C runtime or SDK header, which `Build/CheckProjectFiles.py` refuses since that day.)
 
 **Every project file is written by hand** from the MSBuild schema, not by a wizard, in one shape: the settings that are not about optimisation sit in unconditional property and item-definition groups, so they are identical in Debug and Release by construction, and the conditional groups hold only what `AGENTS.md` §3 enumerates. The settings, stated explicitly in every project (`AGENTS.md` R16 says a default is not a decision):
 

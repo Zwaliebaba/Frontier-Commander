@@ -11,7 +11,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Assert.cpp">
+    <ClCompile Include="Assertion.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="FixedPoint.cpp">
@@ -58,7 +58,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Assert.h">
+    <ClInclude Include="Assertion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="WindowsHeader.h">

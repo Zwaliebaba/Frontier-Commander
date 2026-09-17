@@ -2,7 +2,7 @@
 
 #include "BitmapWriter.h"
 
-#include "Assert.h"
+#include "Assertion.h"
 #include "ByteWriter.h"
 
 namespace Neuron
