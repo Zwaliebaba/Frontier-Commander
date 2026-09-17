@@ -621,7 +621,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       The DDS layout is in the Windows SDK's dxgiformat.h (the DXGI_FORMAT values) and the
       documented DDS_HEADER / DDS_HEADER_DXT10 structures; write the two structures into
@@ -642,6 +642,10 @@ tasks:
       the RIFF says, and a byte an editor left after it is ignored. ByteReader gained Skip for the
       chunk walk. The BMP writer is the capture's and is pinned byte for byte against a 70-byte
       literal. Sixty-two Core tests pass natively before the push.
+
+      Landed in CI run 29 (35269932954) with the fourteen new tests green on MSVC at the first
+      attempt; the Linux pass had caught an unused constant, a shadowed name and two widened
+      multiplications before the push.
 
   - id: T13
     title: Core paths and logging
@@ -775,7 +779,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       With no objects yet, the determinism tests exercise the tick counter, the Random draws
       the empty stages make (make stage 8 draw once per tick so the stream is exercised), the
@@ -798,6 +802,10 @@ tasks:
       199-byte snapshot) are the session container's, and the MSVC Debug figure is read off CI's
       TestResults artefact and written into ADR-002 by this task once the run has it. Sim contains
       no floating-point type (grep) and no platform header (T6's rule).
+
+      Landed in CI run 29 (35269932954): 84 tests across the suites, the 22 of Sim among them, after
+      one round for MSVC's C4702 on a return placed after the framework's noreturn Assert::Fail. The
+      MSVC Debug figures for ADR-002 are read off that run's TestResults artefact.
 
   - id: T16
     title: Write Tools/LandscapeTool.py - the integer generator in Python, the size-class recipes, and the guarantee measurements
