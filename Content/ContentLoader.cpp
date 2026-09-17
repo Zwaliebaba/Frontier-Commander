@@ -221,10 +221,10 @@ public:
       }
     }
     std::string allowed;
-    for (const auto& [name, value] : _names)
+    for (const std::pair<const char*, Enumeration>& entry : _names)
     {
       allowed += allowed.empty() ? "" : ", ";
-      allowed += name;
+      allowed += entry.first;
     }
     return Fail(*_object.Find(_key), std::string("'") + _key + "' is one of: " + allowed);
   }
@@ -445,11 +445,11 @@ constexpr std::uint32_t TABLE_VERSION = 1;
   for (const std::string& name : classes)
   {
     bool found = false;
-    for (const auto& [text, value] : CHASSIS_CLASS_NAMES)
+    for (const std::pair<const char*, ChassisClass>& entry : CHASSIS_CLASS_NAMES)
     {
-      if (name == text)
+      if (name == entry.first)
       {
-        _out.chassisClassMask = static_cast<std::uint8_t>(_out.chassisClassMask | ChassisClassBit(value));
+        _out.chassisClassMask = static_cast<std::uint8_t>(_out.chassisClassMask | ChassisClassBit(entry.second));
         found = true;
       }
     }
