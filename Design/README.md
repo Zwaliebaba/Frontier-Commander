@@ -16,6 +16,7 @@ The design documents for *Frontier Commander*. [`AGENTS.md`](../AGENTS.md) says 
 | [`SpeciesCanvas.md`](SpeciesCanvas.md) | The Species windows and overlay: the Eclipse model and its rules, the window chrome as a palette, the fonts, the task-manager overlay's virtual screen and zones, the cursor | Reference |
 | [`OpenQuestions.md`](OpenQuestions.md) | The sixteen questions put to the owner on 2026-09-17 and the six the external review raised, each with the answer and where it is recorded; the form for adding one | Answered |
 | [`ADR/`](ADR/README.md) | Engineering decisions taken while building, one file per decision, numbered from `ADR-001` | None yet |
+| [`ImplementationPlan.md`](ImplementationPlan.md) | How the design becomes work an agent executes: the session loop under CI as the compiler, the plan format, the definition of done, the map from milestones to the plans under [`tasks/`](../tasks/), and the decisions the plan took | Plan |
 
 Read them in that order. `GameDesign.md` is written to stand alone for a reader who knows real-time strategy games; `TechnicalDesign.md` assumes `AGENTS.md` has been read first, because it cites its rules by number rather than restating them; `SpeciesLineage.md` assumes both. The three *Reference* documents are read from the Species source with a line pointer for every value; they are what the renderer, terrain and interface tasks build from, and "Reference" means they describe Species as it is rather than propose anything.
 

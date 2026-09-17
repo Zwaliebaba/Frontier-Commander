@@ -1,0 +1,858 @@
+# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/m0-foundation.yaml
+#
+# Commands under `verify` that name msbuild, vstest or RunClangTidy are what CI runs on the pull
+# request; an agent session runs on Linux and reads their result off the PR (ImplementationPlan.md §2).
+# Everything else under `verify` runs in the session before the push.
+
+plan: m0-foundation
+title: M0 Foundation - the tree takes its shape, its checkers, a deterministic tick, a landscape and a frame
+phase: 0
+summary: >
+  What M0 proves (GameDesign.md §12): a window presents a scene target and CI captures the same
+  scene headless on WARP; the simulation ticks deterministically and hashes; every library has a
+  test suite; every checker AGENTS.md names exists and runs in CI; the landscape tool measures the
+  generator's guarantees; the generator produces heights and the renderer draws them. No game
+  content.
+
+  The shape is TechnicalDesign.md §2: eight projects, one solution, x64 only, toolset v145, and
+  the edges of the diagram there. The first task creates the solution with Core alone and writes
+  ADR-001 for all eight, so that the second, adding the other seven, is mechanical.
+
+  Every task here is executed from a Linux session that cannot build (OpenQuestions.md R1):
+  the checkers and tools are written to run on both Linux and Windows, the C++ is written to
+  compile first time and CI is what compiles it. A task is done when CI is green on the PR that
+  lands it and every acceptance line below holds; nothing here is "builds clean, not run" unless
+  the line says so.
+
+  Reading order for anyone starting a task: AGENTS.md, Design/ImplementationPlan.md §1-§4, then
+  the design sections the task's intent cites.
+
+tasks:
+  - id: T1
+    title: Create the solution, Core and CoreTests, and write ADR-001 for the whole layout
+    intent: >
+      The tree gets its first buildable shape and the decision that fixes the other seven
+      projects before they exist, so that adding them is mechanical and nobody re-argues an edge
+      later. AGENTS.md §2 says the concrete layout is recorded there and in an ADR when the first
+      project is created; this is that moment.
+    project: Core
+    depends_on: []
+    files:
+      - FrontierCommander.slnx
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Core/pch.h
+      - Core/pch.cpp
+      - Core/WindowsHeader.h
+      - Core/Assert.h
+      - Core/Assert.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+      - Tests/CoreTests/pch.h
+      - Tests/CoreTests/pch.cpp
+      - Tests/CoreTests/SuiteSmoke.cpp
+      - .clang-tidy
+      - AGENTS.md
+      - Design/ADR/README.md
+      - Design/ADR/ADR-001-solution-layout.md
+      - Design/TechnicalDesign.md
+    acceptance:
+      - FrontierCommander.slnx is the only solution at the repository root and carries exactly two configurations, Debug|x64 and Release|x64
+      - 'Core.vcxproj states, identically in both configurations: PlatformToolset v145, LanguageStandard stdcpplatest, ConformanceMode true, WarningLevel Level4, TreatWarningAsError true, FloatingPointModel Precise, EnableEnhancedInstructionSet AdvancedVectorExtensions2, CharacterSet Unicode, a precompiled header pch.h, OutDir $(SolutionDir)x64\$(Configuration)\ and an IntDir under it per project'
+      - The two configurations differ in nothing outside the set AGENTS.md §3 enumerates (Optimization, _DEBUG/NDEBUG, FunctionLevelLinking, IntrinsicFunctions, UseDebugLibraries, RuntimeLibrary, LinkIncremental, WholeProgramOptimization, EnableCOMDATFolding, OptimizeReferences)
+      - No project file defines any of the Windows macro family; Core/WindowsHeader.h is the one header that defines NOMINMAX, WIN32_LEAN_AND_MEAN, NODRAWTEXT, NOGDI, NOBITMAP, NOMCX, NOSERVICE and NOHELP before including windows.h, and a grep for those names finds only that file
+      - Core/Assert.h defines FRONTIER_ASSERT and FRONTIER_VERIFY, breaking into the debugger in Debug and compiling to nothing (FRONTIER_ASSERT) or to the expression alone (FRONTIER_VERIFY) in Release
+      - Tests/CoreTests is a DynamicLibrary on the Microsoft Native Unit Test Framework, references Core, holds a SuiteSmoke test, and builds to x64\Debug\CoreTests.dll, which CI's "Run the tests" step runs green
+      - .clang-tidy's HeaderFilterRegex alternation names all eight project directories of ADR-001 plus the Tests pattern, not only the two seeded today
+      - "ADR-001 follows Design/ADR/README.md's template and fixes: the eight projects and their kinds, the edges of TechnicalDesign.md §2 as the only permitted ProjectReferences and includes, the namespaces Frontier and Neuron per project, Tests/<Name>Tests per static library, the OutDir/IntDir convention, the platform-header rule (Sim, Content, Net and Replica include no Windows, D3D, socket or WinRT header), and that the render-view and height-view aggregates live in Core so that Replica produces them and Client consumes them without an edge between the two (TechnicalDesign.md §6.3)"
+      - AGENTS.md §2 records the layout in the paragraph that says it is settled when the first project is created, Design/ADR/README.md no longer says there are none, and TechnicalDesign.md §2 cites ADR-001
+      - CI's Build step runs (the solution guard lifts) and every job is green on the PR
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: false
+    status: todo
+    notes: >
+      Write the .vcxproj by hand from the MSBuild schema rather than from a wizard: the wizard's
+      output carries per-configuration duplication that CheckProjectFiles.py (T4) will later have
+      to prove aligned. Put every non-optimisation setting in one unconditional PropertyGroup and
+      ItemDefinitionGroup, and only the enumerated four differences under a Condition.
+
+  - id: T2
+    title: Add the other seven projects and their five test projects along ADR-001's edges
+    intent: >
+      Every library and executable exists with its edges expressed as ProjectReferences and
+      nothing else, and every static library has a suite that CI runs, so that from here on a
+      task adds files to a project rather than inventing one.
+    project: FrontierCommander
+    depends_on: [T1]
+    files:
+      - FrontierCommander.slnx
+      - Content/Content.vcxproj
+      - Content/Content.vcxproj.filters
+      - Content/pch.h
+      - Content/pch.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Sim/pch.h
+      - Sim/pch.cpp
+      - Net/Net.vcxproj
+      - Net/Net.vcxproj.filters
+      - Net/pch.h
+      - Net/pch.cpp
+      - Replica/Replica.vcxproj
+      - Replica/Replica.vcxproj.filters
+      - Replica/pch.h
+      - Replica/pch.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Client/pch.h
+      - Client/pch.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+      - FrontierCommander/pch.h
+      - FrontierCommander/pch.cpp
+      - FrontierCommander/Main.cpp
+      - FrontierHost/FrontierHost.vcxproj
+      - FrontierHost/FrontierHost.vcxproj.filters
+      - FrontierHost/pch.h
+      - FrontierHost/pch.cpp
+      - FrontierHost/Main.cpp
+      - Tests/ContentTests/ContentTests.vcxproj
+      - Tests/ContentTests/ContentTests.vcxproj.filters
+      - Tests/ContentTests/pch.h
+      - Tests/ContentTests/pch.cpp
+      - Tests/ContentTests/SuiteSmoke.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+      - Tests/SimTests/pch.h
+      - Tests/SimTests/pch.cpp
+      - Tests/SimTests/SuiteSmoke.cpp
+      - Tests/NetTests/NetTests.vcxproj
+      - Tests/NetTests/NetTests.vcxproj.filters
+      - Tests/NetTests/pch.h
+      - Tests/NetTests/pch.cpp
+      - Tests/NetTests/SuiteSmoke.cpp
+      - Tests/ReplicaTests/ReplicaTests.vcxproj
+      - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
+      - Tests/ReplicaTests/pch.h
+      - Tests/ReplicaTests/pch.cpp
+      - Tests/ReplicaTests/SuiteSmoke.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Tests/ClientTests/pch.h
+      - Tests/ClientTests/pch.cpp
+      - Tests/ClientTests/SuiteSmoke.cpp
+    acceptance:
+      - Every project carries the same settings T1 fixed for Core, checked line for line against Core.vcxproj
+      - "ProjectReferences are exactly ADR-001's edges: Content on Core; Sim on Core and Content; Net on Core, Content and Sim; Replica on Core, Content, Net and Sim; Client on Core and Content; FrontierCommander on all six libraries; FrontierHost on Core, Content, Sim and Net; each test project on its library and what that library is built on"
+      - Sim/pch.h, Content/pch.h, Net/pch.h and Replica/pch.h include only standard-library headers and Core headers, never WindowsHeader.h
+      - FrontierCommander is a Windows-subsystem executable whose WinMain returns 0; FrontierHost is a console executable whose main prints a version line for --version and returns 0
+      - Each of the five new test projects holds SuiteSmoke and builds to x64\Debug\<Name>Tests.dll, and CI's test step runs all six suites green
+      - CI is green on the PR
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: false
+    status: todo
+
+  - id: T3
+    title: Write Build/CheckFormat.py
+    intent: >
+      The formatting gate AGENTS.md §4 and §6 lean on exists and runs in CI's Linux job, so
+      that from the first translation unit the tree is formatted by a machine and never argued
+      about. It runs in a Linux session too, which is where the agent writes the code.
+    project: Build
+    depends_on: []
+    files:
+      - Build/CheckFormat.py
+    acceptance:
+      - Runs on Linux (python3) and Windows (python) on the standard library alone
+      - Accepts --clang-format <binary> (default clang-format on PATH) and --fix; prints the clang-format version it used and warns when it is not 18.x, which is what the CI job pins
+      - Checks every .cpp and .h under the repository except .git/, x64/, CompiledShaders/ and Client/d3dx12.h, lists every file that would change, and exits 1 if any would and 0 otherwise, including on a tree with no C++ at all
+      - --fix rewrites the offenders in place and exits 0
+      - The CI format job's guard lifts and the job is green on the PR
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+    parallel_safe: true
+    status: todo
+
+  - id: T4
+    title: Write Build/CheckProjectFiles.py, the build-shape and registry checker
+    intent: >
+      The four rules of AGENTS.md §1 that clang-tidy cannot express, the flat-directory rule of §2
+      and the Debug/Release alignment of §3 become a script CI runs before the build, so that the
+      class of mistake that would otherwise surface as a confusing build failure (or as a Release
+      that quietly drifted) is caught in two seconds and on Linux before the push.
+    project: Build
+    depends_on: [T1]
+    files:
+      - Build/CheckProjectFiles.py
+      - Build/Fixtures/ProjectFiles/README.md
+    acceptance:
+      - Runs on Linux and Windows on the standard library alone and exits non-zero on any finding, naming the file and the rule
+      - "Build shape, for every .vcxproj the solution lists: x64 is the only platform; the toolset, language standard, conformance, warning level, warnings-as-errors, floating-point model, instruction set and character set are the values T1 fixed and are present explicitly; Debug and Release agree on every property outside the enumerated set of AGENTS.md §3"
+      - "Registration: every .cpp and .h in a project directory is listed in that .vcxproj and its .filters, and every listed file exists; no C++ file sits in a subdirectory other than Shaders/ and CompiledShaders/; CompiledShaders/ is never listed as source"
+      - "Names and spellings: R7 file names (PascalCase, the wizard exceptions allowed); R2 type affixes (a class, struct or enum named I<Pascal>, C<Pascal>, S<Pascal>, E<Pascal>, <Pascal>Base, <Pascal>Abstract, <Pascal>Impl or ending in _t) in headers; R11 spelling families in identifiers, checked against the SDK spellings AGENTS.md lists"
+      - The .clang-tidy HeaderFilterRegex alternation equals the set of project directories the solution lists plus the Tests pattern, so that adding a project without registering it there fails
+      - Every *Tests project either holds SuiteSmoke.cpp or at least one TEST_METHOD
+      - "--self-test runs the checker over deliberately broken project files under Build/Fixtures/ProjectFiles/ and expects each rule to fire once; the README there says what each fixture breaks"
+      - CI's "Check the build shape" step's guard lifts and the step is green on the PR
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckProjectFiles.py
+      - python3 Build/CheckProjectFiles.py --self-test
+    parallel_safe: true
+    status: todo
+
+  - id: T5
+    title: Write Build/RunClangTidy.py
+    intent: >
+      The naming gate of AGENTS.md §1 actually runs over the whole tree in CI, through clang's
+      MSVC driver against the switches the project files set, so that a finding is a defect
+      rather than archaeology from the first translation unit onward.
+    project: Build
+    depends_on: [T1]
+    files:
+      - Build/RunClangTidy.py
+    acceptance:
+      - Enumerates every ClCompile item of every .vcxproj the solution lists, excluding CompiledShaders/ and Client/d3dx12.h, and runs the pinned clang-tidy over each with --driver-mode=cl, /std:c++latest, /EHsc, /permissive-, /DUNICODE, /D_UNICODE, /D_DEBUG, the project's include directories and preprocessor definitions read from the .vcxproj, and the repository's .clang-tidy
+      - Fails with a one-line explanation when INCLUDE is not set, prints the clang-tidy version and warns when it differs from the version the workflow pins, and runs translation units in parallel
+      - Exits non-zero on any finding, printing clang-tidy's output unchanged
+      - The CI clang-tidy step's guard lifts and the step is green on the PR
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python Build\RunClangTidy.py
+    parallel_safe: true
+    status: todo
+    notes: >
+      Windows only by nature (it needs the MSVC headers); the agent cannot run it in a session and
+      reads its result off the PR. Test it by pushing.
+
+  - id: T6
+    title: Add the layering check to CheckProjectFiles.py
+    intent: >
+      The one-way edges of ADR-001 and the platform-header rule for the portable projects are
+      enforced by a script rather than by review, in the Species mould where an upward include
+      fails and there is no allowlist, because a convenience include is the first thing that
+      breaks the edge that makes a headless host possible.
+    project: Build
+    depends_on: [T2, T4]
+    files:
+      - Build/CheckProjectFiles.py
+      - Build/Fixtures/ProjectFiles/README.md
+    acceptance:
+      - The edges of ADR-001 are written once in the script, as data
+      - Every quoted include in every .cpp and .h that resolves into another project's directory follows a permitted edge, and every ProjectReference does too; a violation names the file, the line and the edge it would need
+      - Sim, Content, Net and Replica include no platform header (windows.h, d3d12.h, dxgi*.h, winsock2.h, winrt/*, xaudio2.h, or WindowsHeader.h); Core may, Client and the executables may
+      - --self-test gains fixtures for an upward include, a sideways include and a platform include in Sim, and each fires
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckProjectFiles.py
+      - python3 Build/CheckProjectFiles.py --self-test
+    parallel_safe: true
+    status: todo
+
+  - id: T7
+    title: Core arithmetic - fixed point, integer geometry and binary angles
+    intent: >
+      The simulation's numbers (TechnicalDesign.md §4.1) exist as types with the widening done
+      once, so that nobody writes an int32 product by hand twice and R16 holds by construction.
+    project: Core
+    depends_on: [T1]
+    files:
+      - Core/FixedPoint.h
+      - Core/FixedPoint.cpp
+      - Core/Point.h
+      - Core/BinaryAngle.h
+      - Core/BinaryAngle.cpp
+      - Core/SinTable.h
+      - Tools/GenerateSinTable.py
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/FixedPointTests.cpp
+      - Tests/CoreTests/BinaryAngleTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - "Position and height are std::int32_t in 1/256 world unit with named constants SUBUNITS_PER_WORLD_UNIT and SUBUNITS_PER_CELL (16,384); Point2 and Rect are integer aggregates in those units"
+      - MulDiv, Sqrt (exact integer floor), Dot and LengthSquared take int32 operands and widen to int64 internally; no float or double appears in any of these headers
+      - BinaryAngle is a std::uint16_t turn; Sin and Cos read a 1,024-entry table of 16.16 fixed-point values with linear interpolation; the table header is generated by Tools/GenerateSinTable.py, which is committed, and the header says so and is never edited by hand
+      - "Tests: Sqrt exhaustively over 0..2^20 and at the int32 limits against an int64 reference; MulDiv at the overflow boundaries; Sin and Cos at every table entry against the generator's integers, symmetric identities at quarter turns, and a stated maximum interpolation error"
+      - CI green with the new tests counted in the test results
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T8
+    title: Core randomness and hashing - xoshiro128** and FNV-1a
+    intent: >
+      The simulation stream of TechnicalDesign.md §4.2 and the state hash of §4.9 exist as small,
+      specified algorithms with test vectors, so that determinism has something to be measured
+      against from the first Sim task.
+    project: Core
+    depends_on: [T1]
+    files:
+      - Core/Random.h
+      - Core/Random.cpp
+      - Core/Hash.h
+      - Core/Hash.cpp
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/RandomTests.cpp
+      - Tests/CoreTests/HashTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - Random is xoshiro128** written from its public-domain specification with 16 bytes of state, seeded from a 64-bit seed through splitmix64; Next() returns 32 bits, Below(n) is unbiased by rejection, and the state can be read and restored for snapshots
+      - The first ten outputs for a fixed seed match vectors computed independently by a small Python reference committed under Tools/ (the test cites the command)
+      - Fnv1a64 over bytes matches the published vectors (the empty string, "a", "foobar") and hashes a span of fixed-width integers in a defined byte order
+      - No float anywhere in these files
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T9
+    title: Core slot map with generation-checked handles
+    intent: >
+      Storage per object kind (TechnicalDesign.md §4.3) has a container whose handles never
+      alias a later occupant and whose iteration order is a pure function of its history, so
+      that a stale reference resolves to nothing and two runs of one match iterate identically.
+    project: Core
+    depends_on: [T1]
+    files:
+      - Core/SlotMap.h
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/SlotMapTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - SlotMap<T> over a std::vector (R15) with a free list; Insert returns a Handle of index and generation, Erase bumps the generation, and Resolve of a stale handle returns null
+      - Iteration order depends only on the sequence of inserts and erases, and an ascending-key traversal exists for the hash and the snapshot, where the key is the caller's creation counter stored with the element
+      - "Tests: reuse after erase, generation wrap, a stale handle after reuse, identical iteration for identical histories, ascending-key traversal after out-of-order erases"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T10
+    title: Core byte stream - a bounded, versioned reader and writer
+    intent: >
+      Snapshots, replays and the wire share one serialisation with explicit bounds, so that a
+      truncated or hostile buffer yields a failed read rather than a read past the end, which is
+      the defect class the Species transport work spent its first task closing.
+    project: Core
+    depends_on: [T1]
+    files:
+      - Core/ByteWriter.h
+      - Core/ByteWriter.cpp
+      - Core/ByteReader.h
+      - Core/ByteReader.cpp
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/ByteStreamTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - Little-endian fixed-width integers of every width, byte spans with a length prefix, and a stream header of magic and version; ByteReader reads against the real buffer length and reports failure through a return value, never an exception, and a failed reader stays failed
+      - Unaligned access goes through memcpy, never a pointer cast; only trivially copyable types cross the stream, enforced with a static_assert
+      - "Tests: round trips of every width, truncation at every byte of a record, a length prefix larger than the buffer, a version mismatch, and pinned bytes for one record so a layout change is a visible diff"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T11
+    title: Core JSON reader and writer
+    intent: >
+      Content is JSON (owner, 2026-09-17) and R14 forbids a library for it, so a strict reader
+      of the standard grammar with file, line and column in every error is written into Core,
+      about three hundred lines, and tested against a conformance set of this repository's own.
+    project: Core
+    depends_on: [T1]
+    files:
+      - Core/Json.h
+      - Core/Json.cpp
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/JsonTests.cpp
+      - Tests/CoreTests/JsonFixtures.h
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - Parses RFC 8259 exactly, no extensions (no comments, no trailing commas, no NaN or Infinity, no single quotes), validates UTF-8 and escapes including surrogate pairs, holds numbers as int64 when integral and double otherwise, and refuses nesting deeper than a stated limit
+      - Every error carries the file name the caller supplied, the line and the column; a document is accepted whole or rejected whole
+      - A JsonValue tree in standard containers (R15) with typed accessors, and a JsonWriter that emits what the reader accepts, with a stable key order and an indent option
+      - "The conformance set under Tests/CoreTests/JsonFixtures.h is written for this repository: at least forty documents that must parse (every value kind, whitespace forms, escapes, deep but legal nesting, large and negative and exponent numbers) and at least forty that must fail with the expected line and column"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T12
+    title: Core bitmap and wave readers, and a bitmap writer
+    intent: >
+      Palettes, sprites, the font and the sounds are BMP and WAV files (TechnicalDesign.md §8),
+      and the capture mode writes BMPs, so small strict readers and a writer live in Core with
+      fixtures, and a malformed file is refused with a location rather than read past.
+    project: Core
+    depends_on: [T10]
+    files:
+      - Core/Bitmap.h
+      - Core/Bitmap.cpp
+      - Core/Wave.h
+      - Core/Wave.cpp
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/BitmapTests.cpp
+      - Tests/CoreTests/WaveTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - Bitmap reads 24-bit BGR and 8-bit palettised BMPs, bottom-up and top-down, with row padding, into a plain RGBA8 buffer, and refuses compression, other depths and inconsistent headers with an error that names the offset; Bitmap also writes a 24-bit bottom-up BMP
+      - Wave reads RIFF/WAVE with a fmt and a data chunk, 16-bit PCM, mono or stereo, any sample rate, skipping unknown chunks, and refuses other formats with the chunk named
+      - Every read is bounded through ByteReader; fixtures are byte arrays in the tests, and a written bitmap reads back identical
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T13
+    title: Core paths and logging
+    intent: >
+      Nothing resolves against the working directory (TechnicalDesign.md §9): the executable's
+      directory and the user's profile directory are the two roots, created on first use where
+      they are written, and a log with levels exists for the host and the client to write what
+      they did.
+    project: Core
+    depends_on: [T1]
+    files:
+      - Core/Paths.h
+      - Core/Paths.cpp
+      - Core/Log.h
+      - Core/Log.cpp
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/PathsTests.cpp
+      - Tests/CoreTests/LogTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - Paths gives ExecutableDirectory(), ContentDirectory(), ModsDirectory() and UserDirectory() (%LOCALAPPDATA%\FrontierCommander, created on first use) as std::filesystem::path, with an override of the two roots for tests so that no test touches the real user directory
+      - A grep of the tree finds no GetCurrentDirectory and no std::filesystem::current_path outside Paths.cpp, and Paths.cpp uses neither
+      - Log writes levelled lines with a tick or a timestamp to a file under UserDirectory()/Logs, rotated at a stated size, and to the debugger output in Debug; it is safe to call before any window exists
+      - "Tests: path composition, the override, the rotation, and that the user directory is created under the override root"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T14
+    title: Core transport seam, datagram framing, liveness and the loopback transport
+    intent: >
+      The whole network conversation of M1 runs over a seam with an in-process implementation
+      (owner, 2026-09-17; TechnicalDesign.md §5.6), so that Net and Replica are tested without a
+      socket and UdpTransport slots in at M3 with no protocol change.
+    project: Core
+    depends_on: [T10]
+    files:
+      - Core/Transport.h
+      - Core/Datagram.h
+      - Core/Datagram.cpp
+      - Core/LoopbackTransport.h
+      - Core/LoopbackTransport.cpp
+      - Core/Liveness.h
+      - Core/Liveness.cpp
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Tests/CoreTests/DatagramTests.cpp
+      - Tests/CoreTests/LoopbackTransportTests.cpp
+      - Tests/CoreTests/LivenessTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - Tests/CoreTests/CoreTests.vcxproj.filters
+    acceptance:
+      - "Transport is the seam: Send(connectionId, bytes), Receive() yielding (connectionId, bytes) until empty, Poll(), and connection ids assigned by the host side; it names no socket type"
+      - Datagram framing is a protocol version and a payload length at the head of every datagram, read through ByteReader, so a datagram of the wrong version or a short one is dropped and counted rather than parsed
+      - LoopbackTransport connects a host end and any number of client ends in one process, delivers on Poll(), and can drop, duplicate, delay and reorder datagrams from a seeded Random so that loss is deterministic in tests
+      - Liveness is a pure state machine over ticks (heartbeat interval, timeout, grace) with no clock of its own
+      - "Tests: framing round trip and rejection cases, loopback delivery with each fault kind, and every transition of the liveness machine"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T15
+    title: Sim skeleton - the tick, seats, the order queue, the hash, the snapshot, and the three determinism tests
+    intent: >
+      The simulation exists as the fixed tick order of TechnicalDesign.md §4.8 with empty stages,
+      hashes every tick, snapshots and reloads, and replays an order stream, so that the three
+      tests §10 says exist from M0 do, and every later system is built under them. This task
+      writes the tick-and-numbers ADR and the snapshot-format ADR.
+    project: Sim
+    depends_on: [T7, T8, T9, T10]
+    files:
+      - Sim/Sim.h
+      - Sim/Sim.cpp
+      - Sim/MatchSettings.h
+      - Sim/Seat.h
+      - Sim/Order.h
+      - Sim/OrderQueue.h
+      - Sim/OrderQueue.cpp
+      - Sim/StateHash.h
+      - Sim/StateHash.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tests/SimTests/DeterminismTests.cpp
+      - Tests/SimTests/OrderQueueTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+      - Design/ADR/README.md
+      - Design/TechnicalDesign.md
+    acceptance:
+      - Sim::Advance() runs the fourteen stages of TechnicalDesign.md §4.8 as named member functions in that order, empty where the system does not exist yet, with the tick counter and the simulation Random advanced only inside Advance
+      - "Order is a fixed-layout aggregate of seat, tick, kind and four operands, under 32 bytes by static_assert, with the twenty kinds of §4.7 as an enum; OrderQueue holds orders by tick and hands them to stage 1 in seat order then arrival order"
+      - StateHash is Fnv1a64 over every object's simulation fields in ascending id order, every seat, the tick and the Random state, computed at stage 13 and readable after every tick
+      - Snapshot writes and reads the whole Sim through the versioned byte stream (seed, settings, tick, Random state, seats, every object kind's map, the order queue's future orders), and a Sim constructed from a snapshot is indistinguishable from the original
+      - "Three tests: two Sims from one seed and one order stream hash identically at every tick for 10,000 ticks; a snapshot at tick 5,000 reloaded continues to the same hashes as the original; a recorded order stream replayed from the seed reproduces the hashes"
+      - "Sim contains no float or double (grep) and no platform header (T6 checks); MatchSettings holds seed, size class, seat count and the lobby values GameDesign.md §2 lists"
+      - Two ADRs written, numbered next in sequence, and TechnicalDesign.md §12 updated with their numbers in the same commit; the tick ADR records 20 Hz, the 1/256 unit and the fixed-point formats, with the cost of an empty tick and of the hash measured in the test run; the snapshot ADR records the stream layout and versioning rule
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      With no objects yet, the determinism tests exercise the tick counter, the Random draws
+      the empty stages make (make stage 8 draw once per tick so the stream is exercised), the
+      queue and the hash. That is the point: the harness exists before the systems do.
+
+  - id: T16
+    title: Write Tools/LandscapeTool.py - the integer generator in Python, the size-class recipes, and the guarantee measurements
+    intent: >
+      The generator is tuned by a tool before it is trusted (TechnicalDesign.md §4.4): the same
+      integer diamond-square algorithm in Python, runnable in a Linux session, measures the four
+      guarantees GameDesign.md §3 makes over a hundred seeds, tunes the recipe per size class,
+      and produces the golden heightfields the C++ port is tested against.
+    project: Tools
+    depends_on: []
+    files:
+      - Tools/LandscapeTool.py
+      - Tools/Xoshiro.py
+      - Tests/SimTests/Fixtures/Landscape/README.md
+      - Tests/SimTests/Fixtures/Landscape/small-hashes.txt
+      - Tests/SimTests/Fixtures/Landscape/small-0001.heights
+    acceptance:
+      - "Pure Python 3 on the standard library; the algorithm is SpeciesTerrain.md §4 step by step in integer arithmetic: tiles of (position, size, fractal dimension in hundredths, height scale, desired height) generated by diamond-square on xoshiro128** keyed by the match seed and the tile index, merged by maximum, smoothed under the guide grid, outsideHeight below sea level, water at height 0, samples every 16 world units as int16 whole units; the powf of the Species noise replaced by a fixed-point table over the fractal dimensions the recipes use"
+      - "A landscape definition is a JSON document of size class, seed, tile list, palette name, start positions and deposit positions; the tool writes one, and its schema is what Content adopts in M1 (m1-vertical-slice/C1 cites this file)"
+      - "Per seed the tool measures: slope-class histogram per drive class against the 25/35/40/20 percent limits of GameDesign.md §6; flood-fill connectivity between every pair of starts for wheels, tracks and hover; the count of flat 3x3 footprints within 24 cells of each start; every deposit on land and reachable by a wheeled builder; the fraction of land passable to tracks"
+      - "--report <SizeClass> --seeds 100 prints pass or fail per guarantee per seed and the pass rate, and the Small recipe is tuned until at least 95 of 100 seeds pass all four guarantees; Medium, Large and Frontier recipes exist and their pass rates are printed even where they are lower, with the number recorded in the file header"
+      - "--render <SizeClass> <seed> writes a PNG coloured by the SpeciesTerrain.md §6 palette formula with a built-in gradient, using a PNG writer of the tool's own (zlib is standard library)"
+      - "--golden <SizeClass> <seed> writes the int16 heightfield as a little-endian file and prints its Fnv1a64; small-hashes.txt holds the hashes of Small seeds 1 to 20 and small-0001.heights the full field of seed 1, both regenerated by the tool and never edited"
+      - Runs in this session; the README under the fixtures says which command produced each file
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Tools/LandscapeTool.py --report Small --seeds 100
+      - python3 Tools/LandscapeTool.py --golden Small 1
+    parallel_safe: true
+    status: todo
+    notes: >
+      The Species float implementation is the reference for shape, not for bits: the integer
+      port will not reproduce Species heights and is not meant to. What matters is that the tool
+      and the C++ port (T17) agree bit for bit, and that the guarantees hold at a useful rate.
+
+  - id: T17
+    title: Sim landscape - the generator in C++ against the tool's golden fields, the derived grids, and flatten deltas
+    intent: >
+      The heightfield is simulation state (TechnicalDesign.md §4.4) generated identically on every
+      machine from a definition, with slope, water and obstruction grids per cell and a delta list
+      over the base, so that pathing, visibility and placement have something to read and a
+      snapshot carries a seed rather than samples.
+    project: Sim
+    depends_on: [T15, T16]
+    files:
+      - Content/LandscapeDefinition.h
+      - Content/Content.vcxproj
+      - Content/Content.vcxproj.filters
+      - Sim/Landscape.h
+      - Sim/Landscape.cpp
+      - Sim/LandscapeGenerator.h
+      - Sim/LandscapeGenerator.cpp
+      - Sim/FractalTable.h
+      - Sim/HeightDelta.h
+      - Sim/Snapshot.cpp
+      - Sim/Sim.vcxproj
+      - Sim/Sim.vcxproj.filters
+      - Tools/LandscapeTool.py
+      - Tests/SimTests/LandscapeTests.cpp
+      - Tests/SimTests/SimTests.vcxproj
+      - Tests/SimTests/SimTests.vcxproj.filters
+    acceptance:
+      - LandscapeDefinition is a plain aggregate in Content (size class, seed, tiles, palette name, starts, deposits) with no loader yet, so that M1 adds the JSON loader without moving it
+      - "Landscape holds int16 samples every 16 world units for the size class, generated by LandscapeGenerator from the definition on the simulation Random keyed as the tool keys it, and the fields for Small seeds 1 to 20 hash to the values in Tests/SimTests/Fixtures/Landscape/small-hashes.txt, with seed 1 compared sample for sample against small-0001.heights"
+      - "Per-cell derived grids: slope class (the maximum gradient over the cell's samples, in hundredths), a water bit, and an obstruction byte; a SlopeClass test compares the grid against a brute-force computation on a small field"
+      - HeightDelta is a rectangle of replacement heights applied over the base; the Landscape applies a list of them, the snapshot carries the definition and the list rather than the samples, and a reloaded snapshot reproduces the samples
+      - FractalTable.h is generated by the tool (--fractal-table) and says so; no float or double in Sim
+      - Sim's snapshot ADR gains no new decision; TechnicalDesign.md §4.4 is unchanged or cites the fixture directory
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T18
+    title: Client Direct3D 12 foundation - window, device with WARP, swap chain, scene target, present pass, capture; the shader pipeline; ADR-002
+    intent: >
+      The renderer exists in the shape TechnicalDesign.md §6.1 gives and AGENTS.md §5 requires:
+      a scene target at the authored resolution presented scaled, and a headless capture on WARP
+      that writes BMPs, so that CI is the agent's eyes from the first frame. The first client ADR
+      settles the authored resolution, the window style and multisampling, admits d3dx12.h at a
+      pinned version, and records which shader compiler FXCompile drives on the pinned toolset.
+    project: Client
+    depends_on: [T2, T12, T13]
+    files:
+      - Client/d3dx12.h
+      - Client/d3dx12.LICENSE.txt
+      - Client/Window.h
+      - Client/Window.cpp
+      - Client/GraphicsDevice.h
+      - Client/GraphicsDevice.cpp
+      - Client/DescriptorHeap.h
+      - Client/DescriptorHeap.cpp
+      - Client/SwapChain.h
+      - Client/SwapChain.cpp
+      - Client/SceneTarget.h
+      - Client/SceneTarget.cpp
+      - Client/ScaleMode.h
+      - Client/ScaleMode.cpp
+      - Client/PresentPass.h
+      - Client/PresentPass.cpp
+      - Client/FrameCapture.h
+      - Client/FrameCapture.cpp
+      - Client/Shaders/PresentVS.hlsl
+      - Client/Shaders/PresentPS.hlsl
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - FrontierCommander/App.h
+      - FrontierCommander/App.cpp
+      - FrontierCommander/Main.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+      - Tests/ClientTests/ScaleModeTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - .gitignore
+      - Design/ADR/README.md
+      - Design/ADR/ADR-002-renderer-foundation.md
+      - Design/TechnicalDesign.md
+      - AGENTS.md
+    acceptance:
+      - "d3dx12.h is a single file vendored under Client/ with its MIT licence text beside it; ADR-002 names the release it was taken from and its SHA-256, and R14's sentence in AGENTS.md cites ADR-002"
+      - "GraphicsDevice creates the D3D12 device on the first hardware adapter or, with --warp, on WARP; in Debug it enables the debug layer and drains the info queue every frame, and any error or warning message is logged and counted; winrt::com_ptr holds every COM object, and a grep for ComPtr, AddRef( or Release( in Client finds nothing"
+      - One command queue, one command allocator per frame in flight, three frames in flight with a fence per frame, descriptor heaps managed by hand, a flip-model swap chain of three back buffers on the window
+      - SceneTarget is a colour target and a depth buffer at the authored resolution ADR-002 fixes, multisampled per ADR-002 and resolved before the present pass
+      - "ScaleMode is a pure function from (window client size, authored size) to (mode, destination rectangle) with the three cases AGENTS.md §5 lists, and ClientTests covers exact match, integer multiples, letterbox and pillarbox"
+      - "FrontierCommander shows a window per ADR-002 (the design assumes borderless over the primary monitor, with Escape and Alt+F4 owned by the game), clears the scene target, presents it scaled, and exits cleanly; --capture <frames> <directory> runs with no window and no swap chain, renders <frames> frames to the scene target, writes frame-<n>.bmp every hundredth through Core's Bitmap writer, and exits 0, or non-zero with the messages when the debug layer reported anything"
+      - "FXCompile items compile the two shaders into Client/CompiledShaders/PresentVS.h and PresentPS.h at build; CompiledShaders/ is ignored by git already and by every checker; ADR-002 records whether the pinned toolset's FXCompile drives dxc for shader model 6 or fxc for 5.1, which is what M0 was told to find out"
+      - Captures/ is added to .gitignore
+      - CI is green, including the new ClientTests
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      winrt/base.h throws on a failed check_hresult and on as<T>(); decide the HRESULT policy
+      here (check_hresult everywhere in Client is the simple answer, with the exception caught
+      once at the frame loop and turned into a device-removed or fatal path) and write it into
+      ADR-002. A capture that cannot show a window is the only way this project's agent ever
+      sees a frame, so treat --capture as a first-class path, not a test hook.
+
+  - id: T19
+    title: Client input - the event system from the Species input-native-events design
+    intent: >
+      Input reaches the game as an event stream with a per-frame derivation and a UI-first router
+      (TechnicalDesign.md §6.5), written fresh in the Neuron namespace from the Species design,
+      so that the camera of T20 and the interface of M1 consume the same events and the
+      simulation never subscribes to input.
+    project: Client
+    depends_on: [T2]
+    files:
+      - Client/InputEvent.h
+      - Client/InputQueue.h
+      - Client/InputQueue.cpp
+      - Client/FrameInput.h
+      - Client/FrameInput.cpp
+      - Client/InputRouter.h
+      - Client/InputRouter.cpp
+      - Client/InputSubscription.h
+      - Client/InputSubscription.cpp
+      - Client/RawMouse.h
+      - Client/RawMouse.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/FrameInputTests.cpp
+      - Tests/ClientTests/InputRouterTests.cpp
+      - Tests/ClientTests/InputSubscriptionTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+    acceptance:
+      - The window procedure only enqueues events (key down and up with repeat flagged, mouse buttons, wheel, absolute move, relative move, WM_CHAR text, focus lost) and returns; one pump per frame, nowhere else
+      - DeriveFrameState is a free function over the frame's events and the previous state producing one edge per control per frame, tested without a window
+      - Relative mouse comes from Raw Input, with WM_MOUSEMOVE as the fallback used only until the first relative packet has arrived; text goes to the focused sink as characters
+      - InputRouter offers each event to the UI sink first and then to the game sinks, a sink that consumes a key masks it until release, and the ordering rule is tested with stub sinks
+      - InputSubscription is a move-only handle whose bookkeeping is tested without any input
+      - The Species repository's tasks/input-native-events.yaml and the files it names are cited as the source in the header comments; nothing is copied from Darwinia-derived code
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T20
+    title: Client terrain pass and camera - FrontierCommander draws the generated landscape, and the fog and lighting ADR is written on captured frames
+    intent: >
+      The landscape T17 generates is drawn in the Species look (TechnicalDesign.md §6.2, §6.4;
+      SpeciesTerrain.md; SpeciesLook.md) through a chunked mesh with four levels of detail, under
+      a flying camera, and the fog ruling of OpenQuestions.md R4 is taken on frames the agent can
+      see, so that M0 ends with a landscape on screen and in CI's artefacts.
+    project: Client
+    depends_on: [T17, T18, T19]
+    files:
+      - Core/RenderView.h
+      - Core/HeightView.h
+      - Core/Core.vcxproj
+      - Core/Core.vcxproj.filters
+      - Client/TerrainChunk.h
+      - Client/TerrainChunk.cpp
+      - Client/TerrainPass.h
+      - Client/TerrainPass.cpp
+      - Client/WaterPass.h
+      - Client/WaterPass.cpp
+      - Client/Camera.h
+      - Client/Camera.cpp
+      - Client/Lighting.h
+      - Client/Shaders/TerrainVS.hlsl
+      - Client/Shaders/TerrainPS.hlsl
+      - Client/Shaders/WaterVS.hlsl
+      - Client/Shaders/WaterPS.hlsl
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - FrontierCommander/App.h
+      - FrontierCommander/App.cpp
+      - FrontierCommander/CameraController.h
+      - FrontierCommander/CameraController.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+      - Tests/ClientTests/TerrainChunkTests.cpp
+      - Tests/ClientTests/CameraTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Design/ADR/README.md
+      - Design/TechnicalDesign.md
+      - Design/SpeciesLook.md
+    acceptance:
+      - "Core/HeightView.h is a plain aggregate (samples pointer, sample count per side, spacing, water level, highest) and Core/RenderView.h the plain instance list of TechnicalDesign.md §6.3, both in the engine namespace; Client consumes them and nothing in Client names a Sim type"
+      - "TerrainChunk builds the mesh of a 32x32-cell chunk (129x129 samples, 16-bit indices) at a stride of 1, 2, 4 or 8 with a skirt, colours each vertex on the CPU by the Species formula u = (1 - slope)^0.4, v = 1 - height/highest plus the seeded noise, from a palette bitmap or, in M0, a built-in gradient; a test checks index counts, skirt presence and that a flat chunk at every stride has the same silhouette"
+      - "TerrainPass draws the visible chunks with frustum culling, the near band at stride 1 and the rest at the stride that keeps the frame near a million triangles, lit by two directional lights with no ambient, summed then clamped, one normal per triangle; the triangle count is logged per frame"
+      - WaterPass draws a flat single-colour plane at the water level, drawn only where the landscape falls below it; waves and the shore band are M2
+      - "Camera is the Species camera in floats: field of view 60 degrees, near 5, far 15,000, height clamped between 10 above the terrain and 5,000, yaw, pitch and height driven by CameraController from T19's events with edge scrolling; a test pins the clamps and the projection"
+      - FrontierCommander generates a Small landscape from a built-in definition through Sim, hands a HeightView to Client, and flies over it; --capture flies a scripted path and its frames show the landscape
+      - "The fog and lighting ADR (numbered next, cited from TechnicalDesign.md §12 and SpeciesLook.md §5) is written on two captured frames the PR attaches: the Species fog scaled to the landscape against distance desaturation, choosing one as the default and recording that the owner confirms or overrides at T22; the unlit team-colour flag is specified in Lighting.h for K1 of M1 to implement"
+      - CI green, including the capture job of T21 once it exists
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T21
+    title: Add the capture job to CI
+    intent: >
+      The frames FrontierCommander writes on WARP become artefacts of every pull request, with a
+      debug-layer message failing the job, so that the agent that cannot build can still see
+      what it drew (OpenQuestions.md R1; TechnicalDesign.md §10).
+    project: CI
+    depends_on: [T18]
+    files:
+      - .github/workflows/build.yml
+    acceptance:
+      - 'After the tests, a step guarded on x64\Debug\FrontierCommander.exe existing runs it with --warp --capture 300 Captures and fails the job on a non-zero exit'
+      - A following step uploads Captures/*.bmp as the artefact named captures, always, if any exist
+      - The workflow's comment block explains the step in the same voice as the others; nothing is continue-on-error
+      - The artefact appears on the PR's run and holds three frames
+    verify:
+      - python3 Tools/CheckTaskDag.py
+    parallel_safe: true
+    status: todo
+
+  - id: T22
+    title: The owner's run - M0 accepted on a real GPU
+    intent: >
+      A milestone is done when its "proves" column is true on a running build the owner has run
+      (GameDesign.md §12). CI has WARP and no eyes for frame rate; the owner has both.
+    project: Design
+    depends_on: [T3, T4, T5, T6, T11, T12, T13, T14, T20, T21]
+    acceptance:
+      - The owner builds Debug and Release from the solution and runs FrontierCommander on hardware
+      - A Small landscape is on screen, the camera flies, and the frame time at 1920x1080 is recorded in this task's notes
+      - The fog choice of T20's ADR is confirmed or overridden, and an override is a superseding ADR
+      - Every M0 line of GameDesign.md §12 is true, and this plan is moved to tasks/Archive/
+    status: todo
+    notes: >
+      Owner's task. An agent prepares the PR that archives the plan once the owner reports.

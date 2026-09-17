@@ -235,7 +235,7 @@ An object entering the set is sent whole; an object leaving it is sent as a remo
 
 The host publishes a **frame** per client every second tick (10 Hz): a sequence number, the sequence of the **baseline** it is encoded against, and three lists — objects created since the baseline (full records), objects changed (a field mask and the changed fields), objects removed — plus the events of the interval. The baseline is the newest frame the client has acknowledged; the host keeps a short history of what it sent each client (32 frames, 3.2 seconds) and encodes against the acked one, so **a lost frame costs nothing but a larger next frame**: no retransmission, no ordering, just the next delta from an older baseline. A client whose acknowledged baseline has fallen out of the history receives a full frame — the same path a joining client takes.
 
-Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, position, heading, hit points, rank, order kind, target, stance flags), `StructureState`, `WreckState`, `FeatureState`, `SeatState` (power, research in progress, victory state), and `Event` (kind, position, source, target, time). Positions on the wire are quantised to a quarter of a world unit and sent as deltas from the baseline; a device that did not move sends nothing. Every field is a fixed-width integer — an id is the four-byte counter of §4.3, hit points two bytes, a position delta six — and there is no float on the wire. A design's parts travel as a `DesignState` record with the first device of that design a client sees, so a client can show what it is fighting. **A frame larger than a datagram** — 1,200 bytes of payload, under every common path MTU — is split into numbered fragments; the client applies a frame only when every fragment has arrived and discards one with a fragment missing, which costs nothing but a larger next delta.
+Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, position, heading, hit points, rank, order kind, target, stance flags), `StructureState`, `WreckState`, `FeatureState`, `SeatState` (power, research in progress, victory state), and `Event` (kind, position, source, target, time). Positions on the wire are quantised to a quarter of a world unit and sent as deltas from the baseline; a device that did not move sends nothing. Every field is a fixed-width integer — an id is the four-byte counter of §4.3, hit points two bytes, a position delta six — and there is no float on the wire. A design's parts travel as a `DesignState` record with the first device of that design a client sees, so a client can show what it is fighting. A `FogDelta` record carries the changes to the commander's own fog grid — runs of cells with their new state — because the fog pass and the minimap draw the commander's visibility and nothing else in the frame says what it is; it is the commander's own information and leaks nothing (added 2026-09-17 by the implementation plan, `ImplementationPlan.md` §6). **A frame larger than a datagram** — 1,200 bytes of payload, under every common path MTU — is split into numbered fragments; the client applies a frame only when every fragment has arrived and discards one with a fragment missing, which costs nothing but a larger next delta.
 
 Datagrams carry frames unreliably. Orders (§5.5) are the one reliable stream.
 
@@ -290,7 +290,7 @@ Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `C
 
 ### 6.3 The render view
 
-The executable builds, each frame, a plain list of what to draw from the replica: for each object a model id, a position and an orientation interpolated between the last two frames (the first float conversion of a simulation number, and the only place it happens), a team colour and a rank badge; for the terrain, which chunks changed height since the last frame. `Client` draws the list. `Client` never sees a `Device`.
+The executable builds, each frame, a plain list of what to draw from the replica: for each object a model id, a position and an orientation interpolated between the last two frames (the first float conversion of a simulation number, and the only place it happens), a team colour and a rank badge; for the terrain, which chunks changed height since the last frame. `Client` draws the list. `Client` never sees a `Device`. The render-view and height-view types are plain aggregates in `Core`, in the engine namespace, so that `Replica` produces them and `Client` consumes them without an edge between the two (`ImplementationPlan.md` §6; ADR-001 records it).
 
 ### 6.4 The look, mechanically
 
@@ -405,15 +405,16 @@ A `SuiteSmoke` placeholder in every test project until its first real test, as `
 
 ## 12. The first decisions, as ADRs
 
-The ADRs the first tasks will write, in the order the work meets them. Where the owner has already decided, the ADR records the decision and adds the measurement.
+The ADRs the first tasks will write, in the order the work meets them. Where the owner has already decided, the ADR records the decision and adds the measurement. The numbers are the order the design expected; an ADR takes the next free number when it is written, and this table is updated in that commit (`ImplementationPlan.md` §6). The tasks that write them are in `tasks/`.
 
 | ADR | Decision | Written by |
 |---|---|---|
 | 001 | The solution and project layout of §2, the eight projects and their edges, the two namespaces | The first project |
-| 002 | Authored resolution, window style, scene target multisampling; the `d3dx12.h` exception and its pinned version; the fog's form and the unlit team-colour slots, with a captured frame | The first renderer task |
-| 003 | The 20 Hz tick, measured; the position unit and the fixed-point formats of §4.1 | The first `Sim` task |
+| 002 | Authored resolution, window style, scene target multisampling; the `d3dx12.h` exception and its pinned version; which shader compiler `FXCompile` drives on the pinned toolset | The first renderer task (`m0-foundation/T18`) |
+| — | The fog's form and the unlit team-colour slots, ruled on captured frames | The terrain pass (`m0-foundation/T20`), numbered when written |
+| 003 | The 20 Hz tick; the position unit and the fixed-point formats of §4.1; a dated measurement section added when the slice has a full tick to measure | The first `Sim` task (`m0-foundation/T15`), the measurements by `m1-vertical-slice/G3` |
 | 004 | The network model — host-authoritative replication, as decided — and the measured protocol numbers: publish rate, history length, quantisation, interest cost, and the leak posture of §5.2 | The first `Net` task |
 | 005 | The content directory, the JSON schemas and their versioning, the overlay rule for mods, the content hash | The first loader |
 | 006 | The Species-derived content that came across and the accepted provenance risk, stated to cover distribution to other players and inside mods; the Spectrum font | The first importer run |
 | 007 | The user directory and the preferences schema | The first task that needs a setting to persist |
-| 008 | The snapshot and replay formats | The first save |
+| 008 | The snapshot and replay formats | The first snapshot (`m0-foundation/T15`), because the determinism tests need the format from M0; the save file of M2 and the replay file of M3 cite it |

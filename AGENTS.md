@@ -257,6 +257,8 @@ Inside the simulation, additionally: no `float` where a fixed-point or integer q
 
 **Commits and PRs.** Branch off `main`; small, focused commits with an imperative subject describing the change, not the process. One change per PR. CI must be green. Never commit build output, `.vs/` or `.user` files.
 
+**Work is planned as task graphs.** Anything larger than a single-file change is a task in a plan under `tasks/`, in the format [`Design/ImplementationPlan.md`](Design/ImplementationPlan.md) §3 describes; `python Tools\CheckTaskDag.py --next tasks\<plan>.yaml` says what can start. A task is set `in_progress` in its own commit before the work and `done` in the commit that lands it, never before CI is green, and a task that turns out to be wrong is marked and replaced rather than quietly reshaped.
+
 ---
 
 ## 7. Before you hand work back

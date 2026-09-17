@@ -1,0 +1,48 @@
+# Copy this file to tasks/<plan-name>.yaml and fill it in.
+# Schema and conventions: Design/ImplementationPlan.md §3
+# Validate with:  python3 Tools/CheckTaskDag.py tasks/<plan-name>.yaml
+# (files whose names start with "_" are not plans and are not loaded)
+
+plan: my-plan-name
+title: One line describing what this plan achieves
+phase: 1
+summary: >
+  Why this plan exists and what the system looks like once it is finished.
+  Delete this key if the title says it all.
+
+tasks:
+  - id: T1
+    title: First thing, as an imperative phrase
+    intent: >
+      What changes about the system once this lands, and why that matters.
+      Not how - the how is the diff.
+    project: Core
+    depends_on: []
+    blocked_by: []                    # tasks in another plan, as plan/Tn
+    files:
+      - Core/Example.h
+      - Core/Example.cpp
+      # Tests ship with the change, not after it (TechnicalDesign.md §10).
+      - Tests/CoreTests/ExampleTests.cpp
+    acceptance:
+      - An outcome someone else could check without asking you
+      - Another one
+      - CoreTests covers <the behaviour this task adds or changes>
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: T2
+    title: Second thing, which genuinely cannot start until T1 lands
+    intent: >
+      Add an edge only when the work is actually blocked, not when it merely
+      reads better in this order.
+    depends_on: [T1]
+    acceptance:
+      - Something observable
+    status: todo

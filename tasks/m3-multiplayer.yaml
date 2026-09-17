@@ -1,0 +1,135 @@
+# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/m3-multiplayer.yaml
+#
+# Coarse, as m2-skirmish is: split into M1-grain tasks when M2 closes.
+
+plan: m3-multiplayer
+title: M3 Multiplayer - eight commanders over LAN and direct IP on a headless host, rejoin, Large landscapes, dominance, mods, replays
+phase: 3
+summary: >
+  What M3 proves (GameDesign.md §12): eight commanders over LAN and direct IP on a headless host;
+  a client is never sent what its commander cannot see; a dropped player rejoins; Large
+  landscapes and the dominance victory; mods and the content hash; replays record and play.
+  Content is the lobby, the UDP transport, the headless host and the replay viewer. The
+  protocol, the interest test and the replica exist since M1 over loopback; this milestone puts
+  a socket under them and a second machine behind it.
+
+tasks:
+  - id: T1
+    title: UdpTransport in Core
+    intent: >
+      The seam of M0 gets its socket-backed implementation (TechnicalDesign.md §5.6): one
+      non-blocking socket per process polled from the loop, framed datagrams, server-assigned
+      connection ids so two players behind one router are two players, and liveness by heartbeat.
+    project: Core
+    depends_on: []
+    blocked_by:
+      - m2-skirmish/T11
+    acceptance:
+      - UdpTransport implements Transport with Winsock2 and no thread; the framing, id assignment and liveness are the M0 code unchanged; no test opens a socket, and the owner's LAN run exercises it
+    status: todo
+
+  - id: T2
+    title: FrontierHost as a headless match host
+    intent: >
+      The host executable opens a match from settings, runs the one simulation and publishes to
+      clients with a log of what it did and why a client was refused (TechnicalDesign.md §9), so
+      that a machine nobody plays on can host.
+    project: FrontierHost
+    depends_on: [T1]
+    acceptance:
+      - FrontierHost --host <settings file> runs the host loop over UdpTransport until the match ends, writes Logs\Host.log rotated, saves and resumes host-side, and --run <landscape> <ticks> prints the state hash every hundred ticks for scripted checks
+    status: todo
+
+  - id: T3
+    title: Mods overlay and the content hash
+    intent: >
+      A mod is a directory whose files override the game's at the same path, enabled by name in
+      the lobby, and the host hashes everything it loaded so that two players with different
+      files are refused each other's matches before the first tick (TechnicalDesign.md §8).
+    project: Content
+    depends_on: []
+    blocked_by:
+      - m2-skirmish/T11
+    acceptance:
+      - ContentLoader reads Content\ then each enabled mod in order with path override; the 64-bit hash over the bytes of every loaded file in load order is computed at start and checked at join; ContentTests covers the overlay and the hash; ADR-005 is superseded or amended by a new ADR only if the schema changes
+    status: todo
+
+  - id: T4
+    title: The network lobby
+    intent: >
+      A host opens a match and players join by address over a LAN or by direct IP, see the seats,
+      the settings, the enabled mods and each other's readiness, and chat (GameDesign.md §10).
+    project: FrontierCommander
+    depends_on: [T2, T3]
+    acceptance:
+      - The lobby of M2 gains a network mode with join by address, seat assignment, ready state, mod list and content-hash refusal shown in words; no master server and no NAT traversal
+    status: todo
+
+  - id: T5
+    title: Drop, grace, rejoin, pause and chat in the match
+    intent: >
+      A player who drops is kept as a seat under AI control for a grace period and rejoins to
+      their commander's view afresh; the host may pause; chat is text to all or allies.
+    project: Net
+    depends_on: [T2]
+    acceptance:
+      - The M1 protocol's rejoin path runs over UDP; the grace period and the AI hand-over are visible in the lobby and the log; pause and chat are orders the host applies; NetTests and the owner's run cover them
+    status: todo
+
+  - id: T6
+    title: Replays recorded and played
+    intent: >
+      Every match is recorded as its settings, seed and order stream, and any recording is
+      watched by hosting it locally at any speed from any seat's view, including the AI's, which
+      is also the bug-report format (GameDesign.md §10).
+    project: FrontierCommander
+    depends_on: [T2]
+    acceptance:
+      - Replays\*.fcreplay written by every host, the oldest pruned; the viewer hosts from the file with a seat selector and speed control; a replay reproduces the recorded hashes in a test; the snapshot-and-replay ADR records the format
+    status: todo
+
+  - id: T7
+    title: Large landscapes at performance, and the pathing ADR
+    intent: >
+      Pathing, visibility and the terrain renderer are sized by Large (TechnicalDesign.md §4.5,
+      §4.6, §6.2); this task measures them with eight AI seats on a Large landscape and takes the
+      hierarchical A* against flow fields decision on the numbers.
+    project: Sim
+    depends_on: []
+    blocked_by:
+      - m2-skirmish/T11
+    acceptance:
+      - The landscape tool's Large recipe passes the guarantees at a stated rate; eight AI seats on Large run inside the 50-millisecond tick on the owner's machine with the shares recorded; the terrain pass holds its triangle budget; the pathing ADR is written on the measurements
+    status: todo
+
+  - id: T8
+    title: The dominance victory
+    intent: >
+      One side holding at least 60 percent of the deposits, an extractor built and served, for
+      ten continuous minutes wins (GameDesign.md §2), so that a Large match need not be a hunt.
+    project: Sim
+    depends_on: [T7]
+    acceptance:
+      - Dominance is a MatchSettings victory condition applied at stage 12 and shown in the lobby and the interface; SimTests covers the hold timer resetting on loss of a deposit
+    status: todo
+
+  - id: T9
+    title: Bandwidth and interest measured on a LAN
+    intent: >
+      ADR-004's arithmetic becomes measurement: bytes per client per second in a large battle,
+      and the interest test extended to eight seats.
+    project: Net
+    depends_on: [T4, T7]
+    acceptance:
+      - The interest test runs with eight seats and allied vision; the ADR gains a dated measurement section with peak and average bandwidth per client from a LAN match
+    status: todo
+
+  - id: T10
+    title: The owner's run - M3 accepted over a LAN
+    intent: >
+      A milestone is done when its "proves" column is true on a running build the owner has run.
+    project: Design
+    depends_on: [T4, T5, T6, T8, T9]
+    acceptance:
+      - Two machines and a headless host play a match, one player drops and rejoins, the replay plays back; every M3 line of GameDesign.md §12 is true; the plan is archived
+    status: todo
