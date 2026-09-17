@@ -112,9 +112,9 @@ constexpr float PI = 3.14159265358979323846f;
 }
 
 /// The capture's scripted path (TechnicalDesign.md §6.1): a hundred frames of a descending half
-/// orbit round the island, then the vantage the fog-and-lighting ADR compares its two frames from,
-/// held: frame 100 under the Species fog, frame 200 under the desaturation.
-void PoseFor(std::uint32_t _frame, float _extent, Neuron::Camera& _camera, Neuron::FogMode& _fog) noexcept
+/// orbit round the island, then the vantage ADR-005 compares its two frames from, held: frame 100
+/// under the Species fog, frame 200 under the desaturation. Returns the frame's fog mode.
+Neuron::FogMode PoseFor(std::uint32_t _frame, float _extent, Neuron::Camera& _camera) noexcept
 {
   const float center = _extent * 0.5f;
   if (_frame < 100)
@@ -124,12 +124,11 @@ void PoseFor(std::uint32_t _frame, float _extent, Neuron::Camera& _camera, Neuro
     const float radius = _extent * 0.45f;
     _camera.SetPosition(center + std::sin(angle) * radius, 1500.0f - 900.0f * t, center + std::cos(angle) * radius);
     _camera.LookAt(center, 0.0f, center);
-    _fog = Neuron::FogMode::LinearToColor;
-    return;
+    return Neuron::FogMode::LinearToColor;
   }
   _camera.SetPosition(_extent * 0.12f, 320.0f, _extent * 0.12f);
   _camera.LookAt(_extent * 0.55f, 0.0f, _extent * 0.55f);
-  _fog = _frame < 200 ? Neuron::FogMode::LinearToColor : Neuron::FogMode::Desaturation;
+  return _frame < 200 ? Neuron::FogMode::LinearToColor : Neuron::FogMode::Desaturation;
 }
 
 [[nodiscard]] std::string Describe(const winrt::hresult_error& _error)
@@ -224,8 +223,9 @@ int App::RunWindowed()
   Neuron::TerrainPass terrain(device, heights, Neuron::TerrainPalette::BuiltIn(), scene.SampleCount());
   Neuron::WaterPass water(device, heights, scene.SampleCount());
   Neuron::Camera camera;
-  Neuron::FogMode fog = Neuron::FogMode::LinearToColor;
-  PoseFor(100, terrain.ExtentWorldUnits(), camera, fog);
+  camera.SetFarPlane(terrain.ExtentWorldUnits() * Neuron::FAR_PLANE_EXTENT_FACTOR);
+  PoseFor(100, terrain.ExtentWorldUnits(), camera); // The capture's vantage; the fog is the ADR's, not the script's
+  const Neuron::FogMode fog = Neuron::DEFAULT_FOG_MODE;
   camera.ClampHeight(heights);
   const CameraController controller;
   auto lastFrame = std::chrono::steady_clock::now();
@@ -300,10 +300,10 @@ int App::RunCapture()
   Neuron::TerrainPass terrain(device, heights, Neuron::TerrainPalette::BuiltIn(), scene.SampleCount());
   Neuron::WaterPass water(device, heights, scene.SampleCount());
   Neuron::Camera camera;
+  camera.SetFarPlane(terrain.ExtentWorldUnits() * Neuron::FAR_PLANE_EXTENT_FACTOR);
   for (std::uint32_t frame = 0; frame < m_options.captureFrames; ++frame)
   {
-    Neuron::FogMode fog = Neuron::FogMode::LinearToColor;
-    PoseFor(frame, terrain.ExtentWorldUnits(), camera, fog);
+    const Neuron::FogMode fog = PoseFor(frame, terrain.ExtentWorldUnits(), camera);
     camera.ClampHeight(heights);
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);

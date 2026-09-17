@@ -148,7 +148,9 @@ WaterPass::WaterPass(GraphicsDevice& _device, const HeightView& _view, std::uint
   pipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
   pipeline.RasterizerState.MultisampleEnable = _sceneSampleCount > 1 ? TRUE : FALSE;
   pipeline.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-  // Tested against the terrain, never written: the plane hides nothing drawn after it.
+  // Tested against the terrain under the reversed depth of SceneTarget.h, never written: the plane
+  // hides nothing drawn after it.
+  pipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER;
   pipeline.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
   pipeline.InputLayout = {layout, static_cast<UINT>(std::size(layout))};
   pipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;

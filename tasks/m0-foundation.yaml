@@ -1172,6 +1172,20 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      Drawn first on CI run 39 (a32e5d0): the Small landscape of the built-in definition, 513
+      samples a side, 16 chunks at four strides, 386,624 vertices and 664,912 triangles built in
+      0.38 s, 161,730 to 220,152 triangles drawn per frame over the capture's orbit, 300 frames in
+      27.7 s on WARP (92 ms a frame, Debug), the debug layer on and silent. Run 38 was red on
+      CameraTests.cpp alone: near and far are minwindef.h macros, which is where the sdk-macro
+      rule of Build/CheckProjectFiles.py comes from. ADR-005 was written on frames 100 and 200 of
+      run 39, one vantage under the linear fog and under the desaturation: the desaturation is the
+      default, the team-colour slot is neither lit nor fogged, the far plane scales with the
+      landscape and the depth is reversed. Design choices: the colour is computed per vertex on
+      the CPU by the Species formula and handed on flat, the normal comes from the pixel shader's
+      derivatives, both faces draw until the winding is confirmed on a running build, the meshes
+      live in upload heaps, the water plane sits nine units under the sea level with the shore
+      dipped ten. The owner's run (T22) is the first on a GPU and the first with eyes on it.
 
   - id: T21
     title: Add the capture job to CI

@@ -1,8 +1,9 @@
 // The terrain pass's pixel half: the Species lighting (SpeciesLook.md §2, TechnicalDesign.md §6.4),
 // Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then
-// clamped, one normal per triangle from the derivatives of the world position; a vertex colour
-// with alpha zero is an unlit team-colour slot (Lighting.h); then the fog of the fog-and-lighting
-// ADR, linear to the fog colour or a desaturation, by the mode in the constants.
+// clamped, one normal per triangle from the derivatives of the world position; then the fog of
+// ADR-005, linear to the fog colour or a desaturation, by the mode in the constants. A vertex
+// colour with alpha zero is a team-colour slot (Lighting.h): written as it is, neither lit nor
+// fogged.
 
 cbuffer SceneConstants : register(b0)
 {
@@ -42,11 +43,11 @@ float4 main(Input input) : SV_Target
   {
     normal = -normal;
   }
-  float3 lit = input.color.rgb;
-  if (input.color.a > 0.0)
+  if (input.color.a <= 0.0)
   {
-    const float3 light = g_lightColor0.rgb * saturate(dot(normal, g_lightDirection0.xyz)) + g_lightColor1.rgb * saturate(dot(normal, g_lightDirection1.xyz));
-    lit = min(input.color.rgb * light, 1.0);
+    return float4(input.color.rgb, 1.0);
   }
+  const float3 light = g_lightColor0.rgb * saturate(dot(normal, g_lightDirection0.xyz)) + g_lightColor1.rgb * saturate(dot(normal, g_lightDirection1.xyz));
+  const float3 lit = min(input.color.rgb * light, 1.0);
   return float4(Fogged(lit, input.world), 1.0);
 }

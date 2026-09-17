@@ -27,13 +27,28 @@ public:
     DirectX::XMStoreFloat4x4(&projection, camera.Projection(16.0f / 9.0f));
     Assert::AreEqual(1.0f / std::tan(30.0f * 3.14159265f / 180.0f), projection._22, TOLERANCE, L"the vertical field of view is 60 degrees");
     Assert::AreEqual(projection._22 * 9.0f / 16.0f, projection._11, TOLERANCE);
-    // A point on the near plane lands at depth 0 and one on the far plane at depth 1.
+    // Reversed depth (ADR-005): a point on the near plane lands at depth 1 and one on the far plane at depth 0.
     const DirectX::XMVECTOR nearPoint =
       DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, Neuron::CAMERA_NEAR, 1.0f), camera.Projection(1.0f));
     const DirectX::XMVECTOR farPoint =
       DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, Neuron::CAMERA_FAR, 1.0f), camera.Projection(1.0f));
-    Assert::AreEqual(0.0f, DirectX::XMVectorGetZ(nearPoint), TOLERANCE);
-    Assert::AreEqual(1.0f, DirectX::XMVectorGetZ(farPoint), TOLERANCE);
+    Assert::AreEqual(1.0f, DirectX::XMVectorGetZ(nearPoint), TOLERANCE);
+    Assert::AreEqual(0.0f, DirectX::XMVectorGetZ(farPoint), TOLERANCE);
+    const DirectX::XMVECTOR between =
+      DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, 1000.0f, 1.0f), camera.Projection(1.0f));
+    Assert::IsTrue(DirectX::XMVectorGetZ(between) > 0.0f && DirectX::XMVectorGetZ(between) < 1.0f, L"depth falls with distance");
+  }
+
+  TEST_METHOD(TheFarPlaneIsPushedOutByALandscapeAndNeverPulledIn)
+  {
+    Neuron::Camera camera;
+    camera.SetFarPlane(8192.0f * Neuron::FAR_PLANE_EXTENT_FACTOR);
+    Assert::AreEqual(Neuron::CAMERA_FAR, camera.FarPlane(), L"a Small landscape's far corner is inside the Species far plane");
+    camera.SetFarPlane(30000.0f);
+    Assert::AreEqual(30000.0f, camera.FarPlane());
+    const DirectX::XMVECTOR farPoint =
+      DirectX::XMVector3TransformCoord(DirectX::XMVectorSet(0.0f, 0.0f, 30000.0f, 1.0f), camera.Projection(1.0f));
+    Assert::AreEqual(0.0f, DirectX::XMVectorGetZ(farPoint), TOLERANCE, L"the far plane moved with it");
   }
 
   TEST_METHOD(TheHeightIsClampedAboveTheGroundAndBelowTheCeiling)

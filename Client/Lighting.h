@@ -26,21 +26,26 @@ struct SceneLighting
 inline constexpr SceneLighting GARDEN_LIGHTING = {{{0.04f, 0.39f, -0.92f}, {1.06f, 0.96f, 0.72f}},
                                                   {{0.57f, 0.0f, -0.82f}, {3.58f, 0.79f, 0.14f}}};
 
-/// THE UNLIT TEAM-COLOUR SLOT (TechnicalDesign.md §6.4; OpenQuestions.md R4): a vertex whose colour
-/// carries this alpha is a team-colour slot, and the pixel shader writes its colour as it is, so
-/// that no sun tints a commander's colour. Every other vertex carries VERTEX_ALPHA_LIT. Specified
-/// here for the geometry pass of M1 (m1-vertical-slice/K1) to implement; the terrain never uses
-/// it, and the terrain shader honours it already.
+/// THE UNLIT TEAM-COLOUR SLOT (ADR-005; TechnicalDesign.md §6.4; OpenQuestions.md R4): a vertex
+/// whose colour carries this alpha is a team-colour slot, and the pixel shader writes its colour
+/// as it is, neither lit nor fogged, so that no sun tints a commander's colour and no distance
+/// greys it. Every other vertex carries VERTEX_ALPHA_LIT. Specified here for the geometry pass of
+/// M1 (m1-vertical-slice/K1) to implement; the terrain never uses it, and the terrain shader
+/// honours it already, as the reference.
 inline constexpr float VERTEX_ALPHA_UNLIT = 0.0f;
 inline constexpr float VERTEX_ALPHA_LIT = 1.0f;
 
-/// How the far field fades (SpeciesLook.md §5; the fog-and-lighting ADR): the Species fog scaled
-/// to the landscape, or distance desaturation.
+/// How the far field fades (SpeciesLook.md §5; ADR-005): the Species fog scaled to the landscape,
+/// or distance desaturation. Both stay in the shaders, because the capture draws both for the
+/// comparison the ADR rests on; the game draws DEFAULT_FOG_MODE.
 enum class FogMode : std::uint32_t
 {
   LinearToColor,
   Desaturation
 };
+
+/// ADR-005's choice, until the owner confirms or overrides it (m0-foundation/T22).
+inline constexpr FogMode DEFAULT_FOG_MODE = FogMode::Desaturation;
 
 /// The Species fog range as a fraction of the landscape's extent: 1,000 to 4,000 units on maps
 /// about 5,400 across.

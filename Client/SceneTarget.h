@@ -23,6 +23,9 @@ inline constexpr std::uint32_t AUTHORED_HEIGHT_PIXELS = 1080;
 inline constexpr std::uint32_t SCENE_SAMPLE_COUNT = 4;
 inline constexpr DXGI_FORMAT SCENE_COLOR_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;
 inline constexpr DXGI_FORMAT SCENE_DEPTH_FORMAT = DXGI_FORMAT_D32_FLOAT;
+/// The depth is reversed (ADR-005): cleared to 0, the near plane at 1, and every world pass tests
+/// GREATER, so that the float's precision lies in the far field, which is drawn rather than fogged.
+inline constexpr float SCENE_DEPTH_CLEAR = 0.0f;
 
 /// The colour target and depth buffer the passes draw into, at the authored resolution and
 /// multisampled, and the single-sample texture they resolve into for the present pass and the

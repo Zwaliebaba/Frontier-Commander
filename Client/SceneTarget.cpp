@@ -48,7 +48,7 @@ SceneTarget::SceneTarget(GraphicsDevice& _device, const std::array<float, 4>& _c
 
   const CD3DX12_RESOURCE_DESC depthDescription = CD3DX12_RESOURCE_DESC::Tex2D(
     SCENE_DEPTH_FORMAT, AUTHORED_WIDTH_PIXELS, AUTHORED_HEIGHT_PIXELS, 1, 1, m_sampleCount, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
-  const CD3DX12_CLEAR_VALUE depthClear(SCENE_DEPTH_FORMAT, 1.0f, 0);
+  const CD3DX12_CLEAR_VALUE depthClear(SCENE_DEPTH_FORMAT, SCENE_DEPTH_CLEAR, 0);
   winrt::check_hresult(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &depthDescription, D3D12_RESOURCE_STATE_DEPTH_WRITE,
                                                        &depthClear, IID_PPV_ARGS(m_depth.put())));
   winrt::check_hresult(m_depth->SetName(L"scene depth"));
@@ -72,7 +72,7 @@ void SceneTarget::Begin(ID3D12GraphicsCommandList* _list)
   const D3D12_CPU_DESCRIPTOR_HANDLE depthStencil = m_depthStencilViews.Cpu(0);
   _list->OMSetRenderTargets(1, &renderTarget, FALSE, &depthStencil);
   _list->ClearRenderTargetView(renderTarget, m_clearColor.data(), 0, nullptr);
-  _list->ClearDepthStencilView(depthStencil, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+  _list->ClearDepthStencilView(depthStencil, D3D12_CLEAR_FLAG_DEPTH, SCENE_DEPTH_CLEAR, 0, 0, nullptr);
   const CD3DX12_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(AUTHORED_WIDTH_PIXELS), static_cast<float>(AUTHORED_HEIGHT_PIXELS));
   const CD3DX12_RECT scissor(0, 0, static_cast<LONG>(AUTHORED_WIDTH_PIXELS), static_cast<LONG>(AUTHORED_HEIGHT_PIXELS));
   _list->RSSetViewports(1, &viewport);

@@ -86,9 +86,16 @@ DirectX::XMMATRIX Camera::View() const noexcept
                                    DirectX::XMVectorSet(0.0f, 1.0f, 0.0f, 0.0f));
 }
 
+void Camera::SetFarPlane(float _distance) noexcept
+{
+  m_far = std::max(CAMERA_FAR, _distance);
+}
+
 DirectX::XMMATRIX Camera::Projection(float _aspect) const noexcept
 {
-  return DirectX::XMMatrixPerspectiveFovLH(Radians(CAMERA_FIELD_OF_VIEW_DEGREES), _aspect, CAMERA_NEAR, CAMERA_FAR);
+  // Reversed depth (ADR-005): the near plane maps to 1 and the far plane to 0, so that a 32-bit
+  // float's precision, dense near 0, lands where the far field is; the planes are passed swapped.
+  return DirectX::XMMatrixPerspectiveFovLH(Radians(CAMERA_FIELD_OF_VIEW_DEGREES), _aspect, m_far, CAMERA_NEAR);
 }
 
 float GroundHeightAt(const HeightView& _view, float _x, float _z) noexcept

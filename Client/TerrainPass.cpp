@@ -44,8 +44,8 @@ struct Plane
     plane(_m._14 - _m._11, _m._24 - _m._21, _m._34 - _m._31, _m._44 - _m._41), // right
     plane(_m._14 + _m._12, _m._24 + _m._22, _m._34 + _m._32, _m._44 + _m._42), // bottom
     plane(_m._14 - _m._12, _m._24 - _m._22, _m._34 - _m._32, _m._44 - _m._42), // top
-    plane(_m._13, _m._23, _m._33, _m._43),                                     // near
-    plane(_m._14 - _m._13, _m._24 - _m._23, _m._34 - _m._33, _m._44 - _m._43), // far
+    plane(_m._13, _m._23, _m._33, _m._43),                                     // z >= 0: the far plane under the reversed depth
+    plane(_m._14 - _m._13, _m._24 - _m._23, _m._34 - _m._33, _m._44 - _m._43), // w - z >= 0: the near plane
   };
 }
 
@@ -185,6 +185,7 @@ TerrainPass::TerrainPass(GraphicsDevice& _device, const HeightView& _view, const
   pipeline.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
   pipeline.RasterizerState.MultisampleEnable = _sceneSampleCount > 1 ? TRUE : FALSE;
   pipeline.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+  pipeline.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER; // The reversed depth of SceneTarget.h
   pipeline.InputLayout = {layout, static_cast<UINT>(std::size(layout))};
   pipeline.IBStripCutValue = D3D12_INDEX_BUFFER_STRIP_CUT_VALUE_DISABLED;
   pipeline.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
