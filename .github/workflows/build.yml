@@ -195,6 +195,23 @@ jobs:
           & $vstest $suites /Platform:x64 /Logger:trx /Logger:"console;verbosity=detailed" /ResultsDirectory:TestResults
           if ($LASTEXITCODE -ne 0) { throw "vstest reported failures." }
 
+      # The capture (TechnicalDesign.md §6.1, §10): the game on WARP with no window, three hundred
+      # frames of the scene target and a BMP of every hundredth, so that the frames an agent cannot
+      # render on its own machine become artefacts of the pull request. The executable exits 2 when
+      # the debug layer reported anything and 1 when it could not run at all, and either fails the
+      # job. A Windows-subsystem executable starts without a console and PowerShell would not wait
+      # for it on its own, so Start-Process -Wait does; the log the run wrote is printed here,
+      # because the agent reads this job log and cannot fetch the artefact. Guarded on the
+      # executable, like every other step on its input.
+      - name: Capture frames on WARP
+        if: hashFiles('x64/Debug/FrontierCommander.exe') != ''
+        shell: pwsh
+        run: |
+          $process = Start-Process -FilePath 'x64\Debug\FrontierCommander.exe' -ArgumentList '--warp', '--capture', '300', 'Captures' -Wait -PassThru -NoNewWindow
+          if (Test-Path 'Captures\capture.log') { Get-Content 'Captures\capture.log' } else { Write-Output '::warning::Captures\capture.log was not written.' }
+          Get-ChildItem 'Captures' -Filter '*.bmp' -ErrorAction SilentlyContinue | ForEach-Object { Write-Output "$($_.Name): $($_.Length) bytes" }
+          if ($process.ExitCode -ne 0) { throw "FrontierCommander --capture exited with $($process.ExitCode)." }
+
       # After the build, so that a compile error is reported as a compile error rather than as
       # forty linter findings about a file that does not parse.
       - name: Run clang-tidy
@@ -216,6 +233,15 @@ jobs:
         with:
           name: test-results
           path: TestResults
+          if-no-files-found: ignore
+
+      # Always, so that the frames of a capture that then exited non-zero are still there to look at.
+      - name: Upload the captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures
+          path: Captures/*.bmp
           if-no-files-found: ignore
 
   format:
