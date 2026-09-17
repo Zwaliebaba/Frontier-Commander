@@ -72,7 +72,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: false
-    status: in_progress
+    status: done
     notes: >
       Written by hand from the MSBuild schema, in the shape ADR-001 describes: one unconditional
       property group and item-definition group for everything that is not optimisation, and the
@@ -90,6 +90,9 @@ tasks:
       ADRs were updated, and the .clang-tidy registry names all eight projects; .clang-tidy is CRLF
       in the working tree per .gitattributes, and the edit kept it so.
 
+            CI on 2026-09-17 (run 35260271356, job Debug|x64 in 74 s): the solution built, vstest ran
+            CoreTests and reported 1 test passed (TheSuiteRunsAndTheLibraryLinks), the format job passed
+            over the eight C++ files, and the plan validation passed. Marked done on that run.
   - id: T2
     title: Add the other seven projects and their five test projects along ADR-001's edges
     intent: >
@@ -189,7 +192,7 @@ tasks:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       Exercised in the session on an empty tree (exit 0, "nothing to check"), on a temporary tree
       with a badly formatted file (exit 1, the file listed, x64/, CompiledShaders/ and
@@ -434,28 +437,35 @@ tasks:
     status: todo
 
   - id: T12
-    title: Core bitmap and wave readers, and a bitmap writer
+    title: Core DDS and wave readers, and a BMP writer for captures
     intent: >
-      Palettes, sprites, the font and the sounds are BMP and WAV files (TechnicalDesign.md §8),
-      and the capture mode writes BMPs, so small strict readers and a writer live in Core with
-      fixtures, and a malformed file is refused with a location rather than read past.
+      Textures are DDS and nothing else (owner, 2026-09-17; TechnicalDesign.md §8), sounds are
+      WAV, and the capture mode writes screenshots the agent can look at, so a strict DDS reader,
+      a strict WAV reader and a small BMP writer live in Core with hand-built fixtures, and a
+      malformed file is refused with a location rather than read past.
     project: Core
     depends_on: [T10]
     files:
-      - Core/Bitmap.h
-      - Core/Bitmap.cpp
+      - Core/TextureFile.h
+      - Core/TextureFile.cpp
+      - Core/BitmapWriter.h
+      - Core/BitmapWriter.cpp
       - Core/Wave.h
       - Core/Wave.cpp
       - Core/Core.vcxproj
       - Core/Core.vcxproj.filters
-      - Tests/CoreTests/BitmapTests.cpp
+      - Tests/CoreTests/TextureFileTests.cpp
+      - Tests/CoreTests/BitmapWriterTests.cpp
       - Tests/CoreTests/WaveTests.cpp
       - Tests/CoreTests/CoreTests.vcxproj
       - Tests/CoreTests/CoreTests.vcxproj.filters
     acceptance:
-      - Bitmap reads 24-bit BGR and 8-bit palettised BMPs, bottom-up and top-down, with row padding, into a plain RGBA8 buffer, and refuses compression, other depths and inconsistent headers with an error that names the offset; Bitmap also writes a 24-bit bottom-up BMP
+      - "TextureFile reads a DDS: the magic, the 124-byte header, the pixel format, and the DX10 extension when the FourCC says so; the legacy FourCCs DXT1, DXT3 and DXT5 and the masked RGB(A) pixel formats map to their DXGI formats; the admitted formats are B8G8R8A8_UNORM, R8G8B8A8_UNORM, R8_UNORM, BC1_UNORM, BC3_UNORM and BC7_UNORM, with the _SRGB variants refused for now, and anything else refused by name"
+      - "The mip chain is computed per level from the format's block size (1x1 at 4 bytes or 1 byte; 4x4 at 8 or 16), the payload length is checked against the sum before any level is exposed, and cube maps, volumes and arrays are refused with the flag named"
+      - "A CPU consumer asks for a level as RGBA8 and gets it for the uncompressed formats, with B8G8R8A8 swizzled and R8 broadcast; for a block-compressed format the request fails and the raw level is available to the upload path unchanged"
+      - BitmapWriter writes a 24-bit bottom-up BMP from RGBA8 for the capture mode (m0-foundation/T18) and nothing reads BMP at runtime
       - Wave reads RIFF/WAVE with a fmt and a data chunk, 16-bit PCM, mono or stereo, any sample rate, skipping unknown chunks, and refuses other formats with the chunk named
-      - Every read is bounded through ByteReader; fixtures are byte arrays in the tests, and a written bitmap reads back identical
+      - "Every read is bounded through ByteReader; fixtures are byte arrays built in the tests (a 2x2 B8G8R8A8 with two mips, a 4x4 BC1 block, an R8 atlas cell, a DX10-header file, and one broken file per rule); a written bitmap is checked byte for byte against a literal"
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
@@ -464,6 +474,11 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: todo
+    notes: >
+      The DDS layout is in the Windows SDK's dxgiformat.h (the DXGI_FORMAT values) and the
+      documented DDS_HEADER / DDS_HEADER_DXT10 structures; write the two structures into
+      TextureFile.cpp from the documentation rather than including ddraw.h, which pulls in far
+      more than a reader needs.
 
   - id: T13
     title: Core paths and logging
@@ -616,7 +631,7 @@ tasks:
       - python3 Tools/LandscapeTool.py --report Small --seeds 100
       - python3 Tools/LandscapeTool.py --golden Small 1
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       THE FILE LIST WAS SHORT BY TWO: Tools/FractalTable.py (the committed integer tables) and
       Tools/GenerateFractalTable.py (the one place float computes them), because the tables have to
@@ -743,7 +758,7 @@ tasks:
       - One command queue, one command allocator per frame in flight, three frames in flight with a fence per frame, descriptor heaps managed by hand, a flip-model swap chain of three back buffers on the window
       - SceneTarget is a colour target and a depth buffer at the authored resolution ADR-002 fixes, multisampled per ADR-002 and resolved before the present pass
       - "ScaleMode is a pure function from (window client size, authored size) to (mode, destination rectangle) with the three cases AGENTS.md §5 lists, and ClientTests covers exact match, integer multiples, letterbox and pillarbox"
-      - "FrontierCommander shows a window per ADR-002 (the design assumes borderless over the primary monitor, with Escape and Alt+F4 owned by the game), clears the scene target, presents it scaled, and exits cleanly; --capture <frames> <directory> runs with no window and no swap chain, renders <frames> frames to the scene target, writes frame-<n>.bmp every hundredth through Core's Bitmap writer, and exits 0, or non-zero with the messages when the debug layer reported anything"
+      - "FrontierCommander shows a window per ADR-002 (the design assumes borderless over the primary monitor, with Escape and Alt+F4 owned by the game), clears the scene target, presents it scaled, and exits cleanly; --capture <frames> <directory> runs with no window and no swap chain, renders <frames> frames to the scene target, writes frame-<n>.bmp every hundredth through Core's BitmapWriter, and exits 0, or non-zero with the messages when the debug layer reported anything"
       - "FXCompile items compile the two shaders into Client/CompiledShaders/PresentVS.h and PresentPS.h at build; CompiledShaders/ is ignored by git already and by every checker; ADR-002 records whether the pinned toolset's FXCompile drives dxc for shader model 6 or fxc for 5.1, which is what M0 was told to find out"
       - Captures/ is added to .gitignore
       - CI is green, including the new ClientTests
@@ -850,7 +865,7 @@ tasks:
       - Design/SpeciesLook.md
     acceptance:
       - "Core/HeightView.h is a plain aggregate (samples pointer, sample count per side, spacing, water level, highest) and Core/RenderView.h the plain instance list of TechnicalDesign.md §6.3, both in the engine namespace; Client consumes them and nothing in Client names a Sim type"
-      - "TerrainChunk builds the mesh of a 32x32-cell chunk (129x129 samples, 16-bit indices) at a stride of 1, 2, 4 or 8 with a skirt, colours each vertex on the CPU by the Species formula u = (1 - slope)^0.4, v = 1 - height/highest plus the seeded noise, from a palette bitmap or, in M0, a built-in gradient; a test checks index counts, skirt presence and that a flat chunk at every stride has the same silhouette"
+      - "TerrainChunk builds the mesh of a 32x32-cell chunk (129x129 samples, 16-bit indices) at a stride of 1, 2, 4 or 8 with a skirt, colours each vertex on the CPU by the Species formula u = (1 - slope)^0.4, v = 1 - height/highest plus the seeded noise, from a palette texture read through Core's TextureFile or, in M0, a built-in gradient; a test checks index counts, skirt presence and that a flat chunk at every stride has the same silhouette"
       - "TerrainPass draws the visible chunks with frustum culling, the near band at stride 1 and the rest at the stride that keeps the frame near a million triangles, lit by two directional lights with no ambient, summed then clamped, one normal per triangle; the triangle count is logged per frame"
       - WaterPass draws a flat single-colour plane at the water level, drawn only where the landscape falls below it; waves and the shore band are M2
       - "Camera is the Species camera in floats: field of view 60 degrees, near 5, far 15,000, height clamped between 10 above the terrain and 5,000, yaw, pitch and height driven by CameraController from T19's events with edge scrolling; a test pins the clamps and the projection"
