@@ -277,7 +277,7 @@ tasks:
       - python3 Tools/CheckTaskDag.py
       - python Build\RunClangTidy.py
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       Windows only by nature (it needs the MSVC headers); the agent cannot run it in a session and
       reads its result off the PR. Test it by pushing.
