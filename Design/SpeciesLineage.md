@@ -1,6 +1,6 @@
 # Species Lineage — what comes across, and what does not
 
-**Status: DRAFT (2026-09-17).** An inventory of the Species repository as read on 2026-09-17 at commit `d1add55`, with a disposition for each part: port, take the design, take the data, or leave. Paths in this document are relative to the Species repository unless they start with `Design/`. Figures marked *measured* were counted in that tree with the commands noted; nothing was built or run. `AGENTS.md` is explicit that a decision taken in a sibling tree binds nothing here — this document is about what is worth carrying, not what is inherited by default.
+**Status: DRAFT (2026-09-17).** An inventory of the Species repository as read on 2026-09-17 at commit `d1add55`, with a disposition for each part: port, take the design, take the data, or leave. **Decision (owner, 2026-09-17): the models will be made new.** The Species meshes are therefore reference for scale and style only, and what carries is the configuration around them, written up in [`SpeciesLook.md`](SpeciesLook.md), [`SpeciesTerrain.md`](SpeciesTerrain.md) and [`SpeciesCanvas.md`](SpeciesCanvas.md). Paths in this document are relative to the Species repository unless they start with `Design/`. Figures marked *measured* were counted in that tree with the commands noted; nothing was built or run. `AGENTS.md` is explicit that a decision taken in a sibling tree binds nothing here — this document is about what is worth carrying, not what is inherited by default.
 
 ---
 
@@ -128,7 +128,7 @@ Every model and bitmap below was rendered and looked at on 2026-09-17 with a rev
 
 ### Shapes
 
-Grouped by what they can stand in for, with the measured triangle count and extent. *Fit* is how well a model reads as the thing without rework: **direct** means it does; **with work** means it needs scaling, recolouring or a part removed; **weak** means the name promises more than the geometry delivers.
+**The owner will make new models, so this table is reference, not a plan.** It stays because it records the scale and the polygon budget the new models should match, and because the fit column says which Species shapes are worth a look while the new ones are being made. Grouped by what they can stand in for, with the measured triangle count and extent. *Fit* is how well a model reads as the thing without rework: **direct** means it does; **with work** means it needs scaling, recolouring or a part removed; **weak** means the name promises more than the geometry delivers.
 
 | For | Shape | Triangles | Extent (W×H×D) | Fit | Seen |
 |---|---|---|---|---|---|

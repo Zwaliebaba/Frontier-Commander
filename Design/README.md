@@ -11,10 +11,13 @@ The design documents for *Frontier Commander*. [`AGENTS.md`](../AGENTS.md) says 
 | [`GameDesign.md`](GameDesign.md) | The game: vision and pillars, the session, the landscape, economy, base building, devices and their components, research, combat, AI, multiplayer, presentation, scope per milestone | Draft |
 | [`TechnicalDesign.md`](TechnicalDesign.md) | How the game is built inside the rules of `AGENTS.md`: projects and layers, the deterministic simulation, the network model, the Direct3D 12 renderer, the content pipeline, the files the executable may write, testing, the first ADRs | Draft |
 | [`SpeciesLineage.md`](SpeciesLineage.md) | What comes across from the Species repository and what does not — code, art, sound, data, and the lessons it paid for — with measured figures and the provenance caveat | Draft |
+| [`SpeciesLook.md`](SpeciesLook.md) | The Species presentation as configuration: the frame, every light in every map, materials and shading, fog, sky and clouds, camera, sprites and particles, the pixel effect, the render preferences | Reference |
+| [`SpeciesTerrain.md`](SpeciesTerrain.md) | The Species landscape and water as a system: the definition format, tile generation step by step, merging and flattening, colouring and the outline overlay, the water lightmap, plane and waves, the queries | Reference |
+| [`SpeciesCanvas.md`](SpeciesCanvas.md) | The Species windows and overlay: the Eclipse model and its rules, the window chrome as a palette, the fonts, the task-manager overlay's virtual screen and zones, the cursor | Reference |
 | [`OpenQuestions.md`](OpenQuestions.md) | The decisions only the owner can take, each with the options and a recommendation | Open |
 | [`ADR/`](ADR/README.md) | Engineering decisions taken while building, one file per decision, numbered from `ADR-001` | None yet |
 
-Read them in that order. `GameDesign.md` is written to stand alone for a reader who knows real-time strategy games; `TechnicalDesign.md` assumes `AGENTS.md` has been read first, because it cites its rules by number rather than restating them; `SpeciesLineage.md` assumes both.
+Read them in that order. `GameDesign.md` is written to stand alone for a reader who knows real-time strategy games; `TechnicalDesign.md` assumes `AGENTS.md` has been read first, because it cites its rules by number rather than restating them; `SpeciesLineage.md` assumes both. The three *Reference* documents are read from the Species source with a line pointer for every value; they are what the renderer, terrain and interface tasks build from, and "Reference" means they describe Species as it is rather than propose anything.
 
 ## How a design changes
 

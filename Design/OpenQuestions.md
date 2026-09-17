@@ -42,7 +42,7 @@ Where a document proceeds on an assumption pending an answer, it names the quest
 
 ### Q5 — What happens to the Species-derived art, sound and code?
 
-**The question.** `SpeciesLineage.md` §1: the models, effects, palettes, sprites and the Darwinia-derived code have no established licence; the Species repository's own licence file, which said "not for distribution", has been deleted. R14 makes this the owner's decision and requires the licence text to travel with the bytes.
+**The question.** The models are settled: the owner will make new ones (2026-09-17). For the rest — `SpeciesLineage.md` §1: the effects, palettes, sprites, icons and the Darwinia-derived code have no established licence; the Species repository's own licence file, which said "not for distribution", has been deleted. R14 makes this the owner's decision and requires the licence text to travel with the bytes.
 
 **Options.** (a) Use them as placeholders through the vertical slice and M2, with a replacement plan before anything is distributed. (b) Use them and accept the provenance as a private project's risk. (c) Replace from the start and take the content cost now.
 
@@ -52,7 +52,7 @@ Where a document proceeds on an assumption pending an answer, it names the quest
 
 **The question.** `GameDesign.md` §11 pins it to five things: flat-shaded vertex-coloured geometry, the height-and-slope palette landscape with the Species water and sky, sprites for small things, the terminal-style Eclipse interface, and the free camera. It excludes the Darwinia mechanics — spirits, citizens, the virus, the task manager as a mechanic.
 
-**Options.** Confirm; or add (a population of sprite figures walking between structures as a visual, a narrator, the "inside a computer" fiction made explicit); or remove something.
+**Options.** Confirm; or add (a population of sprite figures walking between structures as a visual, a narrator, the "inside a computer" fiction made explicit); or remove something. The reading now has a measured basis: `SpeciesLook.md`, `SpeciesTerrain.md` and `SpeciesCanvas.md` say in numbers what each of the five things is.
 
 **Recommendation: confirm, and add the sprite population as a visual.** `GameDesign.md` §11 item 3 already leaves the door open; it is the most recognisable thing about Species, and it costs a sprite pass the game has anyway.
 
