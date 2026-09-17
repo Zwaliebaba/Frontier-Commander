@@ -380,13 +380,13 @@ private:
 
   bool ParseHex4(std::uint32_t& _out)
   {
-    if (m_text.size() - m_position < 4)
-    {
-      return Fail(m_text.size(), "expected four hexadecimal digits");
-    }
     std::uint32_t value = 0;
     for (int index = 0; index < 4; ++index)
     {
+      if (AtEnd())
+      {
+        return Fail(m_text.size(), "expected four hexadecimal digits");
+      }
       const int digit = HexDigit(Peek());
       if (digit < 0)
       {
@@ -756,7 +756,14 @@ void WriteNumber(std::string& _out, double _value)
   char buffer[64];
   const std::to_chars_result result = std::to_chars(buffer, buffer + sizeof buffer, _value);
   FRONTIER_ASSERT(result.ec == std::errc());
-  _out.append(buffer, static_cast<std::size_t>(result.ptr - buffer));
+  const std::string_view text(buffer, static_cast<std::size_t>(result.ptr - buffer));
+  _out.append(text);
+  // The shortest round-trip form of a whole double has no point or exponent, and would be
+  // read back as an integer; the point keeps the kind stable across a write and a read.
+  if (text.find_first_of(".eE") == std::string_view::npos)
+  {
+    _out.append(".0");
+  }
 }
 
 void WriteNumber(std::string& _out, std::int64_t _value)

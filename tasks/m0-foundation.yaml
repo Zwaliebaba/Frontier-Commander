@@ -725,9 +725,9 @@ tasks:
       with a centroid fallback so the count is always met where there is land.
 
       Pass rates on 2026-09-17: Small 100/100 seeds; Medium 20/20 (heights) and 10/10 after the
-      deposit rule changed; Large 5/5; Frontier run on 2 seeds (about six minutes a seed in Python,
-      which is why the sample is small; the result is appended below when the run finishes). Runtime
-      per seed on this session's machine: Small 0.9 s, Medium 4 s, Large 16 s.
+      deposit rule changed; Large 5/5; Frontier 2/2 (the Frontier run takes about 22 minutes a seed in
+      Python, which is why the sample is that small). Runtime per seed on this session's machine:
+      Small 0.9 s, Medium 4 s, Large 16 s, Frontier 22 min.
 
       What the C++ port must copy exactly, beyond the docstring: right shifts of negative values
       are arithmetic (C++20), every division is on non-negative operands, and the three products

@@ -58,7 +58,7 @@ inline constexpr AcceptedJson ACCEPTED_JSON[] = {
   {"members", "{\"a\": 1, \"b\": [true], \"c\": {\"d\": null}}"},
   {"whitespace everywhere", " \t\r\n{ \"a\" : [ 1 , 2 ] } \n"},
   {"tabs and newlines inside", "{\n\t\"a\":\n\t\t1\n}"},
-  {"deep but legal nesting", "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"},
+  {"deep but legal nesting", "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[1]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]"},
   {"long string", "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""},
   {"key with escapes", "{\"a\\nb\": 1}"},
   {"empty key", "{\"\": 1}"},

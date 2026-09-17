@@ -30,7 +30,13 @@ inline constexpr std::uint32_t FULL_TURN = 65536;
 /// _from turned toward _to by at most _rate, arriving exactly when the remaining turn is within it.
 [[nodiscard]] constexpr BinaryAngle TurnToward(BinaryAngle _from, BinaryAngle _to, std::uint16_t _rate) noexcept
 {
-  const std::int16_t remaining = TurnBetween(_from, _to);
+  // An exact half turn has no shorter way round; it turns the positive way so that the
+  // choice is fixed rather than left to the sign of the wrapped difference.
+  std::int32_t remaining = TurnBetween(_from, _to);
+  if (remaining == -static_cast<std::int32_t>(HALF_TURN))
+  {
+    remaining = static_cast<std::int32_t>(HALF_TURN);
+  }
   if (remaining >= 0)
   {
     return remaining <= static_cast<std::int32_t>(_rate) ? _to : static_cast<BinaryAngle>(_from + _rate);
