@@ -97,6 +97,12 @@
 *.yaml          text eol=lf
 *.md            text eol=lf
 
+# Binary content and test fixtures: never normalized, never diffed as text.
+*.dds           -text
+*.wav           -text
+*.bmp           -text
+*.heights       -text
+
 # The Visual Studio resource editor writes these as UTF-16 and rewrites them wholesale. Git's
 # own heuristic usually calls them binary on the NUL bytes; saying so outright means a
 # normalization pass can never corrupt one.

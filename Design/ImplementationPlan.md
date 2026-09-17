@@ -154,6 +154,7 @@ Writing tasks against the design found a handful of places where a task would ha
 8. **A `d3dx12.h` copy needs a pinned origin.** ADR-002 records the release and the SHA-256 of the vendored file, so that "pinned" (owner, 2026-09-17) is checkable.
 9. **Content validation runs in CI from M1 C1** as `FrontierHost --validate`, guarded on the first table existing, added to the workflow by that task.
 10. **The plan validation runs in CI's Linux job** from this commit, guarded on the checker existing, so that a plan with a cycle or an inconsistent status cannot merge.
+11. **Textures are DDS and nothing else** (owner, 2026-09-17), so `Core` reads DDS rather than BMP, the importers write DDS, and the capture screenshots alone stay BMP because the agent has to be able to look at them. `TechnicalDesign.md` §8 says so; M0 T12 and M1 C4 carry it.
 
 ---
 
@@ -186,7 +187,7 @@ The order that gets a frame on CI soonest, with concurrency where the graph allo
 1. `m0-foundation/T1` — the solution, `Core`, `CoreTests`, ADR-001. Alone, because everything hangs off it.
 2. `T3` and `T16` in parallel with T1 — the format checker and the landscape tool need nothing.
 3. `T2` — the other seven projects; then `T4` and `T5`, the two checkers, and in parallel `T7`, `T8`, `T9`, `T10`, `T11`, `T13` — the `Core` pieces, each its own PR.
-4. `T6`, `T12`, `T14`, `T15`, `T19` — the layering check, bitmaps and waves, the transport seam, the `Sim` skeleton, input.
+4. `T6`, `T12`, `T14`, `T15`, `T19` — the layering check, DDS textures and waves, the transport seam, the `Sim` skeleton, input.
 5. `T17` and `T18` — the landscape in C++ against the golden fields, and the D3D12 foundation with the capture.
 6. `T20` and `T21` — the terrain on screen, and the capture job that shows it.
 7. `T22` — the owner runs it.

@@ -131,7 +131,7 @@ tasks:
       - "Structures.json: Command post, Extractor, Generator, Factory, Research lab, Tower, with footprints, strength classes, costs, build times, sight radii, module slots and effects from §4 and §5; the Tower carries the Machine gun"
       - "Research.json: thirty items whose tree lets a commander reach every M1 component and structure once, with costs and times inside the §4 ranges, and upgrades for armour, damage, extractor rate and hit points as class percentages"
       - "Damage.json: the version-1 matrix of §8 and the armorFactor and armour kind per weapon class"
-      - "Biomes.json: the Default biome with the palette LandscapeDefault.bmp, the light pair SpeciesLook.md §3 measures as typical (a near-white key at 25 degrees elevation, an orange horizontal sun at peak 3), the fog and sky per the ADR of m0-foundation/T20"
+      - "Biomes.json: the Default biome with the palette LandscapeDefault.dds, the light pair SpeciesLook.md §3 measures as typical (a near-white key at 25 degrees elevation, an orange horizontal sun at peak 3), the fog and sky per the ADR of m0-foundation/T20"
       - "Landscapes/Slice.json: a Small landscape whose seed the landscape tool reports as passing all four guarantees, with two starts and twelve deposits placed per GameDesign.md §3 (a modest cluster at each start, the largest midway)"
       - FrontierHost --validate passes over the tree, and the CI step runs it
       - The DesignStats test now reads the tables and reproduces the worked examples from them
@@ -165,18 +165,20 @@ tasks:
     status: todo
 
   - id: C4
-    title: Importers, placeholder models, the Species bitmaps and font; ADR-006
+    title: Importers, placeholder models, the Species textures and font as DDS; ADR-006
     intent: >
       Models compose at markers (TechnicalDesign.md §8) and the owner authors them in OBJ, so
       ImportObj.py exists first; until the owner's models exist, generated primitives with
       markers stand in. The Species palettes, icons and Spectrum font come across as
-      SpeciesLineage.md decided, and ADR-006 records what came and the accepted risk in terms.
+      SpeciesLineage.md decided, converted to DDS because textures are DDS and nothing else
+      (owner, 2026-09-17), and ADR-006 records what came and the accepted risk in terms.
     project: Tools
     depends_on: [C1]
     files:
       - Tools/ImportObj.py
       - Tools/ImportShp.py
       - Tools/ImportSounds.py
+      - Tools/ImportTextures.py
       - Tools/MakePlaceholderModels.py
       - Content/Models/ChassisLight.json
       - Content/Models/ChassisMedium.json
@@ -197,9 +199,9 @@ tasks:
       - Content/Models/Shell.json
       - Content/Models/Wreck.json
       - Content/Models/Deposit.json
-      - Content/Textures/LandscapeDefault.bmp
-      - Content/Textures/SpectrumFont.bmp
-      - Content/Textures/Icons.bmp
+      - Content/Textures/LandscapeDefault.dds
+      - Content/Textures/SpectrumFont.dds
+      - Content/Textures/Icons.dds
       - Design/ADR/README.md
       - Design/ADR/ADR-006-species-content.md
       - Design/SpeciesLineage.md
@@ -208,7 +210,7 @@ tasks:
       - 'ImportShp.py parses a Species .shp with both the Triangles and Strips encodings, fragments, colours and markers (the prototype is the review tool of 2026-09-17), and its output loads; it exists for reference imports and imports nothing into Content\ in this task'
       - "MakePlaceholderModels.py generates the M1 set as primitives: chassis boxes with MarkerMount and MarkerDrive markers scaled per class, drives as wheel cylinders or track boxes, modules with MarkerMuzzle, structures as boxes of their footprint with a team-colour slot, a shell, a wreck and a deposit; every model the tables name exists and validates"
       - ImportSounds.py selects and copies WAVs by the names a Sounds.txt references, ready for M2, and copies nothing now
-      - The Species Default landscape palette, the Spectrum font atlas and the order icons come across as BMPs under Content\\Textures, and SpeciesLineage.md §4 records them as taken
+      - "ImportTextures.py converts a Species BMP (24-bit, or 8-bit through its palette, a colour key becoming alpha where a sprite has one) to an uncompressed B8G8R8A8_UNORM DDS with no mip chain, writing the header and the pixels itself; the Species Default landscape palette, the Spectrum font atlas and the order icons come across through it under Content\\Textures, Core's TextureFile reads them, and SpeciesLineage.md §4 records them as taken"
       - "ADR-006 lists every Species-derived file in the tree with its source path, states that the owner accepts the provenance risk including distribution to other players in M3 and inside mods (OpenQuestions.md R5), and repeats what is excluded regardless"
     verify:
       - python3 Tools/CheckTaskDag.py
@@ -936,7 +938,7 @@ tasks:
       - Tests/ClientTests/ClientTests.vcxproj.filters
     acceptance:
       - "Panels are fixed rectangles at the authored resolution holding widgets: label, button, toggle, list, progress bar, icon, text field taking WM_CHAR characters; flat rectangles with one-pixel borders in the chrome palette of SpeciesCanvas.md §3"
-      - BitmapFont loads the Spectrum atlas (16 by 14 cells from ASCII 32, glyph advance 0.6 of the size per SpeciesCanvas.md §4) and lays out text as quads at 1:1; UiPass draws panels, text and icons orthographically, alpha blended, after the fog pass
+      - BitmapFont loads the Spectrum atlas from its DDS through Core's TextureFile (16 by 14 cells from ASCII 32, glyph advance 0.6 of the size per SpeciesCanvas.md §4) and lays out text as quads at 1:1; UiPass draws panels, text and icons orthographically, alpha blended, after the fog pass
       - UiInputSink is the router's first sink; a widget that acts on an event consumes it, and a panel under the cursor consumes clicks so they never reach selection
       - "Tests: layout arithmetic, text measurement, the consume rule with stub events"
     verify:
