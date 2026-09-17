@@ -27,12 +27,12 @@ public:
     requires std::is_integral_v<T> && (!std::is_same_v<T, bool>)
   void Write(T _value)
   {
-    using Unsigned = std::make_unsigned_t<T>;
-    auto bits = static_cast<Unsigned>(_value);
+    // Shift a 64-bit copy: a shift by eight on a one-byte operand is MSVC's C4333.
+    std::uint64_t bits = static_cast<std::uint64_t>(static_cast<std::make_unsigned_t<T>>(_value));
     for (std::size_t index = 0; index < sizeof(T); ++index)
     {
       m_bytes.push_back(static_cast<std::byte>(bits & 0xFF));
-      bits = static_cast<Unsigned>(bits >> 8);
+      bits >>= 8;
     }
   }
 

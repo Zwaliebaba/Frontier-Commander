@@ -42,12 +42,13 @@ template <class T>
 [[nodiscard]] constexpr std::uint64_t HashInteger(std::uint64_t _hash, T _value) noexcept
 {
   using Unsigned = std::make_unsigned_t<typename Detail::IntegerOf<T>::Type>;
-  auto bits = static_cast<Unsigned>(_value);
+  // Shift a 64-bit copy: a shift by eight on a one-byte operand is MSVC's C4333.
+  std::uint64_t bits = static_cast<std::uint64_t>(static_cast<Unsigned>(_value));
   for (std::size_t index = 0; index < sizeof(Unsigned); ++index)
   {
-    _hash ^= static_cast<std::uint64_t>(bits & 0xFF);
+    _hash ^= bits & 0xFF;
     _hash *= FNV1A64_PRIME;
-    bits = static_cast<Unsigned>(bits >> 8);
+    bits >>= 8;
   }
   return _hash;
 }

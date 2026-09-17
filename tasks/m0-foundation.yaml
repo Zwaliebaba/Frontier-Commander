@@ -377,6 +377,10 @@ tasks:
       representation; the first draft instantiated underlying_type_t on a non-enum inside a
       conditional_t and the clang syntax aid caught it before CI did.
 
+
+      CI run 35262169107 failed on C4333, a right shift by eight on a one-byte operand inside the
+      byte loop; the loop now shifts a 64-bit copy. clang does not report this after integral
+      promotion, so it is one to know: shift widened copies, never a narrow type.
   - id: T9
     title: Core slot map with generation-checked handles
     intent: >
@@ -448,6 +452,8 @@ tasks:
       hostile length prefix allocates nothing, and the header check takes a version range. The
       test pins the 24 bytes of a record of every width and truncates it at every byte.
 
+
+      The same C4333 as T8 hit ByteWriter::Write for a one-byte type; fixed the same way.
   - id: T11
     title: Core JSON reader and writer
     intent: >
