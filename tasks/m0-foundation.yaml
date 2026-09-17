@@ -72,7 +72,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: false
-    status: todo
+    status: in_progress
     notes: >
       Write the .vcxproj by hand from the MSBuild schema rather than from a wizard: the wizard's
       output carries per-configuration duplication that CheckProjectFiles.py (T4) will later have
@@ -178,7 +178,7 @@ tasks:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T4
     title: Write Build/CheckProjectFiles.py, the build-shape and registry checker
@@ -598,7 +598,7 @@ tasks:
       - python3 Tools/LandscapeTool.py --report Small --seeds 100
       - python3 Tools/LandscapeTool.py --golden Small 1
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       The Species float implementation is the reference for shape, not for bits: the integer
       port will not reproduce Species heights and is not meant to. What matters is that the tool
