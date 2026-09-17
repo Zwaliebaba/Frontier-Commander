@@ -3,6 +3,9 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <string_view>
+
+#include <CppUnitTest.h>
 
 // The content documents the loader and validator tests are written against: one tree that is
 // correct, and one deliberate fault per rule, each as the whole file it belongs to so that a test
@@ -18,7 +21,7 @@ namespace ContentTests
 
 /// A minimal tree that loads and validates clean: one chassis, one drive, one weapon module, one
 /// structure with a module, two research items in a chain, the damage matrix, one biome, one sound.
-inline const char* GOOD_COMPONENTS = R"({
+inline constexpr std::string_view GOOD_COMPONENTS = R"({
   "version": 1,
   "chassis": [
     {
@@ -69,7 +72,7 @@ inline const char* GOOD_COMPONENTS = R"({
   ]
 })";
 
-inline const char* GOOD_STRUCTURES = R"({
+inline constexpr std::string_view GOOD_STRUCTURES = R"({
   "version": 1,
   "structures": [
     {
@@ -96,7 +99,7 @@ inline const char* GOOD_STRUCTURES = R"({
   ]
 })";
 
-inline const char* GOOD_RESEARCH = R"({
+inline constexpr std::string_view GOOD_RESEARCH = R"({
   "version": 1,
   "items": [
     {
@@ -112,7 +115,7 @@ inline const char* GOOD_RESEARCH = R"({
   ]
 })";
 
-inline const char* GOOD_DAMAGE = R"({
+inline constexpr std::string_view GOOD_DAMAGE = R"({
   "version": 1,
   "weapons": [
     { "class": "AntiLight", "armorFactorPercent": 100, "armorKind": "Kinetic",
@@ -128,7 +131,7 @@ inline const char* GOOD_DAMAGE = R"({
   ]
 })";
 
-inline const char* GOOD_BIOMES = R"({
+inline constexpr std::string_view GOOD_BIOMES = R"({
   "version": 1,
   "biomes": [
     {
@@ -142,7 +145,7 @@ inline const char* GOOD_BIOMES = R"({
   ]
 })";
 
-inline const char* GOOD_SOUNDS = R"({
+inline constexpr std::string_view GOOD_SOUNDS = R"({
   "version": 1,
   "events": [
     { "id": "CannonFire", "space": "World", "waves": ["Cannon.wav"],
@@ -151,11 +154,29 @@ inline const char* GOOD_SOUNDS = R"({
 })";
 
 /// Writes _text to _path, creating the directories above it.
-inline void WriteFixture(const std::filesystem::path& _path, const char* _text)
+inline void WriteFixture(const std::filesystem::path& _path, std::string_view _text)
 {
   std::filesystem::create_directories(_path.parent_path());
   std::ofstream stream(_path, std::ios::binary | std::ios::trunc);
   stream << _text;
+}
+
+/// Removes a scratch directory from a destructor. Every path out of std::filesystem can still
+/// throw on allocation even with an error code, and a destructor that throws ends the process, so
+/// the catch is not defensive padding: clang-tidy's bugprone-exception-escape refuses the
+/// destructor without it, and it is right.
+inline void RemoveScratch(const std::filesystem::path& _path) noexcept
+{
+  try
+  {
+    std::error_code ignored;
+    std::filesystem::remove_all(_path, ignored);
+  }
+  catch (...)
+  {
+    // A scratch directory left behind is not a test failure, and a destructor must not throw.
+    Microsoft::VisualStudio::CppUnitTestFramework::Logger::WriteMessage("the scratch directory could not be removed");
+  }
 }
 
 /// Writes the clean tree into _directory. A test then overwrites the one file it wants broken.

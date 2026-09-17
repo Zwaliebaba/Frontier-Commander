@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <exception>
 #include <string>
 #include <vector>
 
@@ -49,12 +50,7 @@ constexpr int EXIT_BAD_COMMAND_LINE = 2;
   return EXIT_CLEAN;
 }
 
-} // namespace
-
-// The headless host's entry point. --version prints one line and returns 0 so that a script can
-// tell the executable runs; --validate checks a content directory (m1-vertical-slice/C1); hosting
-// a match arrives with m1-vertical-slice/N2 and M3.
-int main(int _argumentCount, char** _arguments)
+[[nodiscard]] int Run(int _argumentCount, char** _arguments)
 {
   for (int index = 1; index < _argumentCount; ++index)
   {
@@ -72,4 +68,32 @@ int main(int _argumentCount, char** _arguments)
   }
   std::puts(USAGE);
   return EXIT_BAD_COMMAND_LINE;
+}
+
+} // namespace
+
+// The headless host's entry point. --version prints one line and returns 0 so that a script can
+// tell the executable runs; --validate checks a content directory (m1-vertical-slice/C1); hosting
+// a match arrives with m1-vertical-slice/N2 and M3.
+//
+// Everything is caught here, once. A path built from a command-line argument throws on bytes that
+// are not valid in the system's code page, and a std::filesystem call throws on allocation even
+// where it takes an error code; an exception leaving main ends the process without a diagnostic,
+// which is the one thing a validation tool must not do.
+int main(int _argumentCount, char** _arguments)
+{
+  try
+  {
+    return Run(_argumentCount, _arguments);
+  }
+  catch (const std::exception& error)
+  {
+    std::printf("FrontierHost: %s\n", error.what());
+    return EXIT_CONTENT_REFUSED;
+  }
+  catch (...)
+  {
+    std::puts("FrontierHost: an unknown exception escaped.");
+    return EXIT_CONTENT_REFUSED;
+  }
 }

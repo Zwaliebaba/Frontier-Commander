@@ -17,6 +17,9 @@ namespace ContentTests
 namespace
 {
 
+/// A scratch directory per instance, so that two tests in one process never share one.
+int g_counter = 0;
+
 /// The fixture tree's component rows are GameDesign.md §6's own numbers for the two worked
 /// examples, so the derivation is checked against the design rather than against itself. C2
 /// replaces this with the shipped tables and the same two assertions stand.
@@ -27,9 +30,8 @@ struct LoadedTree
 
   LoadedTree()
   {
-    static int counter = 0;
     path = std::filesystem::temp_directory_path() / "FrontierDesignStatsTests" / std::to_string(::GetCurrentProcessId()) /
-           std::to_string(++counter);
+           std::to_string(++g_counter);
     std::filesystem::create_directories(path);
     WriteGoodTree(path);
     std::vector<Frontier::ContentDiagnostic> diagnostics;
@@ -38,8 +40,7 @@ struct LoadedTree
 
   ~LoadedTree()
   {
-    std::error_code ignored;
-    std::filesystem::remove_all(path, ignored);
+    RemoveScratch(path);
   }
 };
 

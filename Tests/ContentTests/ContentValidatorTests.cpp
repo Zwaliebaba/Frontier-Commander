@@ -16,23 +16,24 @@ namespace ContentTests
 namespace
 {
 
+/// A scratch directory per instance, so that two tests in one process never share one.
+int g_counter = 0;
+
 struct ScratchTree
 {
   std::filesystem::path path;
 
   ScratchTree()
   {
-    static int counter = 0;
     path = std::filesystem::temp_directory_path() / "FrontierValidatorTests" / std::to_string(::GetCurrentProcessId()) /
-           std::to_string(++counter);
+           std::to_string(++g_counter);
     std::filesystem::create_directories(path);
     WriteGoodTree(path);
   }
 
   ~ScratchTree()
   {
-    std::error_code ignored;
-    std::filesystem::remove_all(path, ignored);
+    RemoveScratch(path);
   }
 };
 
