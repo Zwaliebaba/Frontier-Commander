@@ -210,6 +210,8 @@ jobs:
           $process = Start-Process -FilePath 'x64\Debug\FrontierCommander.exe' -ArgumentList '--warp', '--capture', '300', 'Captures' -Wait -PassThru -NoNewWindow
           if (Test-Path 'Captures\capture.log') { Get-Content 'Captures\capture.log' } else { Write-Output '::warning::Captures\capture.log was not written.' }
           Get-ChildItem 'Captures' -Filter '*.bmp' -ErrorAction SilentlyContinue | ForEach-Object { Write-Output "$($_.Name): $($_.Length) bytes" }
+          # What a glance at each frame would tell, as text: the session cannot fetch the artefact.
+          if (Test-Path 'Tools\DescribeCapture.py') { python Tools\DescribeCapture.py Captures }
           if ($process.ExitCode -ne 0) { throw "FrontierCommander --capture exited with $($process.ExitCode)." }
 
       # After the build, so that a compile error is reported as a compile error rather than as

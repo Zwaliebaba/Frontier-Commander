@@ -1085,7 +1085,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       Written fresh in the Neuron namespace from the Species plan and the files it names. InputEvent
       is the flat record; FrameInput the derived view, with DeriveFrameInput the pure free function
@@ -1104,7 +1104,8 @@ tasks:
       the system needs; WM_SYSCHAR is swallowed so that Alt combinations do not beep; Escape and Alt+F4
       stay in the procedure so that they work with the frame loop stalled; the mouse is captured while
       any button is down. A variable named interface found the macro objbase.h defines. Forty-six
-      ClientTests, run natively before the push.
+      ClientTests, run natively before the push; CI run 35 (0f1501e) was green with all 159 tests of the
+      tree passing.
   - id: T20
     title: Client terrain pass and camera - FrontierCommander draws the generated landscape, and the fog and lighting ADR is written on captured frames
     intent: >
@@ -1163,7 +1164,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: T21
     title: Add the capture job to CI
@@ -1175,6 +1176,7 @@ tasks:
     depends_on: [T18]
     files:
       - .github/workflows/build.yml
+      - Tools/DescribeCapture.py
     acceptance:
       - 'After the tests, a step guarded on x64\Debug\FrontierCommander.exe existing runs it with --warp --capture 300 Captures and fails the job on a non-zero exit'
       - A following step uploads Captures/*.bmp as the artefact named captures, always, if any exist
@@ -1184,7 +1186,16 @@ tasks:
       - python3 Tools/CheckTaskDag.py
     parallel_safe: true
     status: in_progress
-
+    notes: >
+      The first capture on CI, run 35 (0f1501e): the runner's WARP is the Microsoft Basic Render
+      Driver, its SDK layers are installed so the debug layer was on, the scene target got its four
+      samples, three hundred frames took under four seconds, three frames of 6,220,854 bytes each
+      went up as the captures artefact, and the debug layer reported nothing. A Windows-subsystem
+      executable is run through Start-Process -Wait, because PowerShell does not wait for one on its
+      own. The step prints capture.log, and, from the next run, Tools/DescribeCapture.py's account of
+      each frame (size, mean colour, near-black share, per-band statistics, a luminance thumbnail and
+      a hue-class thumbnail), because the session that has to judge a frame cannot fetch the artefact
+      through its proxy and the job log is what it reads.
   - id: T22
     title: The owner's run - M0 accepted on a real GPU
     intent: >
