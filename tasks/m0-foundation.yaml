@@ -1010,7 +1010,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       winrt/base.h throws on a failed check_hresult and on as<T>(); decide the HRESULT policy
       here (check_hresult everywhere in Client is the simple answer, with the exception caught
