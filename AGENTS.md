@@ -2,7 +2,7 @@
 
 Operating instructions for every agent (and human) writing code in this repository. **Read this before generating a single line.**
 
-*Frontier Commander* is a greenfield C++23 game and a hobby project with one developer: a Direct3D 12 client and an authoritative simulation, built on Windows with MSVC. This file is about **how code is written here** — naming, layout, build settings and the standing rules of the codebase. It is not the design: what the game *is* belongs in a design document that does not exist yet.
+*Frontier Commander* is a greenfield C++23 game and a hobby project with one developer: a Direct3D 12 client and an authoritative simulation, built on Windows with MSVC. This file is about **how code is written here** — naming, layout, build settings and the standing rules of the codebase. It is not the design: what the game *is* is in [`Design/`](Design/README.md) — `Design/GameDesign.md` and `Design/TechnicalDesign.md`, promoted by the owner on 2026-09-17.
 
 **The tree is empty.** This repository holds this file, the root configuration files, `.gitignore` and `.github/` — no solution, no projects, no source. Nothing below is a target to migrate towards; it describes the code as it must be written from the first line. There is no legacy here and nothing is grandfathered, so a whole-tree run of any checker comes back clean — trivially today, and by conformance from then on.
 
@@ -14,7 +14,7 @@ Operating instructions for every agent (and human) writing code in this reposito
 2. **`Design/ADR/`** — engineering decisions taken while building, one file per decision (§6). **There are none yet**; numbering starts at `ADR-001` in this repository and does not continue another's.
 3. **The surrounding code** — for anything neither of the above covers, match the file you are editing.
 
-A design document, when there is one, sits alongside rather than above: it says what is built and this file says how. Until it exists there is no design authority, and a task that needs a design answer asks the owner and gets the answer written down before the code is.
+The design sits alongside rather than above: it says what is built and this file says how. A task that needs a design answer the design does not give asks the owner and gets the answer written into `Design/` before the code is.
 
 If a rule here conflicts with a habit from another codebase, this file wins. If you think a rule is wrong or your task cannot be done without deviating, **say so in your report — never deviate silently.**
 
@@ -223,13 +223,11 @@ python Build\RunClangTidy.py          # needs a Developer PowerShell (INCLUDE mu
 - **A scale is not free, and text is what it costs.** A glyph authored as a bit pattern, or baked to an exact pixel height, reaches the glass resampled unless the scale is exactly 1. In a dense interface full of small type that is the real cost of the whole arrangement, which is why the 1:1 path exists and why it is worth keeping common.
 - **A decorated window cannot have a client area as tall as the monitor it is on.** A caption and borders add roughly 6×37 pixels, so asking for a 1080-pixel client area on a 1080p desktop asks for a window taller than the screen. A borderless `WS_POPUP` covering the primary monitor is the usual answer, and it is not free either: with no close box, something has to own Escape and Alt+F4 as the only ways out.
 
-**R13 — The executable ships alone.** No assets folder, no data directory, nothing beside the `.exe` at runtime. Art, colours, fonts and sound are embedded as `constexpr` arrays in headers, and nothing is loaded. **A generated header is committed, not built** — a baker tool may need Python and Pillow, CI does not, and the bytes are reviewed like any other source. That is the opposite of `CompiledShaders/` and deliberately so: **shaders are compiled at build time**, never at runtime, through the project's `FXCompile` step (§2). No `D3DCompile`, no `d3dcompiler_47.dll` beside the executable, no `.cso` on disk. Never add a runtime file dependency, a working-directory assumption or a "just for development" loose-file path; the loose path is the one that ships.
-
-**It binds a process acting as the client absolutely, and the host by default.** A host will eventually want to write something — a save, a journal of inputs, an instrumentation log. **Nothing is pre-approved.** Each such file is a decision, recorded in an ADR that names the file, its form and its lifetime; and a file the host *creates* is a different thing from a file it *requires in order to start*, which is what keeps the shipped executable needing nothing beside it. A path a host writes resolves **beside the executable**, never against the working directory — a log written relative to the launch directory silently goes somewhere nobody looks.
+**R13 — Withdrawn (owner, 2026-09-17).** It required the executable to ship alone with every asset compiled in as `constexpr` arrays, and the owner withdrew it when the design settled that game data — the component tables, research tree, structures, landscapes, models, textures and sounds — lives in files under `Content\` beside the executable so that it can be edited and modded, with user files under the per-user directory (`Design/TechnicalDesign.md` §8 and §9). The number is retired, not reused. Two things the rule also said stand on their own: **shaders are compiled at build time** through `FXCompile` (§2), never at runtime — no `D3DCompile`, no `d3dcompiler_47.dll` beside the executable, no `.cso` on disk; and **a path the game reads or writes resolves from the executable's own directory or the user's profile, never from the working directory** — a file resolved against the launch directory silently goes somewhere nobody looks.
 
 **R14 — No third-party dependencies and no package manager.** The Windows SDK and the MSVC standard library, and nothing else. If you believe something is unavoidable, propose it in your report with what it buys and what it costs — do not add it. This is a closed list, not a high bar.
 
-**It binds what the executable is built from, not what a development tool needs.** Scripts under `Build/` and `Tools/` never ship and never link, so a baker that needs Pillow does not reopen this rule. **Third-party *content* compiled in is a different question and it is the owner's**: art and fonts are allowed by R13, and anything under a licence needs the owner's approval before it lands, with the licence text travelling with the bytes.
+**It binds what the executable is built from, not what a development tool needs.** Scripts under `Build/` and `Tools/` never ship and never link, so a baker that needs Pillow does not reopen this rule. **Third-party *content* is a different question and it is the owner's**: art, fonts and sound are content, not dependencies, and anything under a licence needs the owner's approval before it lands, with the licence text travelling with the bytes.
 
 For Direct3D that list means what the Windows SDK installs: `d3d12.h`, `dxgi1_6.h`, `DirectXMath.h`, `wrl/client.h` (`Microsoft::WRL::ComPtr` is the COM smart pointer R12 asks for) and the `fxc`/`dxc` compilers that `FXCompile` drives. It excludes what a D3D12 sample reaches for by reflex, because each is NuGet or GitHub content and not SDK content: the DirectX Agility SDK and its `d3dx12.h`, DirectX-Headers, DirectXTK12, DirectXTex, and the DirectX Shader Compiler as a redistributable. Resource barriers and heap descriptions are written by hand.
 
@@ -270,7 +268,7 @@ Inside the simulation, additionally: no `float` where a fixed-point or integer q
 - [ ] New, removed or moved files are in the `.vcxproj` **and** the `.filters` of every project involved.
 - [ ] No project's `ConformanceMode`, `LanguageStandard`, `WarningLevel` or `TreatWarningAsError` was changed, and no warning was silenced with a pragma.
 - [ ] Debug and Release still agree on everything §3 says they must.
-- [ ] No new third-party dependency (R14), and no new runtime file dependency — the executable still ships alone (R13).
+- [ ] No new third-party dependency (R14).
 - [ ] The checkers pass — or, for one not yet written, the report says which and why.
 - [ ] It builds Debug|x64, and every test suite runs and passes.
 - [ ] If it touches rendering, input, audio or presentation: it was **run**, not just built.

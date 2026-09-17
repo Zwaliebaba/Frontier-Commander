@@ -1,6 +1,6 @@
 # Frontier Commander — Game Design
 
-**Status: DRAFT (2026-09-17).** A proposal for the owner to react to; nothing here is design authority until promoted (see [`README.md`](README.md)). Every number in this document is a proposed default for tuning to start from, not a measurement, and every one of them is expected to move once the vertical slice runs. Where a section turns on a question only the owner can answer, it says so and names the question in [`OpenQuestions.md`](OpenQuestions.md).
+**Status: DESIGN (accepted by the owner on 2026-09-17, after the questions in [`OpenQuestions.md`](OpenQuestions.md) were answered; revised through ADRs).** Every number in this document is a proposed default for tuning to start from, not a measurement, and every one of them is expected to move once the vertical slice runs. Decisions carry the date they were taken.
 
 ---
 
@@ -16,7 +16,7 @@
 4. **The simulation is the referee.** The same orders produce the same game on every machine, every time. Multiplayer, replays, saved games and bug reports all rest on that one property, and no feature is worth losing it.
 5. **Data over code.** Every component, structure, research item and tuning value is a row in a table, not a constant in a function. Adding a weapon is adding a row and a model. That is what "moddable" means in the first place, and it is what makes balance a spreadsheet problem rather than a code problem.
 
-**What it is not.** It is not a persistent world with colonies that live while their player is away — that is the ambition of the Species repository, and whether *Frontier Commander* shares any of it is the first open question (Q1). It is not a story-driven campaign, at least not before the skirmish game is complete (§12). It is not a physics sandbox: the simulation is integer, tick-based and deliberately simple.
+**What it is not.** It is not a persistent world with colonies that live while their player is away — that is the ambition of the Species repository, not of this game, which is match-based with a long-running host reachable later (owner, 2026-09-17; §10). It is not a story-driven campaign, at least not before the skirmish game is complete (§12). It is not a physics sandbox: the simulation is integer, tick-based and deliberately simple.
 
 ---
 
@@ -51,13 +51,13 @@ Alliances are fixed in the lobby; allied commanders share vision and victory and
 
 For scale: the largest Species map, the Garden, is 2,002 world units across, which is 31 of these cells, so a Small landscape is eight Gardens across and a Large one thirty-three; *Warzone 2100* maps run up to 250 tiles a side, and a tile is one tank, the same as the cell proposed here. A Large landscape is therefore about sixteen times the area of the largest *Warzone* map, and a Frontier one over sixty times. "Large" is the point of the game (pillar 2), and it is also the single biggest technical risk in it: pathing, visibility and the terrain renderer are all sized by it (`TechnicalDesign.md` §4, §6).
 
-**Terrain has three properties the simulation reads:** height, slope and water. Height sets sight (§8) and, for indirect fire, range. Slope is the gradient between neighbouring cells; each drive class has a maximum it can climb (§6), and cliffs are slopes nothing climbs. Water is any cell below the water level — the Species `outsideHeight` — and only hover and lift drives cross it. Nothing else about the terrain is simulated: no soil types, no destruction, no terraforming. Q8 asks whether that should change later, and the delta format in `TechnicalDesign.md` §4.4 is chosen so it can.
+**Terrain has three properties the simulation reads:** height, slope and water. Height sets sight (§8) and, for indirect fire, range. Slope is the gradient between neighbouring cells; each drive class has a maximum it can climb (§6), and cliffs are slopes nothing climbs. Water is any cell below the water level — the Species `outsideHeight` — and only hover and lift drives cross it. Nothing else about the terrain is simulated: no soil types, no destruction, no terraforming, and that holds through M3 (owner, 2026-09-17); the delta format in `TechnicalDesign.md` §4.4 is chosen so it can change later.
 
 **Deposits** are point features the landscape generator scatters, denser toward the edges than the centre so that expansion pulls commanders outward and toward each other. An extractor is built on a deposit and nowhere else. Deposits are the only thing on the landscape worth fighting over that cannot be moved, and that is what gives the landscape its shape as a game.
 
 **Features** are scenery the simulation treats as obstacles: rock, ruins, the Species temples and caves. They block movement and line of sight; they do not take damage in the first version.
 
-**Landscapes are generated from a seed and optionally stamped.** The generator is the Species diamond-square landscape — tiles of fractal terrain with a fractal dimension, a height scale and a desired height each, merged and smoothed — ported to integer arithmetic so every machine generates the same heights (`TechnicalDesign.md` §4.4). A landscape definition is therefore a seed, a size class, a tile list and a palette, and it is a few hundred bytes. Authored content enters as **stamps**: a start base, a ruin, a chokepoint, each an authored patch of heights and features that the generator places at a chosen or a seeded position. Whether there are hand-authored whole maps at all is Q9; the recommendation is no, because a stamp library plus a seed does what a hand-authored map does at a fraction of the content cost, and a one-developer project has no content budget to spend.
+**Landscapes are generated from a seed and optionally stamped.** The generator is the Species diamond-square landscape — tiles of fractal terrain with a fractal dimension, a height scale and a desired height each, merged and smoothed — ported to integer arithmetic so every machine generates the same heights (`TechnicalDesign.md` §4.4). A landscape definition is therefore a seed, a size class, a tile list and a palette, and it is a few hundred bytes. Authored content enters as **stamps**: a start base, a ruin, a chokepoint, each an authored patch of heights and features that the generator places at a chosen or a seeded position. There are no hand-authored whole maps (owner, 2026-09-17): a stamp library plus a seed does what a hand-authored map does at a fraction of the content cost, and a one-developer project has no content budget to spend.
 
 **Fog of war** has three states per cell per commander: unexplored (black), explored (the terrain and the last-seen structures, dimmed) and visible (live). Vision comes from devices and structures with a sight radius, extended by height: a sensor on a hill sees further than the same sensor in a valley, and a ridge between the sensor and the target blocks it. The rules and their cost are in §8 and `TechnicalDesign.md` §4.6.
 
@@ -122,7 +122,7 @@ For scale: the largest Species map, the Garden, is 2,002 world units across, whi
 | Bunker | 2×2 | Bunker | An anti-personnel and anti-light weapon in a fortified housing |
 | Uplink | 2×2 | Medium | Reveals the whole landscape to its commander while it stands; late research |
 
-Air units (Q10) would add a lift-drive factory and a rearm pad; they are not in the first version.
+Air units are not before M4 (owner, 2026-09-17); they would add a lift-drive factory and a rearm pad.
 
 **Modules** are upgrades built onto a standing structure by a builder, and they are researched like anything else. They are how a base grows without growing its footprint.
 
@@ -132,7 +132,7 @@ Air units (Q10) would add a lift-drive factory and a rearm pad; they are not in 
 
 ## 6. Devices
 
-A **device** is a unit the commander designed. This is the heart of the game (pillar 1), and it is taken from *Warzone 2100* nearly whole: a device is one **chassis**, one **drive** and one or more **modules**, each chosen from what the commander has researched, and its statistics are derived from the parts rather than authored per unit. Q7 asks the owner to confirm that this is what "devices" meant.
+A **device** is a unit the commander designed. This is the heart of the game (pillar 1), and it is taken from *Warzone 2100* nearly whole: a device is one **chassis**, one **drive** and one or more **modules**, each chosen from what the commander has researched, and its statistics are derived from the parts rather than authored per unit. Confirmed by the owner on 2026-09-17 as the reading of "devices".
 
 **Chassis** sets hit points, armour against kinetic and thermal damage, base power cost, weight, and how many module mounts it carries. Three classes, each with successive marks unlocked by research:
 
@@ -151,7 +151,7 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 | Tracks | 0.8 | 40% | No | 1.5 | 70 | 1 |
 | Hover | 1.5 | 20% | Yes | 0.8 | 60 | 1 |
 | Legs | 0.9 | 60% | No | 1.0 | 50 | 2 |
-| Lift | 2.0 | ignores | Yes | 0.7 | 90 | Q10 |
+| Lift | 2.0 | ignores | Yes | 0.7 | 90 | M4 at the earliest |
 
 Speed is the drive's factor scaled by the chassis weight and the module weight, so a heavy cannon on wheels is slower than the same wheels under a machine gun; the derivation is one formula in the component tables and it is the same for every device.
 
@@ -171,9 +171,9 @@ Speed is the drive's factor scaled by the chassis weight and the module weight, 
 | Repair | System | Repairs devices in the field |
 | Command | System | Leads an attached group and shares its experience; version 2 |
 
-**A design** is a named combination of chassis, drive and modules. Designs are per commander, made in the design screen (which needs a command post), and saved between matches — `TechnicalDesign.md` §9 says what that means for a program that ships alone. A design's cost, build time, speed, hit points and armour are computed from its parts by formulas in the component tables and displayed in the design screen before the commander commits, and a design whose parts are later upgraded by research improves in the field: upgrades apply to the class, not to the instance.
+**A design** is a named combination of chassis, drive and modules. Designs are per commander, made in the design screen (which needs a command post), and saved between matches in the user's directory (`TechnicalDesign.md` §9). A design's cost, build time, speed, hit points and armour are computed from its parts by formulas in the component tables and displayed in the design screen before the commander commits, and a design whose parts are later upgraded by research improves in the field: upgrades apply to the class, not to the instance.
 
-**"Moddable" means the tables.** Every chassis, drive and module above is a row in a data table with an id, a class, its numbers, the research item that unlocks it and the model that draws it; the derivation formulas and the damage matrix (§8) are tables too. Adding a component is adding a row and a model; rebalancing is editing numbers. In the first version those tables are compiled into the executable and checked by the compiler for consistency — every prerequisite exists, the research tree has no cycle, every model referenced is present. Whether they can also be loaded from a mod directory at runtime is Q3, because it is the one place this design collides with `AGENTS.md` R13, and that is the owner's rule to bend.
+**"Moddable" means the data files.** Every chassis, drive and module above is a row in a JSON file under `Content\` beside the executable (owner, 2026-09-17: R13 withdrawn, JSON chosen), with an id, a class, its numbers, the research item that unlocks it and the model that draws it; the derivation formulas and the damage matrix (§8) are files too. Adding a component is adding a row and a model; rebalancing is editing numbers. A mod is a directory under `Mods\` whose files override the game's at the same path, enabled by name in the lobby; the host hashes what it loaded, mods included, and refuses a client whose content differs. The loader validates every file — every prerequisite exists, the research tree has no cycle, every model referenced is present — and names the file and line that is wrong; the same rules run in CI. `TechnicalDesign.md` §8 has the layout.
 
 **Experience.** A device that destroys things gains experience through eight ranks, each adding a small percentage to accuracy and damage. Ranks are visible on the unit, and they are what make a veteran worth retreating and repairing.
 
@@ -224,35 +224,35 @@ Structures with weapons take a target-priority stance only. Orders are given to 
 
 **An AI commander plays through the same orders a human does.** It sees what its units see, spends the same power, and its orders enter the simulation through the same validation. It runs inside the simulation, deterministically (`TechnicalDesign.md` §7), which is what makes an AI game replayable and an AI bug reproducible from a seed.
 
-**It is a set of personalities over one planner.** The planner keeps a build order, an economy target, a research plan and an army composition, and chooses among them by weights; a personality is a set of weights (rusher, turtle, artillery, expander). Difficulty changes decision quality and reaction time, not information: an AI on any difficulty sees only what it has scouted. The highest difficulty may additionally take a power bonus, and the lobby says so in plain words next to the setting (Q15), because an opponent that cheats silently is a bug report waiting to happen.
+**It is a set of personalities over one planner.** The planner keeps a build order, an economy target, a research plan and an army composition, and chooses among them by weights; a personality is a set of weights (rusher, turtle, artillery, expander). Difficulty changes decision quality and reaction time, not information: an AI on any difficulty sees only what it has scouted. The highest difficulty additionally takes a power bonus, never vision, and the lobby says so in plain words next to the setting (owner, 2026-09-17), because an opponent that cheats silently is a bug report waiting to happen.
 
-**A neutral faction** — hostile devices and nests scattered over the landscape, owned by no commander, the Species virus as it would look in this game — is version 2 or later (Q11). It would make a large landscape dangerous to cross alone, which pillar 2 wants; it is also a second AI to write.
+**A neutral faction** — hostile devices and nests scattered over the landscape, owned by no commander, the Species virus as it would look in this game — comes in M4, designed fresh (owner, 2026-09-17). It would make a large landscape dangerous to cross alone, which pillar 2 wants; it is also a second AI to write.
 
 ---
 
 ## 10. Multiplayer
 
-**Two to eight commanders in one deterministic match.** Every machine runs the same simulation from the same seed and the same ordered stream of orders; the host sequences the orders, and its simulation is the authority when any other diverges. The model and its alternative are `TechnicalDesign.md` §5 and Q2.
+**The host runs the match; each player sees the part of it their commander can see.** One simulation runs, on the host — a player's own game hosting in-process, or the headless host executable — and every other machine holds a replica of what its commander is entitled to know, kept current by the host (owner, 2026-09-17: host-authoritative state replication; `TechnicalDesign.md` §5). A client is never sent an object its commander cannot see, so the fog of war is enforced by the host rather than trusted to the client, and a modified client sees nothing an honest one does not. Orders travel to the host, are validated there against what the commander owns, sees and can afford, and take effect on the next tick; a unit moves when the host says it has.
 
-**Lobby.** A host — one player's game, or the headless host executable on a machine nobody is playing on — opens a match; players join by address, over a LAN or by direct IP. There is no master server in the first version and no NAT traversal, because both need a service somewhere and the executable ships alone. The lobby sets the landscape (a seed and a size class, or a stamped landscape by name), the base, power and technology levels, the victory condition, alliances, and which seats are AI with which personality and difficulty. Every player's copy of the component tables must match the host's, which is checked by hash at join — and is what makes Q3's mods a multiplayer question too.
+**Lobby.** A host opens a match; players join by address, over a LAN or by direct IP. There is no master server in the first version and no NAT traversal, because both need a service somewhere. The lobby sets the landscape (a seed and a size class, or a stamped landscape by name), the base, power and technology levels, the victory condition, alliances, which seats are AI with which personality and difficulty, and which mods are enabled. The host hashes the content it loaded, mods included, and refuses a client whose content differs.
 
-**In the match.** A player who drops is kept as a seat under AI control for a grace period and may rejoin, receiving a snapshot of the match; the host may pause; the match may be saved and resumed by the same players later. Chat is text, to all or to allies.
+**In the match.** A player who drops is kept as a seat under AI control for a grace period and may rejoin, receiving their commander's view afresh; the host may pause; the match may be saved and resumed by the same players later. A long-running host that keeps a match open for weeks is the same machinery left running (owner, 2026-09-17: match-based, server-ready). Chat is text, to all or to allies.
 
-**Replays.** A match is its seed, its settings and its order stream, which is small (`TechnicalDesign.md` §5.2 has the arithmetic), so every match is recorded and any recorded match can be watched at any speed from any commander's point of view — including the AI's. Replays are also the bug-report format: a desync or an odd AI decision is reproduced by replaying the file.
+**Replays.** A match is its seed, its settings and the stream of orders the host applied, which is small (`TechnicalDesign.md` §5.7 has the arithmetic), so the host records every match and any recorded match can be watched by hosting it locally, at any speed, from any commander's point of view — including the AI's. Replays are also the bug-report format: an odd AI decision or a simulation fault is reproduced by replaying the file.
 
 ---
 
 ## 11. Presentation
 
-**The look is Species, pinned to five things.** Q6 asks the owner to confirm this reading of "the look and feel of Species", because the phrase could mean more or less than this. The numbers behind each — the lights, materials, fog, sky and camera; the terrain generator, palette and water; the window chrome, fonts and overlay — are read from the Species source in [`SpeciesLook.md`](SpeciesLook.md), [`SpeciesTerrain.md`](SpeciesTerrain.md) and [`SpeciesCanvas.md`](SpeciesCanvas.md), and the models themselves will be new (owner, 2026-09-17).
+**The look is Species, pinned to five things**, confirmed by the owner on 2026-09-17 with the sprite population added. The numbers behind each — the lights, materials, fog, sky and camera; the terrain generator, palette and water; the window chrome, fonts and overlay — are read from the Species source in [`SpeciesLook.md`](SpeciesLook.md), [`SpeciesTerrain.md`](SpeciesTerrain.md) and [`SpeciesCanvas.md`](SpeciesCanvas.md), and the models themselves will be new (owner, 2026-09-17).
 
 1. **Geometry is flat-shaded and vertex-coloured.** Models carry a colour per vertex and no texture, and are lit per face by one or two directional lights — the Species `.shp` format with its `Colours:` table and no normals in any of its 106 files, which is how Darwinia's models have always read. Polygon budgets follow the Species models: structures run from 60 to 2,400 triangles, vehicles from 24 to 300, the one soldier is 1,036, and the largest set-piece (`Rocket.shp`) is 4,992 (`SpeciesLineage.md` §4). Team colour is a designated colour slot in each model, replaced by the commander's colour at draw time.
 2. **The landscape is coloured by its shape.** Each terrain vertex takes its colour from a 64×64 palette bitmap indexed by slope raised to the power 0.4 on one axis and normalised height on the other, with a little noise — the Species `GetLandscapeColour` formula, ported as is. Water is a flat plane at the water level drawn with the Species wave texture; the sky is a dark gradient. Eight terrain palettes and three water palettes come across (`SpeciesLineage.md` §4), and a palette is a landscape's biome.
-3. **Small things are sprites.** Anything infantry-sized — crews, the neutral faction's swarm if it comes, the population that walks between structures if the owner wants that Species feel — is a billboarded 32×32 sprite, the way Citizens are. Devices and structures are geometry.
-4. **The interface is a terminal.** Flat rectangles with one-pixel borders, a pixel font, monochrome icons with one accent colour, windows that open over the world rather than a fixed HUD strip: the Species *Eclipse* toolkit as it looks, rewritten for this renderer. The design screen, the research screen and the minimap are windows the operator opens. The font is one of the two Species pixel fonts if the owner takes them (Q16), because the typeface is as much a part of the Species look as the terrain palette, and a new one drawn in the same spirit otherwise.
+3. **Small things are sprites.** Anything infantry-sized — crews, the neutral faction's swarm if it comes, the population that walks between structures (confirmed by the owner, 2026-09-17) — is a billboarded 32×32 sprite, the way Citizens are. Devices and structures are geometry.
+4. **The interface is a terminal.** Flat rectangles with one-pixel borders, a pixel font, monochrome icons with one accent colour, windows that open over the world rather than a fixed HUD strip: the Species *Eclipse* toolkit as it looks, rewritten for this renderer. The design screen, the research screen and the minimap are windows the operator opens. The font is the Species Spectrum font (owner, 2026-09-17), because the typeface is as much a part of the Species look as the terrain palette.
 5. **The camera flies.** Free yaw, pitch and height with edge scrolling and a minimum height above the terrain: the Species camera, which is an RTS camera already. No cinematic modes.
 
-**Sound** uses the Species effect library where an effect fits — weapons, explosions, engines, construction, interface — re-encoded to a budget (`SpeciesLineage.md` §5), positioned in 3D by XAudio2 as Species does. There is no soundtrack in the first version: the Species music is licensed to Introversion from third-party artists and is not available to this game.
+**Sound** uses the Species effect library where an effect fits — weapons, explosions, engines, construction, interface — as WAV files under `Content\Sounds` (`SpeciesLineage.md` §5), positioned in 3D by XAudio2 as Species does. There is no soundtrack in the first version: the Species music is licensed to Introversion from third-party artists and is not available to this game.
 
 **Rendering is Direct3D 12 at an authored resolution presented scaled** (`AGENTS.md` §5). The authored resolution is the first client ADR; this design assumes 1920×1080 and a pixel font drawn 1:1 at that resolution, which is what pillar 3 needs and what the scaling rule exists to protect.
 
@@ -267,8 +267,8 @@ Each milestone is a playable state, not a subsystem list; a milestone is done wh
 | **M0 — Foundation** | A window presents a scene target; the simulation ticks deterministically and hashes; every library has a test suite; every checker `AGENTS.md` names exists and runs in CI | No game content. The landscape generator produces heights and the renderer draws them |
 | **M1 — Vertical slice** | Two commanders (one human, one scripted) on a Small landscape build extractors, generators, a factory and a lab, design a device and fight to annihilation | 1 landscape; 5 structures; 3 chassis; 3 drives; 4 modules (machine gun, cannon, mortar, builder); 30 research items; 1 scripted AI; the damage and visibility models complete |
 | **M2 — Skirmish** | Up to four commanders on a Large landscape with the full structure catalogue, the full component set, fog of war, retreat and repair, and an AI with personalities; a match saves and resumes | The full §5 catalogue; the §6 tables at version 1; 150 research items; 3 personalities × 3 difficulties; 8 terrain palettes; a stamp library |
-| **M3 — Multiplayer** | Eight commanders over LAN and direct IP; a dropped player rejoins from a snapshot; a desynced client recovers; replays record and play | Lobby; headless host; replay viewer |
-| **M4 — Frontier** | Frontier-class landscapes at full performance; the dominance victory; the neutral faction; commanders; legs and — if Q10 says so — lift | Version 2 of the tables |
+| **M3 — Multiplayer** | Eight commanders over LAN and direct IP on a headless host; a client is never sent what its commander cannot see; a dropped player rejoins; replays record and play | Lobby; headless host; replay viewer |
+| **M4 — Frontier** | Frontier-class landscapes at full performance; the dominance victory; the neutral faction; commanders; legs, and lift if the owner decides so then | Version 2 of the tables |
 
 A campaign, if there is one, follows M4 and gets its own design document.
 
@@ -276,7 +276,7 @@ A campaign, if there is one, follows M4 and gets its own design document.
 
 ## 13. Open questions
 
-Collected, with options and recommendations, in [`OpenQuestions.md`](OpenQuestions.md). The ones this document cannot proceed far without: the session model (Q1), the network model (Q2), what "moddable" means against R13 (Q3), what happens to the Species-derived art and sound (Q5), the reading of "the look and feel of Species" (Q6), and whether a device is what this document says it is (Q7).
+All answered by the owner on 2026-09-17. [`OpenQuestions.md`](OpenQuestions.md) keeps the record of each answer, whether it followed the recommendation, and where it is written in.
 
 ---
 
@@ -303,5 +303,6 @@ Collected, with options and recommendations, in [`OpenQuestions.md`](OpenQuestio
 | **Order** | The only input to the simulation: what a commander tells a structure or device to do |
 | **Stance** | A standing rule a device follows between orders |
 | **Tick** | One step of the simulation; the simulation's only clock |
-| **Host** | The machine that sequences orders and whose simulation is authoritative |
+| **Host** | The machine that runs the one simulation and sends each client what its commander can see |
+| **Replica** | A client's copy of the part of the match its commander can see, kept current by the host |
 | **Stamp** | An authored patch of terrain and features the generator places into a landscape |

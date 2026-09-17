@@ -1,6 +1,6 @@
 # Species Look — the presentation, as configuration
 
-**Status: DRAFT (2026-09-17).** A reference read from the Species repository at commit `d1add55`: every light, material, fog, sky, camera and effect setting that makes a Species frame look the way it does, with the source line each value came from. Nothing was run; the numbers are the code's, and where a consequence is stated ("faces the light does not reach are black") it is derived from the fixed-function OpenGL rules the code sets, not observed on a screen. Paths are relative to the Species repository.
+**Status: REFERENCE (2026-09-17).** Read from the Species repository at commit `d1add55`: every light, material, fog, sky, camera and effect setting that makes a Species frame look the way it does, with the source line each value came from. Nothing was run; the numbers are the code's, and where a consequence is stated ("faces the light does not reach are black") it is derived from the fixed-function OpenGL rules the code sets, not observed on a screen. Paths are relative to the Species repository.
 
 **Why this document exists.** The owner will make new models (2026-09-17), so what carries from Species into *Frontier Commander* is not the meshes but the configuration around them: where the lights are, what colour they are, how far the fog reaches, how high the sky is, how the camera moves. Everything here is presentation-side and float, which means none of it touches `AGENTS.md` R16. [`SpeciesTerrain.md`](SpeciesTerrain.md) covers the landscape and water in the same way; [`SpeciesCanvas.md`](SpeciesCanvas.md) covers the windows and the overlay.
 
@@ -235,7 +235,7 @@ Negative gravity rises: fire and control flashes float up. The `Particle.bmp` te
 
 ## 11. What this means for Frontier Commander
 
-**Carry as data.** One `constexpr` table per biome — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one table of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
+**Carry as data.** One entry per biome in `Content\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
 
 **Carry as rules for the pixel shader.** Lambert only; no ambient; two directional lights whose colours may exceed 1.0, summed and clamped after the sum; one normal per triangle; one colour per triangle. That is a shader of a dozen lines, and it is the whole of the lighting.
 

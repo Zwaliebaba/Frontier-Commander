@@ -1,6 +1,6 @@
 # Species Canvas — the windows and the overlay
 
-**Status: DRAFT (2026-09-17).** A reference read from the Species repository at commit `d1add55`: the window toolkit, the game's window chrome, the fonts, the task-manager overlay and the cursor — what is drawn in two dimensions over the world, and the rules it follows. Nothing was run. Paths are relative to the Species repository.
+**Status: REFERENCE (2026-09-17).** Read from the Species repository at commit `d1add55`: the window toolkit, the game's window chrome, the fonts, the task-manager overlay and the cursor — what is drawn in two dimensions over the world, and the rules it follows. Nothing was run. Paths are relative to the Species repository.
 
 **"Canvas"** is the name of the project-filter group in `NeuronClient/NeuronClient.vcxproj.filters` that holds the toolkit — `Eclipse.cpp`, `EclWindow.cpp`, `EclButton.cpp` and their headers — beside the Audio, Input and Network groups. The game's styled window (`GameLogic/SpeciesWindow.cpp`), the overlay (`Species/TaskManagerInterfaceIcons.cpp`) and the cursor (`Species/GameCursor.cpp`) build on it from the layers above. This document covers all four, because together they are the interface `GameDesign.md` §11 calls "a terminal".
 
@@ -112,9 +112,9 @@ plus a **selection arrow** (`SelectionArrow.bmp` with its shadow) over the selec
 
 **Carry the model and the rules whole.** Windows that own buttons, identity by name, front-of-list is front-of-screen, left press focuses and raises, right button is the game's, release-on-button-under-cursor, the 4-pixel resize margin and the 60 × 40 minimum, the 1,000 ms tooltip, `Char` returning whether it consumed, keyboard navigation through a button order with activate and close, auto-size on registration. `TechnicalDesign.md` §6.4 already asks for a toolkit "in the Eclipse shape"; §2 above is that shape written down.
 
-**Carry the chrome as a palette table.** Every RGBA value in §3, the two-pass yellow with shadow, the gradient title bar, the red gradient panel, the 2-pixel border and 1-pixel outer loop, the 16-pixel title height — one `constexpr` table in `Content`, and the look of a window is data.
+**Carry the chrome as a palette table.** Every RGBA value in §3, the two-pass yellow with shadow, the gradient title bar, the red gradient panel, the 2-pixel border and 1-pixel outer loop, the 16-pixel title height — one JSON file under `Content\`, and the look of a window is data.
 
-**Carry the two-font split**, a title face and a caption face, at 12 and 13 pixels, drawn 1:1. The atlas format (16 × 14 cells from ASCII 32, 0.6 width ratio) is simple enough to keep as the baked font's format whatever the glyphs are (Q16).
+**Carry the two-font split**, a title face and a caption face, at 12 and 13 pixels, drawn 1:1. The atlas format (16 × 14 cells from ASCII 32, 0.6 width ratio) is simple enough to keep as the font file's format; the glyphs are the Spectrum font's (owner, 2026-09-17).
 
 **Carry the overlay's ideas, not its coordinate system.** Screen zones rebuilt each frame with a tooltip and a shortcut each, a typewriter tooltip, animated icon rows, and panels that share the window chrome, all belong in the HUD. The 600-unit virtual screen does not: `AGENTS.md` §5 authors the whole frame at one resolution and scales it at present, which is the same idea applied once to everything instead of once to the overlay, and it makes the overlay's layout pixels like the windows'.
 
