@@ -51,7 +51,7 @@ tasks:
     verify:
       - python3 Tools/CheckTaskDag.py
     parallel_safe: true
-    status: todo
+    status: in_progress
 
   - id: C1
     title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
