@@ -6,11 +6,17 @@
 
 namespace Neuron
 {
+class InputQueue;
+}
+
+namespace Neuron
+{
 
 /// The game's one window (ADR-004): borderless, covering the primary monitor, and owning Escape
 /// and Alt+F4 as the only ways out, since a WS_POPUP window has no close box. The window procedure
-/// records the close request and the client size and does nothing else; from m0-foundation/T19 it
-/// enqueues input events the same way, and never acts on them.
+/// records the close request and the client size and enqueues every input message as an event
+/// into the attached queue (TechnicalDesign.md §6.5), and does nothing else with any of them: the
+/// frame derives, routes and reads them, once, after the one pump.
 class Window
 {
 public:
@@ -38,15 +44,22 @@ public:
   /// True once after the client area changed size, and cleared by the call.
   [[nodiscard]] bool TakeResized() noexcept;
 
+  /// Where the procedure enqueues input from now on; null detaches. The mouse is registered for
+  /// Raw Input at the same time, and the queue outlives the window or is detached first.
+  void AttachInput(InputQueue* _queue);
+
 private:
   static LRESULT CALLBACK Procedure(HWND _window, UINT _message, WPARAM _wParam, LPARAM _lParam);
   LRESULT OnMessage(UINT _message, WPARAM _wParam, LPARAM _lParam);
   void ReadClientSize();
+  void Enqueue(const struct InputEvent& _event) noexcept;
 
+  InputQueue* m_input = nullptr;
   HWND m_handle = nullptr;
   HINSTANCE m_instance = nullptr;
   std::uint32_t m_clientWidth = 0;
   std::uint32_t m_clientHeight = 0;
+  std::uint32_t m_buttonsDown = 0;
   bool m_closeRequested = false;
   bool m_resized = false;
 };

@@ -2,8 +2,12 @@
 
 #include "Window.h"
 
+#include "InputEvent.h"
+#include "InputQueue.h"
 #include "Log.h"
+#include "RawMouse.h"
 
+#include <cstdint>
 #include <string>
 
 namespace Neuron
@@ -14,6 +18,37 @@ namespace
 
 constexpr const wchar_t* CLASS_NAME = L"Neuron.Window";
 constexpr const wchar_t* INSTANCE_PROPERTY = L"Neuron.Window.Instance";
+
+// Bit 30 of a key message's lParam: the key was already down, so Windows is auto-repeating it.
+constexpr LPARAM PREVIOUS_KEY_STATE = 0x40000000;
+
+[[nodiscard]] std::int32_t LowSigned(LPARAM _packed) noexcept
+{
+  return static_cast<std::int16_t>(_packed & 0xFFFF);
+}
+
+[[nodiscard]] std::int32_t HighSigned(LPARAM _packed) noexcept
+{
+  return static_cast<std::int16_t>((_packed >> 16) & 0xFFFF);
+}
+
+[[nodiscard]] Neuron::InputEvent KeyEvent(Neuron::InputEventKind _kind, WPARAM _key, LPARAM _lParam, bool _systemKey) noexcept
+{
+  Neuron::InputEvent event;
+  event.kind = _kind;
+  event.key = static_cast<std::uint8_t>(_key);
+  event.repeat = (_lParam & PREVIOUS_KEY_STATE) != 0;
+  event.systemKey = _systemKey;
+  return event;
+}
+
+[[nodiscard]] Neuron::InputEvent ButtonEvent(Neuron::InputEventKind _kind, Neuron::MouseButton _button) noexcept
+{
+  Neuron::InputEvent event;
+  event.kind = _kind;
+  event.button = _button;
+  return event;
+}
 
 } // namespace
 
@@ -90,6 +125,23 @@ bool Window::TakeResized() noexcept
   return resized;
 }
 
+void Window::AttachInput(InputQueue* _queue)
+{
+  m_input = _queue;
+  if (_queue != nullptr && !RegisterRawMouse(m_handle))
+  {
+    Log::Write(LogLevel::Warning, "window: no Raw Input; the aim follows the absolute mouse position");
+  }
+}
+
+void Window::Enqueue(const InputEvent& _event) noexcept
+{
+  if (m_input != nullptr)
+  {
+    m_input->Push(_event);
+  }
+}
+
 LRESULT CALLBACK Window::Procedure(HWND _window, UINT _message, WPARAM _wParam, LPARAM _lParam)
 {
   // Null until the constructor has attached the instance, so the messages of creation itself go to
@@ -106,22 +158,115 @@ LRESULT Window::OnMessage(UINT _message, WPARAM _wParam, LPARAM _lParam)
 {
   switch (_message)
   {
+  // ENQUEUE ONLY (TechnicalDesign.md §6.5): a message becomes a record, and the frame decides what
+  // it meant, so that two messages about one key in one frame both survive. Escape and Alt+F4 are
+  // the exceptions, answered here so that they work with the frame loop stalled.
   case WM_KEYDOWN:
-    if (_wParam == static_cast<WPARAM>(VK_ESCAPE))
-    {
-      m_closeRequested = true;
-      return 0;
-    }
-    break;
   case WM_SYSKEYDOWN:
-    // Alt+F4, which the default procedure would turn into WM_CLOSE only for a window with a system
-    // menu; a popup has none, so the game answers it itself.
-    if (_wParam == static_cast<WPARAM>(VK_F4))
+    if (_wParam < KEY_COUNT)
     {
-      m_closeRequested = true;
-      return 0;
+      Enqueue(KeyEvent(InputEventKind::KeyDown, _wParam, _lParam, _message == WM_SYSKEYDOWN));
     }
+    if ((_message == WM_KEYDOWN && _wParam == static_cast<WPARAM>(VK_ESCAPE)) ||
+        (_message == WM_SYSKEYDOWN && _wParam == static_cast<WPARAM>(VK_F4)))
+    {
+      // A popup has no system menu, so the default procedure would not turn Alt+F4 into WM_CLOSE.
+      m_closeRequested = true;
+    }
+    return 0;
+  case WM_KEYUP:
+  case WM_SYSKEYUP:
+    if (_wParam < KEY_COUNT)
+    {
+      Enqueue(KeyEvent(InputEventKind::KeyUp, _wParam, _lParam, _message == WM_SYSKEYUP));
+    }
+    return 0;
+  case WM_CHAR:
+  {
+    // The character for the keyboard layout, dead keys applied: a virtual-key code is not a
+    // character on any layout but the US one.
+    InputEvent character;
+    character.kind = InputEventKind::Character;
+    character.character = static_cast<std::uint32_t>(_wParam);
+    Enqueue(character);
+    return 0;
+  }
+  case WM_SYSCHAR:
+    // Swallowed: Alt+key is never text here, and the default handling of a WM_SYSCHAR with no menu
+    // to open is the system beep, once per keystroke.
+    return 0;
+  case WM_LBUTTONDOWN:
+  case WM_RBUTTONDOWN:
+  case WM_MBUTTONDOWN:
+  {
+    const MouseButton button = _message == WM_LBUTTONDOWN   ? MouseButton::Left
+                               : _message == WM_RBUTTONDOWN ? MouseButton::Right
+                                                            : MouseButton::Middle;
+    Enqueue(ButtonEvent(InputEventKind::MouseButtonDown, button));
+    // Captured while any button is down, so that a release outside the window still arrives.
+    if (m_buttonsDown == 0)
+    {
+      SetCapture(m_handle);
+    }
+    ++m_buttonsDown;
+    return 0;
+  }
+  case WM_LBUTTONUP:
+  case WM_RBUTTONUP:
+  case WM_MBUTTONUP:
+  {
+    const MouseButton button = _message == WM_LBUTTONUP   ? MouseButton::Left
+                               : _message == WM_RBUTTONUP ? MouseButton::Right
+                                                          : MouseButton::Middle;
+    Enqueue(ButtonEvent(InputEventKind::MouseButtonUp, button));
+    if (m_buttonsDown > 0)
+    {
+      --m_buttonsDown;
+      if (m_buttonsDown == 0)
+      {
+        ReleaseCapture();
+      }
+    }
+    return 0;
+  }
+  case WM_MOUSEMOVE:
+  {
+    InputEvent move;
+    move.kind = InputEventKind::MouseMove;
+    move.x = LowSigned(_lParam);
+    move.y = HighSigned(_lParam);
+    Enqueue(move);
+    return 0;
+  }
+  case WM_MOUSEWHEEL:
+  {
+    // The raw delta; a high-resolution wheel sends fractions of a detent, and the frame adds them up.
+    InputEvent wheel;
+    wheel.kind = InputEventKind::Wheel;
+    wheel.wheelDelta = static_cast<std::int16_t>((_wParam >> 16) & 0xFFFF);
+    Enqueue(wheel);
+    return 0;
+  }
+  case WM_INPUT:
+  {
+    InputEvent move;
+    move.kind = InputEventKind::MouseRawMove;
+    if (ReadRawMouseMove(_lParam, move.x, move.y))
+    {
+      Enqueue(move);
+    }
+    // Passed on: the system needs to see WM_INPUT to clean the packet up after us.
     break;
+  }
+  case WM_KILLFOCUS:
+  {
+    // Windows sends no release for anything held when focus goes; the frame makes them.
+    InputEvent focusLost;
+    focusLost.kind = InputEventKind::FocusLost;
+    Enqueue(focusLost);
+    m_buttonsDown = 0;
+    return 0;
+  }
   case WM_CLOSE:
     m_closeRequested = true;
     return 0;

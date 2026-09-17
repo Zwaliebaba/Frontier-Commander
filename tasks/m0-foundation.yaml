@@ -1086,7 +1086,25 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
-
+    notes: >
+      Written fresh in the Neuron namespace from the Species plan and the files it names. InputEvent
+      is the flat record; FrameInput the derived view, with DeriveFrameInput the pure free function
+      (one edge per control per frame, a deferred event holding everything behind it, repeats not
+      edges, wheel fractions accumulating into detents, focus loss releasing everything held with an
+      edge each and waiting for a press made the same frame); InputQueue the bounded queue that drops
+      the newest; InputRouter the ordering rule with the mask and the subscription table;
+      InputSubscription the move-only handle; RawMouse the registration and the WM_INPUT read, whose
+      handle comes off the LPARAM through std::bit_cast rather than a cast the linter refuses. Three
+      things differ from Species by design. A subscription names a key edge rather than a control,
+      because the bindings that map a control name to a key are M1's. The mask is applied to a copy of
+      the frame state, the view every consumer reads, rather than over reads: the state stays truthful
+      underneath and nothing sticks when a mask clears. A handle cancels by marking, and Subscribe and
+      FireSubscriptions compact, so that Reset and the destructor are noexcept and no vector changes
+      shape inside one. The window procedure enqueues and returns: WM_INPUT is still passed on, which
+      the system needs; WM_SYSCHAR is swallowed so that Alt combinations do not beep; Escape and Alt+F4
+      stay in the procedure so that they work with the frame loop stalled; the mouse is captured while
+      any button is down. A variable named interface found the macro objbase.h defines. Forty-six
+      ClientTests, run natively before the push.
   - id: T20
     title: Client terrain pass and camera - FrontierCommander draws the generated landscape, and the fog and lighting ADR is written on captured frames
     intent: >

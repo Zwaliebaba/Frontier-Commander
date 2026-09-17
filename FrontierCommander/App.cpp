@@ -5,7 +5,10 @@
 #include "App.h"
 
 #include "FrameCapture.h"
+#include "FrameInput.h"
 #include "GraphicsDevice.h"
+#include "InputQueue.h"
+#include "InputRouter.h"
 #include "Log.h"
 #include "Paths.h"
 #include "PresentPass.h"
@@ -105,12 +108,25 @@ int App::RunWindowed()
     Neuron::Log::Write(Neuron::LogLevel::Warning, "the log file could not be opened; logging to the debugger only");
   }
   Neuron::Window window;
+  Neuron::InputQueue inputQueue;
+  Neuron::FrameInput inputState;
+  Neuron::InputRouter inputRouter;
+  window.AttachInput(&inputQueue);
   Neuron::GraphicsDevice device(m_options.warp);
   Neuron::SwapChain swapChain(device, window.Handle(), window.ClientWidth(), window.ClientHeight());
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::PresentPass present(device, scene);
   while (window.Pump())
   {
+    // The frame's input (TechnicalDesign.md §6.5): derive what the frame saw, offer it to the sinks,
+    // mask what they took, fire the subscriptions, and only then read the view. Nothing reads it
+    // yet: the camera of m0-foundation/T20 is the first.
+    const std::size_t consumed = Neuron::DeriveFrameInput(inputQueue.Events(), inputState);
+    inputRouter.Dispatch(inputQueue.Events().first(consumed));
+    Neuron::FrameInput inputView = inputState;
+    inputRouter.Mask(inputView);
+    inputRouter.FireSubscriptions(inputView);
+    inputQueue.Erase(consumed);
     if (window.TakeResized())
     {
       swapChain.Resize(device, window.ClientWidth(), window.ClientHeight());
@@ -132,8 +148,10 @@ int App::RunWindowed()
   }
   device.WaitForIdle();
   device.DrainDebugMessages();
+  window.AttachInput(nullptr);
   Neuron::Log::Write(Neuron::LogLevel::Info, "exit: " + std::to_string(device.FramesBegun()) + " frames, " +
-                                               std::to_string(device.DebugMessageCount()) + " debug-layer messages");
+                                               std::to_string(device.DebugMessageCount()) + " debug-layer messages, " +
+                                               std::to_string(inputQueue.Dropped()) + " input events dropped");
   return ExitCodeOf(device);
 }
 

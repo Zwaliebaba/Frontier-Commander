@@ -106,6 +106,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ScaleModeTests.cpp" />
+    <ClCompile Include="FrameInputTests.cpp" />
+    <ClCompile Include="InputRouterTests.cpp" />
+    <ClCompile Include="InputSubscriptionTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
