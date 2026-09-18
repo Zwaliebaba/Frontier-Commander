@@ -574,12 +574,19 @@ tasks:
       - Sim/Device.h
       - Sim/Seat.h
       - Sim/OrderValidation.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Sim/StateHash.cpp
       - Sim/Sim.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - Content/DesignStats.h
+      - Content/DesignStats.cpp
+      - Design/OpenQuestions.md
       - Tests/SimTests/ProductionTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
+      - Tests/ContentTests/DesignStatsTests.cpp
     acceptance:
       - "A Design is per seat: a name, a chassis, a drive and modules the seat has researched, saved by SaveDesign and validated against research; its statistics come from Content/DesignStats and are stored on the device at spawn with the class-upgrade percentages of the seat applied"
       - SetProduction and CancelProduction manage a factory's queue; build time is cost divided by 10 per second less the factory's module reduction; a factory whose seat is at the device cap pauses; a completed device spawns at the factory's exit cell with the seat's default stances
@@ -592,7 +599,38 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      TWO TYPES CALLED Frontier::DeviceDesign, AND THIS IS THE TASK THAT HAD TO SEE BOTH. Content's
+      named its parts by id for the design screen and for saving between matches; Sim's named them
+      by row index because a design is hashed and sent every tick. Neither file included the other,
+      so the collision sat there from C1 and S1 - Sim/Visibility.cpp even has a comment about the
+      two - until this task needed one translation unit to derive a seat's design from Content's
+      tables. Content's is now DesignRecipe. RecipeFor is the one conversion, so the simulation and
+      the design screen answer with one implementation and ProductionTests reaches the design's own
+      two worked numbers through the seat's index path.
+      THE ACCEPTANCE CONTRADICTS ITSELF ABOUT STORED STATISTICS AND THE SECOND HALF WINS. It asks for
+      the statistics "stored on the device at spawn" and then for "an upgrade researched later
+      changes fielded devices"; a stored maximum satisfies the first and breaks the second, and
+      Sim/Device.h had already written the rule the other way. What is stored is the CURRENT hit
+      points, because damage is state; everything else - the maximum included - is derived from the
+      design and the seat's upgrades wherever it is wanted, so a retroactive upgrade reaches the
+      field without walking it. S6's "hit points keeping their fraction" is then the one rescale it
+      does have to do. Seat gained a ClassUpgrades for S6 to fill and S5 to read.
+      A DEVICE IS PRICED AND TIMED BY ITS PARTS AND A STRUCTURE BY ITS ROW, which is two rules and
+      the tables as authored: the acceptance says a device's build time is "cost divided by 10 per
+      second" and GameDesign.md §5 says a structure is built "over the build time" its row states.
+      Both are implemented as written and S4's notes carry the 1.5x gap between them.
+      The device cap was checked on SetProduction and no longer is: GameDesign.md §4's cap is on what
+      stands in the field and the acceptance says a factory at it PAUSES, so a commander may queue
+      against a cap and the factory waits. Better play than a refusal, and it is what stage 4 does.
+      THE RANK NUMBERS ARE THIS TASK'S PROPOSAL AND OpenQuestions.md Q22 IS NOW OPEN. GameDesign.md
+      §8 gives the count and the word "small" and no figures, and the acceptance asks for "the
+      percentages the design proposes". Eight ranks, thresholds doubling to 160 weighted kills,
+      accuracy and damage reaching 24 percent - argued in the header and in the question, measured
+      against nothing, which is why it is a question rather than a decision. C3's script cannot
+      settle it, because it compares at equal power spent and a rank is not bought with power.
+      Snapshot version 10 carries the upgrades and the queues.
 
   - id: S6
     title: Sim research - labs in parallel, unlocks and retroactive class upgrades, auto-research

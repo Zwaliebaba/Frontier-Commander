@@ -3,6 +3,7 @@
 #include "Sim.h"
 #include "Construction.h"
 #include "OrderValidation.h"
+#include "Production.h"
 #include "StateHash.h"
 
 #include <algorithm>
@@ -309,15 +310,24 @@ bool Sim::Apply(const Order& _order)
     return BeginModule(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure},
                        static_cast<std::uint32_t>(order.operands[1]));
 
+  case OrderKind::SetProduction:
+    return SetProduction(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure},
+                         static_cast<std::uint32_t>(order.operands[1]), static_cast<std::uint32_t>(order.operands[2]));
+
+  case OrderKind::CancelProduction:
+    return CancelProduction(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure},
+                            static_cast<std::uint32_t>(order.operands[1]));
+
+  case OrderKind::SaveDesign:
+    return SaveDesign(*this, order.seat, static_cast<std::uint32_t>(order.operands[0]),
+                      DesignFromOrder(order.operands[1], order.operands[2], order.operands[3]));
+
   case OrderKind::Attack:
   case OrderKind::Patrol:
   case OrderKind::Guard:
   case OrderKind::ReturnToRepair:
-  case OrderKind::SetProduction:
-  case OrderKind::CancelProduction:
   case OrderKind::SetResearch:
   case OrderKind::CancelResearch:
-  case OrderKind::SaveDesign:
     // Validated here and applied by the task that owns the system (m1-vertical-slice/S2): the
     // order passed every check this task can make, and there is nothing yet to apply it to. It
     // counts as applied rather than dropped, because nothing was wrong with it.
@@ -335,7 +345,10 @@ void Sim::AdvanceEconomy()
 
 void Sim::AdvanceResearch() {}
 
-void Sim::AdvanceProduction() {}
+void Sim::AdvanceProduction()
+{
+  Frontier::AdvanceProduction(*this);
+}
 
 void Sim::AdvanceConstruction()
 {

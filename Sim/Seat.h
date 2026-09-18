@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Design.h"
 #include "Device.h"
 #include "FogGrid.h"
 #include "GhostStore.h"
@@ -40,6 +41,15 @@ struct Seat
   std::vector<ResearchProgress> researchActive;
 
   std::vector<DeviceDesign> designs; ///< What this commander may build; S5 owns the rules
+
+  /// What research has added to each class, as percentages (Content/DesignStats.h). S6 fills it on
+  /// an upgrade completing and S5 reads it wherever a statistic is derived, so an upgrade reaches
+  /// every device of the class at once rather than being written into each of them.
+  ClassUpgrades upgrades;
+
+  /// The factories' queues, in the order the commander asked for them (Sim/Design.h). One list a
+  /// seat rather than one a factory, because a structure is a fixed-layout record.
+  std::vector<ProductionEntry> production;
 
   std::uint32_t deviceCount; ///< Against deviceCap; kept rather than counted, because the cap is
   std::uint32_t deviceCap;   ///< tested on every production tick and World would be walked for it

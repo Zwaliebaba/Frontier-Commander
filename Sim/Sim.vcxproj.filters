@@ -29,6 +29,9 @@
     <ClCompile Include="Construction.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Production.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Deposit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -131,6 +134,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Plan.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Design.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Production.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Deposit.h">

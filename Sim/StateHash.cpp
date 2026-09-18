@@ -26,6 +26,18 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
     AddSpan(std::span<const std::uint32_t>(design.modules));
     Add(design.moduleCount);
   }
+  AddSpan(std::span<const std::int32_t>(_seat.upgrades.chassisArmorPercent));
+  AddSpan(std::span<const std::int32_t>(_seat.upgrades.chassisHitPointPercent));
+  AddSpan(std::span<const std::int32_t>(_seat.upgrades.weaponDamagePercent));
+  AddSpan(std::span<const std::int32_t>(_seat.upgrades.weaponRatePercent));
+  AddSpan(std::span<const std::int32_t>(_seat.upgrades.weaponAccuracyPercent));
+  Add(static_cast<std::uint32_t>(_seat.production.size()));
+  for (const ProductionEntry& entry : _seat.production)
+  {
+    AddObjectId(entry.factory);
+    Add(entry.design);
+    Add(entry.remaining);
+  }
   Add(_seat.deviceCount);
   Add(_seat.deviceCap);
   Add(_seat.structureCount);

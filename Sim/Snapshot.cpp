@@ -222,6 +222,33 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
     }
     _writer.Write(design.moduleCount);
   }
+  for (const std::int32_t percent : _seat.upgrades.chassisArmorPercent)
+  {
+    _writer.Write(percent);
+  }
+  for (const std::int32_t percent : _seat.upgrades.chassisHitPointPercent)
+  {
+    _writer.Write(percent);
+  }
+  for (const std::int32_t percent : _seat.upgrades.weaponDamagePercent)
+  {
+    _writer.Write(percent);
+  }
+  for (const std::int32_t percent : _seat.upgrades.weaponRatePercent)
+  {
+    _writer.Write(percent);
+  }
+  for (const std::int32_t percent : _seat.upgrades.weaponAccuracyPercent)
+  {
+    _writer.Write(percent);
+  }
+  _writer.Write(static_cast<std::uint32_t>(_seat.production.size()));
+  for (const ProductionEntry& entry : _seat.production)
+  {
+    WriteObjectId(_writer, entry.factory);
+    _writer.Write(entry.design);
+    _writer.Write(entry.remaining);
+  }
   _writer.Write(_seat.deviceCount);
   _writer.Write(_seat.deviceCap);
   _writer.Write(_seat.structureCount);
@@ -298,6 +325,36 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
       }
     }
     if (!_reader.Read(design.moduleCount) || design.moduleCount > MAX_MOUNTS)
+    {
+      return false;
+    }
+  }
+  const auto readPercents = [&_reader](auto& _percents)
+  {
+    for (std::int32_t& percent : _percents)
+    {
+      if (!_reader.Read(percent))
+      {
+        return false;
+      }
+    }
+    return true;
+  };
+  if (!readPercents(seat.upgrades.chassisArmorPercent) || !readPercents(seat.upgrades.chassisHitPointPercent) ||
+      !readPercents(seat.upgrades.weaponDamagePercent) || !readPercents(seat.upgrades.weaponRatePercent) ||
+      !readPercents(seat.upgrades.weaponAccuracyPercent))
+  {
+    return false;
+  }
+  if (!_reader.Read(count) || count > MAX_PRODUCTION_ENTRIES)
+  {
+    return false;
+  }
+  seat.production.resize(count);
+  for (ProductionEntry& entry : seat.production)
+  {
+    if (!ReadObjectId(_reader, entry.factory) || !_reader.Read(entry.design) || !_reader.Read(entry.remaining) ||
+        entry.remaining > MAX_PRODUCTION_REPEAT)
     {
       return false;
     }

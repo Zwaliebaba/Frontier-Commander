@@ -1,6 +1,6 @@
 # Open questions — answered
 
-**Status: none open. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q21 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: one open — Q22, the rank numbers. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q21 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -172,6 +172,29 @@ The owner stated on 2026-09-18 that a landscape ten times the current largest is
 **Answer (owner, 2026-09-18): option 2, Sandbox.** `Client/Lighting.h` carries `SANDBOX_LIGHTING` as `BUILT_IN_LIGHTING`, `GARDEN_LIGHTING` stays beside it, and `GameData/Biomes.json` carries two rows: `Default` with the Sandbox pair and `Garden` with the Garden's, both on `LandscapeDefault.dds`, which is the ramp Species gives both maps. Nothing about the zero ambient changes — no fill term is added anywhere, the two lights simply reach further. `m0-foundation/T22` now rules on the fog against a frame drawn under this rig and under ADR-007's range, which was the reason the two questions could not be separated.
 
 **Recommendation: option 2, Sandbox specifically, and option 1 kept as a biome.** The rig is per-biome data already (`Content/BiomeDesc.h`), so this is a question about the default rather than a foreclosure: making Sandbox the built-in gives an RTS camera a readable landscape now, and Garden stays available as the biome it actually belongs to, for the ground-level vantages the capture uses. Sandbox over PatternBuffer because of the reading above — it is the pair Species put on its own large, gentle map — rather than because it is the brighter of the two. Option 3 is what to reach for only if a frame under option 2 loses more of the look than the readability is worth, which is a frame to look at rather than an argument to have.
+
+### Q22 — What does a rank add, and how much experience buys one? (raised 2026-09-18)
+
+`GameDesign.md` §8 says "a device that destroys things gains experience through eight ranks, each adding a small percentage to accuracy and damage", and §12 puts ranks in M2. It gives the count and the word "small" and no numbers, and `m1-vertical-slice/S5`'s acceptance asks for "the per-rank accuracy and damage percentages **the design proposes**" — which the design does not.
+
+**Why it blocks, and how much.** Not much, and that is worth saying rather than dressing it up: S5 ships the fields and a table, S10 applies them, and nothing before M2 reads a number a player would notice. What it does decide is whether a veteran is an edge or a second tier, which is a balance question the cost-efficiency script of `C3` cannot answer — it compares designs at equal power spent, and a rank is not bought with power. So the numbers are the owner's in the way the damage matrix is, and this asks for them before M2 tunes around whatever S5 happened to write.
+
+**What S5 shipped, as the proposal.** `Sim/Design.h`, so that the code has an answer while the question is open:
+
+| Rank | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Experience at | 0 | 2 | 5 | 10 | 20 | 40 | 80 | 160 |
+| Accuracy and damage | +0% | +2% | +4% | +7% | +10% | +14% | +18% | +24% |
+
+The shape is the argument. The thresholds double, so a rank costs about as much as every rank before it put together: the eighth is 160 weighted kills, which is a device that survived a match rather than a device that had a good minute, and it is a thing a commander protects. The percentages reach 24, which is worth the retreat-and-repair loop `GameDesign.md` §8 says ranks exist to justify, and it is well under the 60 a class upgrade can reach, so a veteran light is still a light.
+
+**The options.**
+
+1. **Take the table above.** It is measured against nothing, which is its weakness, and it is at least internally argued.
+2. **Flatter and cheaper**: eight ranks reaching +12%, thresholds 0, 1, 3, 6, 10, 15, 21, 28. Ranks then happen to most devices that fight twice, and the mechanic reads as texture rather than as an investment.
+3. **Steeper and dearer**: reaching +40%, thresholds doubling from 3. A veteran becomes a unit worth building a repair bay for, and a lost one is a real setback — which is the *Warzone 2100* feel and also the one that punishes a player who is already losing.
+
+**Recommendation: option 1, and re-open it in M2 against a measured match rather than against an argument.** A rank is the one number in the game that compounds with itself — a device that wins fights gets better at winning fights — so the safe direction is the modest one until `m2-skirmish` has AI-versus-AI matches to measure the spread on. The table is in one header with one reader, so changing it is an edit and not a migration.
 
 ## Adding a question
 

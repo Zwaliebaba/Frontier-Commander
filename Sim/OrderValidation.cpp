@@ -3,8 +3,10 @@
 #include "OrderValidation.h"
 
 #include "Construction.h"
+#include "Design.h"
 #include "Placement.h"
 #include "Plan.h"
+#include "Production.h"
 
 #include "FixedPoint.h"
 
@@ -68,25 +70,25 @@ namespace
   return OwnedStructure(_order, _context) == nullptr ? Reject(_order, RejectReason::NotOwned) : Accept(_order);
 }
 
-/// Whether the seat has completed the research a row names, by its id. An empty id is a row
-/// available from the first tick; an id no research row defines is unreachable rather than free,
-/// because a table that names a prerequisite it does not define is a content fault and
-/// ContentValidator is what reports it.
-[[nodiscard]] bool Unlocked(const Seat& _seat, const ContentTree& _content, const std::string& _unlockedBy)
+/// Every design fault is one rejection, for the same reason every placement fault is: RejectReason
+/// is the vocabulary a client speaks. A part that does not exist is the client's fault and a
+/// combination the tables refuse is the commander's, which is the line between the two.
+[[nodiscard]] constexpr RejectReason ReasonFor(DesignFault _fault) noexcept
 {
-  if (_unlockedBy.empty())
+  switch (_fault)
   {
-    return true;
+  case DesignFault::None:
+    return RejectReason::Accepted;
+  case DesignFault::UnknownChassis:
+  case DesignFault::UnknownDrive:
+  case DesignFault::UnknownModule:
+    return RejectReason::NotResearched;
+  case DesignFault::NoModules:
+  case DesignFault::TooManyModules:
+  case DesignFault::ModuleRefusesChassis:
+    return RejectReason::InvalidTarget;
   }
-  for (std::size_t index = 0; index < _content.research.size(); ++index)
-  {
-    if (_content.research[index].id == _unlockedBy)
-    {
-      return std::find(_seat.researchComplete.begin(), _seat.researchComplete.end(), static_cast<std::uint32_t>(index)) !=
-             _seat.researchComplete.end();
-    }
-  }
-  return false;
+  return RejectReason::Malformed;
 }
 
 /// Every placement fault is one rejection, because RejectReason is the vocabulary a client speaks
@@ -311,7 +313,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::CannotAfford);
     }
-    if (row != nullptr && !Unlocked(seat, *_context.content, row->unlockedBy))
+    if (row != nullptr && !UnlockedFor(seat, *_context.content, row->unlockedBy))
     {
       return Reject(_order, RejectReason::NotResearched);
     }
@@ -336,16 +338,38 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
 
   case OrderKind::SetProduction:
   {
-    if (OwnedStructure(_order, _context) == nullptr)
+    const Structure* structure = OwnedStructure(_order, _context);
+    if (structure == nullptr)
     {
       return Reject(_order, RejectReason::NotOwned);
     }
     if (_order.operands[1] < 0 || static_cast<std::size_t>(_order.operands[1]) >= seat.designs.size())
     {
-      // A design the seat has not saved is not a design it may build; S5 adds the parts' unlocks.
       return Reject(_order, RejectReason::NotResearched);
     }
-    return seat.deviceCount >= seat.deviceCap ? Reject(_order, RejectReason::AtCap) : Accept(_order);
+    if (_order.operands[2] <= 0 || static_cast<std::uint32_t>(_order.operands[2]) > MAX_PRODUCTION_REPEAT)
+    {
+      return Reject(_order, RejectReason::Malformed);
+    }
+    if (seat.production.size() >= MAX_PRODUCTION_ENTRIES)
+    {
+      return Reject(_order, RejectReason::AtCap);
+    }
+    if (_context.content == nullptr)
+    {
+      return Accept(_order); // Without the tables the role and the design cannot be judged.
+    }
+    const std::vector<StructureDesc>& rows = _context.content->structures.structures;
+    if (structure->state != StructureState::Standing || structure->design >= rows.size() ||
+        rows[structure->design].role != StructureRole::Factory)
+    {
+      return Reject(_order, RejectReason::InvalidTarget);
+    }
+    // THE DEVICE CAP IS NOT CHECKED HERE, and it was until this task. GameDesign.md §4's cap is on
+    // what stands in the field, and the acceptance says a factory at it PAUSES - so a commander
+    // may queue against a cap they are at and the factory waits, which is better play than a
+    // refusal and is what the stage does.
+    return {_order, ReasonFor(CheckDesign(seat, *_context.content, seat.designs[static_cast<std::size_t>(_order.operands[1])]))};
   }
 
   case OrderKind::SetResearch:
@@ -423,7 +447,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::InvalidTarget);
     }
-    if (!Unlocked(seat, *_context.content, module.unlockedBy))
+    if (!UnlockedFor(seat, *_context.content, module.unlockedBy))
     {
       return Reject(_order, RejectReason::NotResearched);
     }
@@ -431,13 +455,37 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
   }
 
   case OrderKind::CancelProduction:
+  {
+    if (OwnedStructure(_order, _context) == nullptr)
+    {
+      return Reject(_order, RejectReason::NotOwned);
+    }
+    return _order.operands[1] >= 0 ? Accept(_order) : Reject(_order, RejectReason::Malformed);
+  }
+
   case OrderKind::CancelResearch:
     return OwnershipOnly(_order, _context);
 
   case OrderKind::SaveDesign:
-    return _order.operands[0] >= 0 && static_cast<std::uint32_t>(_order.operands[0]) < MAX_SAVED_DESIGNS
-             ? Accept(_order)
-             : Reject(_order, RejectReason::Malformed);
+  {
+    if (_order.operands[0] < 0 || static_cast<std::uint32_t>(_order.operands[0]) >= MAX_SAVED_DESIGNS || _order.operands[1] < 0 ||
+        _order.operands[2] < 0)
+    {
+      return Reject(_order, RejectReason::Malformed);
+    }
+    // A slot past the end leaves holes nothing would ever fill, and a design index is what a
+    // production order names.
+    if (static_cast<std::size_t>(_order.operands[0]) > seat.designs.size())
+    {
+      return Reject(_order, RejectReason::Malformed);
+    }
+    if (_context.content == nullptr)
+    {
+      return Accept(_order);
+    }
+    const DeviceDesign design = DesignFromOrder(_order.operands[1], _order.operands[2], _order.operands[3]);
+    return {_order, ReasonFor(CheckDesign(seat, *_context.content, design))};
+  }
 
   case OrderKind::Surrender:
   case OrderKind::Chat:

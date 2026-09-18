@@ -113,6 +113,7 @@
     <ClCompile Include="EconomyTests.cpp" />
     <ClCompile Include="PlacementTests.cpp" />
     <ClCompile Include="ConstructionTests.cpp" />
+    <ClCompile Include="ProductionTests.cpp" />
     <ClCompile Include="VisibilityTests.cpp" />
     <ClCompile Include="PathingTests.cpp" />
     <ClCompile Include="OrderValidationTests.cpp" />

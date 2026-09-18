@@ -72,7 +72,7 @@ public:
   TEST_METHOD(ALightOnWheelsWithAMachineGunIsTheDesignsFirstWorkedExample)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
+    const Frontier::DesignRecipe design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
     Frontier::DesignStats stats{};
     Assert::IsTrue(Frontier::DeriveDesignStats(loaded.tree, design, Frontier::ClassUpgrades{}, stats) == Frontier::DesignFault::None);
     // GameDesign.md §6: 104 world units a second for 130 power in 13 seconds.
@@ -86,7 +86,7 @@ public:
   TEST_METHOD(AHeavyOnTracksWithACannonIsTheDesignsSecondWorkedExample)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign design{"Line", "Line", "HeavyI", "Tracks", {"Cannon"}};
+    const Frontier::DesignRecipe design{"Line", "Line", "HeavyI", "Tracks", {"Cannon"}};
     Frontier::DesignStats stats{};
     Assert::IsTrue(Frontier::DeriveDesignStats(loaded.tree, design, Frontier::ClassUpgrades{}, stats) == Frontier::DesignFault::None);
     // GameDesign.md §6: 29 world units a second for 490 power in 49 seconds.
@@ -142,7 +142,7 @@ public:
   TEST_METHOD(AClassUpgradeRaisesArmourAndHitPointsAndNothingElse)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
+    const Frontier::DesignRecipe design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
     Frontier::ClassUpgrades upgrades{};
     upgrades.chassisArmorPercent[static_cast<std::size_t>(Frontier::ChassisClass::Light)] = 20;
     upgrades.chassisHitPointPercent[static_cast<std::size_t>(Frontier::ChassisClass::Light)] = 10;
@@ -157,8 +157,8 @@ public:
   TEST_METHOD(TheModulesWeightSlowsTheDeviceAndTheSensorRaisesItsSight)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign light{"A", "A", "LightI", "Wheels", {"MachineGun"}};
-    const Frontier::DeviceDesign heavy{"B", "B", "LightI", "Wheels", {"Cannon"}};
+    const Frontier::DesignRecipe light{"A", "A", "LightI", "Wheels", {"MachineGun"}};
+    const Frontier::DesignRecipe heavy{"B", "B", "LightI", "Wheels", {"Cannon"}};
     Frontier::DesignStats fast{};
     Frontier::DesignStats slow{};
     Assert::IsTrue(Frontier::DeriveDesignStats(loaded.tree, light, Frontier::ClassUpgrades{}, fast) == Frontier::DesignFault::None);
