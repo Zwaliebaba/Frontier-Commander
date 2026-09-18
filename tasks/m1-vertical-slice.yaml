@@ -117,15 +117,21 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
-      ADR-006 is the content ADR. Two things it needed did not exist: Neuron::TICKS_PER_SECOND,
+      Green on CI run 44 (b474d6c), with the loader, the validator, the derivation and the host's
+      --validate. ADR-006 is the content ADR. Two things it needed did not exist: Neuron::TICKS_PER_SECOND,
       which ADR-002 had fixed at 20 and no code had yet declared, now in Core/FixedPoint.h beside
       the other units; and a line on a JsonValue, so that a fault in what a value means rather
       than in its syntax points at the value. ContentTree::origins records the file and line of
       every row as it is read, which is how a duplicate id or a missing prerequisite names a line
       although it spans files. The CI step is guarded on Content\Components.json, which C2 writes,
-      so it skips until then.
+      so it skips until then. Run 43 was red on clang-tidy alone, for three fair findings the
+      session's own linter had been missing because it was passing -p with no compilation
+      database, which silently drops the repository's configuration: the fixture documents were
+      pointers to const rather than constants, both scratch destructors called a filesystem
+      function that can throw, and the host's main built a path from a command-line argument.
+      Run without that flag, the session's clang-tidy reproduces every one of them.
 
   - id: C2
     title: Author the M1 content tables
