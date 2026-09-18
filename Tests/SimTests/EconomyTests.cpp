@@ -136,9 +136,23 @@ Frontier::ObjectId Standing(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, s
   structure.cellY = _cellY;
   structure.state = Frontier::StructureState::Standing;
   structure.hitPoints = 100;
-  structure.buildProgressHundredths = 10000;
+  structure.buildEffortHundredths = 10000;
   structure.working = Frontier::NO_OBJECT;
   return _sim.Objects().Create(structure);
+}
+
+/// Makes a seat's fog say it has explored a rectangle of cells, which S4's placement rule now
+/// requires (GameDesign.md §5: "anywhere the commander has explored").
+void Reveal(Frontier::Sim& _sim, std::uint8_t _seat, std::uint32_t _cellX, std::uint32_t _cellY, std::uint32_t _cellsX = 1,
+            std::uint32_t _cellsY = 1)
+{
+  for (std::uint32_t y = _cellY; y < _cellY + _cellsY; ++y)
+  {
+    for (std::uint32_t x = _cellX; x < _cellX + _cellsX; ++x)
+    {
+      _sim.SeatAt(_seat).fog.AddViewer(x, y);
+    }
+  }
 }
 
 } // namespace
@@ -397,8 +411,10 @@ public:
   {
     Frontier::Sim sim(TwoSeats(), Tables());
     Assert::IsTrue(sim.CreateLandscape(LandscapeWith({{20, 20}})));
-    Standing(sim, 0, Row::CommandPost, 40, 40); // PlaceStructure needs a standing structure
+    Standing(sim, 0, Row::CommandPost, 40, 40); // PlaceStructure needs a standing command post
     sim.Advance();
+    Reveal(sim, 0, 20, 20);       // the deposit cell
+    Reveal(sim, 0, 21, 20, 3, 3); // and the ground the other two placements want
 
     const Frontier::OrderContext context{&sim.Objects(), sim.Seats(), &sim.Terrain(), sim.Tick(), &Tables(), &sim.Power().Deposits()};
     const auto place = [](Row _row, std::int32_t _cellX, std::int32_t _cellY)
@@ -426,6 +442,7 @@ public:
     Assert::IsTrue(sim.CreateLandscape(LandscapeWith({})));
     Standing(sim, 0, Row::CommandPost, 40, 40);
     sim.Advance();
+    Reveal(sim, 0, 30, 30, 3, 3);
     Frontier::Seat& seat = sim.SeatAt(0);
 
     Frontier::Order order{};

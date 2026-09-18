@@ -131,7 +131,7 @@ Frontier::ObjectId Watcher(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, st
   structure.cellY = _cellY;
   structure.state = Frontier::StructureState::Standing;
   structure.hitPoints = 100;
-  structure.buildProgressHundredths = 10000;
+  structure.buildEffortHundredths = 10000;
   structure.working = Frontier::NO_OBJECT;
   return _sim.Objects().Create(structure);
 }
@@ -407,10 +407,13 @@ public:
     Assert::AreEqual(Frontier::REFRESH_BUDGET_VIEWERS, crowded.Sight().LastRefreshedViewers(), L"twice the viewers, the same budget");
   }
 
-  TEST_METHOD(AFlattenDropsEveryStampBecauseADiscWasWorkedOutAgainstTheOldHeights)
+  TEST_METHOD(AFlattenDropsOnlyTheStampsThatReachTheGroundItMoved)
   {
     // Un-counting a disc against heights that have changed would take viewers off cells that were
-    // never counted, so the whole fog is dropped and the budget refills it.
+    // never counted, so the discs that REACH the changed ground are un-counted first and the
+    // budget counts them again. m1-vertical-slice/S9 dropped the whole fog instead and left the
+    // narrowing to S4, which is the task that actually flattens: a structure going up must not
+    // black out a commander's explored map, and S4 puts one up every few seconds.
     Frontier::Sim sim(Seats(), Tables());
     Assert::IsTrue(sim.CreateLandscape(Flat()));
     Scout(sim, 0, 40, 40);
@@ -418,10 +421,19 @@ public:
     Assert::AreEqual(std::size_t{1}, sim.Sight().Stamps().size());
     Assert::IsTrue(sim.Seats()[0].fog.Explored(40, 40));
 
+    // Sixty cells away is past any radius these tables give, so nothing about this viewer's disc
+    // can have changed and its stamp is still exact.
     Assert::IsTrue(Raise(sim, 100 * Frontier::SAMPLES_PER_CELL_EDGE, 100 * Frontier::SAMPLES_PER_CELL_EDGE,
                          102 * Frontier::SAMPLES_PER_CELL_EDGE, 102 * Frontier::SAMPLES_PER_CELL_EDGE, 200));
-    Assert::AreEqual(std::size_t{0}, sim.Sight().Stamps().size(), L"the stamps go with the heights");
-    Assert::IsFalse(sim.Seats()[0].fog.Explored(40, 40), L"and so does the history, which is the cost of the reset");
+    Assert::AreEqual(std::size_t{1}, sim.Sight().Stamps().size(), L"a disc that does not reach the ground that moved is untouched");
+    Assert::IsTrue(sim.Seats()[0].fog.Visible(40, 40));
+
+    // Under its own feet, it does reach.
+    Assert::IsTrue(Raise(sim, 40 * Frontier::SAMPLES_PER_CELL_EDGE, 40 * Frontier::SAMPLES_PER_CELL_EDGE,
+                         42 * Frontier::SAMPLES_PER_CELL_EDGE, 42 * Frontier::SAMPLES_PER_CELL_EDGE, 200));
+    Assert::AreEqual(std::size_t{0}, sim.Sight().Stamps().size(), L"the stamp goes with the heights it was worked out against");
+    Assert::IsFalse(sim.Seats()[0].fog.Visible(40, 40), L"un-counted until the budget counts it again");
+    Assert::IsTrue(sim.Seats()[0].fog.Explored(40, 40), L"but the history stays, which the whole-fog reset threw away");
     sim.Advance();
     Assert::IsTrue(sim.Seats()[0].fog.Visible(40, 40), L"the next tick puts it back");
   }

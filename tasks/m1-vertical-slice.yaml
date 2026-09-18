@@ -483,13 +483,24 @@ tasks:
       - Sim/Construction.h
       - Sim/Construction.cpp
       - Sim/Plan.h
-      - Sim/Landscape.cpp
+      - Sim/Structure.h
+      - Sim/Order.h
       - Sim/OrderValidation.cpp
+      - Sim/Visibility.h
+      - Sim/Visibility.cpp
+      - Sim/StateHash.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
       - Sim/Sim.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - GameData/Structures.json
       - Tests/SimTests/PlacementTests.cpp
       - Tests/SimTests/ConstructionTests.cpp
+      - Tests/SimTests/EconomyTests.cpp
+      - Tests/SimTests/VisibilityTests.cpp
+      - Tests/SimTests/WorldTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
     acceptance:
@@ -506,7 +517,47 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE SLOPE RULE WAS BUILT THE OTHER WAY FIRST AND THE MEASUREMENT TURNED IT ROUND. "The slope
+      across the footprint is under 25%" reads as the relief over how far the footprint reaches, and
+      that is what was written; Landscape::Cell's slopePercent - the steepest step between two
+      adjacent samples - was rejected in a comment as "much harsher". Measured over the 795 dry
+      three-by-three sites of the built-in Small landscape, the average gradient refuses 4 of them
+      and the steepest cell refuses 31, so the harshness was 3.4% of the map rather than a wall, and
+      the objection was arithmetic nobody had done. Two things then decide it: 25 is the same number
+      and the same unit GameData\Components.json gives Wheels for maxSlopePercent, which is read per
+      cell; and what the steepest cell refuses and the average waves through is a footprint
+      straddling a CLIFF EDGE, eight gentle cells and one vertical one, which is exactly the site a
+      factory must not stand on. PlacementTests pins the reading with a case the other one accepts.
+      THE FLATTEN NO LONGER BLACKS OUT THE MAP. S9 dropped every stamp and every fog grid on a
+      height delta and left the narrowing to this task, which is the one that actually flattens - and
+      it flattens every time a structure goes up, so the explored history of every commander would
+      have gone with it. Visibility::InvalidateRegion un-counts only the discs that REACH the
+      changed cells, before the heights move; a disc that does not reach them cannot have a cell
+      changed by them, so it is exact and not an approximation. VisibilityTests now pins both halves.
+      THE BUILD ACCUMULATOR IS EFFORT AND NOT A PERCENTAGE. Structure::buildProgressHundredths
+      became buildEffortHundredths because a percentage per tick does not divide: a hundred percent
+      over a 1,200-tick factory is 8.33 hundredths a tick, and a truncated percentage reaches 9,600
+      and stops. The builders' own contribution accumulates exactly, and the percentage the hit
+      points and the refund want is a function of it. Snapshot version 9 carries it and the two
+      module fields.
+      HOW A BUILD TIME AND A BUILD RATE MEET. The tables state a time per structure (GameDesign.md
+      §5, "over the build time") and a rate per builder (§6, ten power a second), and neither says
+      what a faster builder does to a stated time. A structure needs buildTimeTicks times the
+      REFERENCE rate of effort and each builder puts in its own a tick, so today's only builder
+      module is the reference and a structure takes exactly the time its row states. Stated but not
+      corrected: the rows' build times are about 1.5 times what cost-divided-by-ten-power-a-second
+      would give, four of six at exactly 1.5, and S5's acceptance builds DEVICES by that other rule -
+      so structures and devices genuinely build at different paces in the tables as authored.
+      A builder is not ordered to build. There is no build order in the order table, so a device
+      carrying a builder module attends every plan and site of its own seat within that module's
+      range, which makes moving a builder the way a commander directs one.
+      One content fix: GameData\Structures.json gave LabModule 25 percent where GameDesign.md §5 and
+      this task's acceptance both say 30. The table was wrong, not the design.
+      Module effects: the generator's +2 was already live (S3 reads it where it serves), and the
+      factory's and the lab's have no consumer until S5 and S6 - ModuleTimeReductionPercent is here
+      so that when they arrive they read it from one place rather than two.
 
   - id: S5
     title: Sim devices and production - designs, derived statistics, factories, spawning, ranks

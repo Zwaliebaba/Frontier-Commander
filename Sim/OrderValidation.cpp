@@ -2,9 +2,14 @@
 
 #include "OrderValidation.h"
 
+#include "Construction.h"
+#include "Placement.h"
+#include "Plan.h"
+
 #include "FixedPoint.h"
 
 #include <algorithm>
+#include <string>
 
 namespace Frontier
 {
@@ -61,6 +66,59 @@ namespace
 [[nodiscard]] OrderCheck OwnershipOnly(const Order& _order, const OrderContext& _context)
 {
   return OwnedStructure(_order, _context) == nullptr ? Reject(_order, RejectReason::NotOwned) : Accept(_order);
+}
+
+/// Whether the seat has completed the research a row names, by its id. An empty id is a row
+/// available from the first tick; an id no research row defines is unreachable rather than free,
+/// because a table that names a prerequisite it does not define is a content fault and
+/// ContentValidator is what reports it.
+[[nodiscard]] bool Unlocked(const Seat& _seat, const ContentTree& _content, const std::string& _unlockedBy)
+{
+  if (_unlockedBy.empty())
+  {
+    return true;
+  }
+  for (std::size_t index = 0; index < _content.research.size(); ++index)
+  {
+    if (_content.research[index].id == _unlockedBy)
+    {
+      return std::find(_seat.researchComplete.begin(), _seat.researchComplete.end(), static_cast<std::uint32_t>(index)) !=
+             _seat.researchComplete.end();
+    }
+  }
+  return false;
+}
+
+/// Every placement fault is one rejection, because RejectReason is the vocabulary a client speaks
+/// and widening it changes the wire. Which fault it was belongs in the client's own preview, which
+/// asks CheckPlacement directly (Interface.md §7).
+[[nodiscard]] constexpr RejectReason ReasonFor(PlacementFault _fault) noexcept
+{
+  return _fault == PlacementFault::Accepted ? RejectReason::Accepted : RejectReason::InvalidPlacement;
+}
+
+/// Whether the seat has a standing command post, which is what GameDesign.md §5 lets a commander
+/// build from. Without the tables the role of a row is unknown, so any standing structure counts:
+/// the check stays real rather than becoming either a refusal of everything or a permission for it.
+[[nodiscard]] bool HasCommandPost(const Order& _order, const OrderContext& _context)
+{
+  bool found = false;
+  _context.world->ForEachStructure(
+    [&found, &_order, &_context](ObjectId, const Structure& _structure)
+    {
+      if (found || _structure.seat != _order.seat || _structure.state != StructureState::Standing)
+      {
+        return;
+      }
+      if (_context.content == nullptr)
+      {
+        found = true;
+        return;
+      }
+      const std::vector<StructureDesc>& rows = _context.content->structures.structures;
+      found = _structure.design < rows.size() && rows[_structure.design].role == StructureRole::CommandPost;
+    });
+  return found;
 }
 
 } // namespace
@@ -223,26 +281,9 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::Malformed);
     }
-    // NoCommandPost is "the seat has no standing structure at all" until S4 knows which row is
-    // the command post; the check is real and S4 narrows it to that one row.
-    const bool standing = [&_context, &_order]
-    {
-      bool found = false;
-      _context.world->ForEachStructure(
-        [&found, &_order](ObjectId, const Structure& _structure)
-        { found = found || (_structure.seat == _order.seat && _structure.state == StructureState::Standing); });
-      return found;
-    }();
-    if (!standing)
-    {
-      return Reject(_order, RejectReason::NoCommandPost);
-    }
-    if (seat.structureCount >= seat.structureCap)
-    {
-      return Reject(_order, RejectReason::AtCap);
-    }
-    // The row the order names, when there are tables to name it in. Without them the price and the
-    // role are unknown, and the checks that need either are skipped rather than guessed at.
+    // The row the order names, when there are tables to name it in. Without them the price, the
+    // size and the role are unknown, and the checks that need one are skipped rather than guessed
+    // at.
     const StructureDesc* row = nullptr;
     if (_context.content != nullptr)
     {
@@ -253,6 +294,15 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
       }
       row = &rows[static_cast<std::size_t>(_order.operands[0])];
     }
+    // A commander with no command post may still build one (GameDesign.md §5), and nothing else.
+    if (!HasCommandPost(_order, _context) && (row == nullptr || row->role != StructureRole::CommandPost))
+    {
+      return Reject(_order, RejectReason::NoCommandPost);
+    }
+    if (seat.structureCount >= seat.structureCap)
+    {
+      return Reject(_order, RejectReason::AtCap);
+    }
     // Exactly the row's cost now that S3 prices one; "the stockpile is empty" is what is left when
     // there are no tables to price against. The draw itself is S4's, at the moment construction
     // begins (GameDesign.md §4) - this is the check that the commander could pay if it did.
@@ -261,26 +311,27 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::CannotAfford);
     }
-    if (!_context.landscape->Created())
+    if (row != nullptr && !Unlocked(seat, *_context.content, row->unlockedBy))
+    {
+      return Reject(_order, RejectReason::NotResearched);
+    }
+    // A plan costs nothing, so the plan limit is the only thing that stops a commander papering
+    // the landscape with them and reading the fog off the rejections (GameDesign.md §5).
+    if (PlanCount(*_context.world, _order.seat) >= MAX_PLANS_PER_SEAT)
+    {
+      return Reject(_order, RejectReason::AtCap);
+    }
+    if (!_context.landscape->Created() || _order.operands[1] < 0 || _order.operands[2] < 0)
     {
       return Reject(_order, RejectReason::InvalidPlacement);
     }
-    const std::uint32_t side = _context.landscape->Definition().cellsPerSide;
-    const bool onMap = _order.operands[1] >= 0 && _order.operands[2] >= 0 && static_cast<std::uint32_t>(_order.operands[1]) < side &&
-                       static_cast<std::uint32_t>(_order.operands[2]) < side;
-    if (!onMap)
-    {
-      return Reject(_order, RejectReason::InvalidPlacement);
-    }
-    // An extractor stands on a deposit and nowhere else (GameDesign.md §4). The rule is here rather
-    // than in the economy because a placement the commander cannot make is a rejection they should
-    // be told about, not a structure that silently earns nothing.
-    if (row != nullptr && row->role == StructureRole::Extractor && _context.deposits != nullptr &&
-        !_context.deposits->Has(static_cast<std::uint32_t>(_order.operands[1]), static_cast<std::uint32_t>(_order.operands[2])))
-    {
-      return Reject(_order, RejectReason::InvalidPlacement);
-    }
-    return Accept(_order);
+    // The whole of GameDesign.md §5's placement rule (Sim/Placement.h), which is also what the
+    // construction system asks again the moment a builder reaches the plan.
+    const std::uint32_t cellX = static_cast<std::uint32_t>(_order.operands[1]);
+    const std::uint32_t cellY = static_cast<std::uint32_t>(_order.operands[2]);
+    const Footprint footprint = row != nullptr ? FootprintAt(*row, cellX, cellY) : Footprint{cellX, cellY, 1, 1};
+    const PlacementQuery query{_context.landscape, _context.world, &seat, row, _context.content, _context.deposits};
+    return {_order, ReasonFor(CheckPlacement(footprint, query))};
   }
 
   case OrderKind::SetProduction:
@@ -315,8 +366,70 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
   }
 
   case OrderKind::CancelStructure:
+  {
+    const Structure* structure = OwnedStructure(_order, _context);
+    if (structure == nullptr)
+    {
+      return Reject(_order, RejectReason::NotOwned);
+    }
+    // A standing structure is demolished, not cancelled; the two refund different shares and the
+    // commander pressed different buttons.
+    return structure->state == StructureState::Plan || structure->state == StructureState::UnderConstruction
+             ? Accept(_order)
+             : Reject(_order, RejectReason::InvalidTarget);
+  }
+
   case OrderKind::Demolish:
+  {
+    const Structure* structure = OwnedStructure(_order, _context);
+    if (structure == nullptr)
+    {
+      return Reject(_order, RejectReason::NotOwned);
+    }
+    return structure->state == StructureState::Standing ? Accept(_order) : Reject(_order, RejectReason::InvalidTarget);
+  }
+
   case OrderKind::BuildModule:
+  {
+    const Structure* structure = OwnedStructure(_order, _context);
+    if (structure == nullptr)
+    {
+      return Reject(_order, RejectReason::NotOwned);
+    }
+    if (structure->state != StructureState::Standing || structure->moduleUnderConstruction != NO_STRUCTURE_MODULE)
+    {
+      return Reject(_order, RejectReason::InvalidTarget);
+    }
+    if (_order.operands[1] < 0)
+    {
+      return Reject(_order, RejectReason::Malformed);
+    }
+    if (_context.content == nullptr)
+    {
+      return Accept(_order); // Without the tables the module and its slot cannot be judged.
+    }
+    const std::vector<StructureModuleDesc>& modules = _context.content->structures.modules;
+    const std::vector<StructureDesc>& rows = _context.content->structures.structures;
+    if (static_cast<std::size_t>(_order.operands[1]) >= modules.size() || structure->design >= rows.size())
+    {
+      return Reject(_order, RejectReason::Malformed);
+    }
+    const StructureModuleDesc& module = modules[static_cast<std::size_t>(_order.operands[1])];
+    const StructureDesc& row = rows[structure->design];
+    // The row lists the modules it takes, so a lab module cannot go onto a factory, and the slots
+    // it has bound how many (GameDesign.md §5).
+    if (std::find(row.modules.begin(), row.modules.end(), module.id) == row.modules.end() || structure->moduleCount >= row.moduleSlots ||
+        structure->moduleCount >= MAX_STRUCTURE_MODULES)
+    {
+      return Reject(_order, RejectReason::InvalidTarget);
+    }
+    if (!Unlocked(seat, *_context.content, module.unlockedBy))
+    {
+      return Reject(_order, RejectReason::NotResearched);
+    }
+    return seat.powerHundredths >= module.costHundredths ? Accept(_order) : Reject(_order, RejectReason::CannotAfford);
+  }
+
   case OrderKind::CancelProduction:
   case OrderKind::CancelResearch:
     return OwnershipOnly(_order, _context);

@@ -99,9 +99,11 @@ void StateHash::AddStructure(ObjectId _id, const Structure& _structure) noexcept
   Add(_structure.y);
   Add(_structure.state);
   Add(_structure.hitPoints);
-  Add(_structure.buildProgressHundredths);
+  Add(_structure.buildEffortHundredths);
   AddSpan(std::span<const std::uint32_t>(_structure.modules));
   Add(_structure.moduleCount);
+  Add(_structure.moduleUnderConstruction);
+  Add(_structure.moduleEffortHundredths);
   AddObjectId(_structure.working);
   Add(_structure.workRemainingTicks);
 }

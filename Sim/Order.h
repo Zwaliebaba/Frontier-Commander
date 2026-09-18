@@ -92,7 +92,7 @@ enum class RejectReason : std::uint8_t
   CannotAfford,     ///< The stockpile does not cover it
   AtCap,            ///< The device or structure cap is reached
   InvalidTarget,    ///< The target cannot be the object of this kind of order
-  InvalidPlacement, ///< Off the landscape, in water, or over something standing
+  InvalidPlacement, ///< Off the landscape, in water, too steep, unexplored, or over something standing
   NotResearched,    ///< The row it names is not unlocked for this seat
   NoCommandPost,    ///< The order needs a standing command post and the seat has none
   Malformed         ///< An operand outside its range: a client fault, not a game one

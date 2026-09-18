@@ -402,12 +402,14 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
       _writer.Write(_structure.y);
       _writer.Write(_structure.state);
       _writer.Write(_structure.hitPoints);
-      _writer.Write(_structure.buildProgressHundredths);
+      _writer.Write(_structure.buildEffortHundredths);
       for (const std::uint32_t module : _structure.modules)
       {
         _writer.Write(module);
       }
       _writer.Write(_structure.moduleCount);
+      _writer.Write(_structure.moduleUnderConstruction);
+      _writer.Write(_structure.moduleEffortHundredths);
       WriteObjectId(_writer, _structure.working);
       _writer.Write(_structure.workRemainingTicks);
     });
@@ -504,7 +506,7 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
     Structure structure{};
     if (!_reader.Read(id.value) || !_reader.Read(structure.seat) || !_reader.Read(structure.design) || !_reader.Read(structure.cellX) ||
         !_reader.Read(structure.cellY) || !_reader.Read(structure.y) || !ReadEnum(_reader, structure.state, 4) ||
-        !_reader.Read(structure.hitPoints) || !_reader.Read(structure.buildProgressHundredths))
+        !_reader.Read(structure.hitPoints) || !_reader.Read(structure.buildEffortHundredths))
     {
       return false;
     }
@@ -516,6 +518,7 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
       }
     }
     if (!_reader.Read(structure.moduleCount) || structure.moduleCount > MAX_STRUCTURE_MODULES ||
+        !_reader.Read(structure.moduleUnderConstruction) || !_reader.Read(structure.moduleEffortHundredths) ||
         !ReadObjectId(_reader, structure.working) || !_reader.Read(structure.workRemainingTicks) || !_world.Restore(id, structure))
     {
       return false;

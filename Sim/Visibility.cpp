@@ -147,6 +147,34 @@ void Visibility::Reset(std::span<Seat> _seats, const Landscape& _landscape)
   }
 }
 
+void Visibility::InvalidateRegion(std::span<Seat> _seats, const Landscape& _landscape, std::uint32_t _cellX0, std::uint32_t _cellY0,
+                                  std::uint32_t _cellX1, std::uint32_t _cellY1)
+{
+  if (!_landscape.Created() || m_stamps.empty() || _cellX1 < _cellX0 || _cellY1 < _cellY0)
+  {
+    return;
+  }
+  std::vector<ViewerStamp> kept;
+  kept.reserve(m_stamps.size());
+  for (const ViewerStamp& stamp : m_stamps)
+  {
+    // The disc as it was counted, clamped at nothing: a radius bigger than the cell index simply
+    // reaches the edge. A disc that does not reach the rectangle cannot have had any of its cells'
+    // visibility changed by what happens inside it, so its stamp is still exact.
+    const std::uint32_t low = stamp.cellX > stamp.radiusCells ? stamp.cellX - stamp.radiusCells : 0;
+    const std::uint32_t high = stamp.cellX + stamp.radiusCells;
+    const std::uint32_t bottom = stamp.cellY > stamp.radiusCells ? stamp.cellY - stamp.radiusCells : 0;
+    const std::uint32_t top = stamp.cellY + stamp.radiusCells;
+    if (high < _cellX0 || low > _cellX1 || top < _cellY0 || bottom > _cellY1)
+    {
+      kept.push_back(stamp);
+      continue;
+    }
+    UnstampDisc(_seats, _landscape, stamp);
+  }
+  m_stamps = std::move(kept);
+}
+
 bool Visibility::Restore(std::vector<ViewerStamp> _stamps)
 {
   for (std::size_t index = 1; index < _stamps.size(); ++index)

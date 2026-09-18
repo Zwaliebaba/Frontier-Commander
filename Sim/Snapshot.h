@@ -21,7 +21,7 @@ inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
 /// order and stances and a seat's dropped orders (S2); 6 brought the content hash the stream is
 /// bound to (OpenQuestions.md Q20); 7 brought the lobby's device cap (S3); 8 brings the fog grid's
 /// side and its wider viewer count, and the visibility stamps (S9).
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 8;
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 9;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,

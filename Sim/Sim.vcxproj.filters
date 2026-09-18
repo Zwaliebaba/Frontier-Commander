@@ -23,6 +23,12 @@
     <ClCompile Include="Economy.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Placement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Construction.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Deposit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -116,6 +122,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Economy.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Placement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Construction.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Plan.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Deposit.h">

@@ -17,6 +17,12 @@ namespace Frontier
 /// (GameDesign.md §5). A module is a row index in the structure-module table, as a design is.
 inline constexpr std::uint32_t MAX_STRUCTURE_MODULES = 4;
 
+/// A module slot that holds no module, and what moduleUnderConstruction carries when a structure
+/// is building none. It is not zero because zero is a real row, and a Structure{} has to mean "no
+/// module" rather than "building the first one in the table" - which is why the field below
+/// carries a default member initialiser rather than relying on value initialisation.
+inline constexpr std::uint32_t NO_STRUCTURE_MODULE = 0xFFFFFFFFu;
+
 /// What a structure is doing, which is all a tick needs to tell apart. S4 owns the transitions.
 enum class StructureState : std::uint8_t
 {
@@ -37,10 +43,23 @@ struct Structure
 
   StructureState state;
   std::int32_t hitPoints;
-  std::int32_t buildProgressHundredths; ///< Of the row's cost; 10,000 is complete
+  /// What the attending builders have put in, in hundredths of build power summed over ticks
+  /// (Sim/Construction.h): complete at the row's buildTimeTicks times the reference builder's
+  /// rate. The accumulator is the builders' own contribution rather than a percentage of the
+  /// whole, because a percentage per tick does not divide - a hundred percent over a 1,200-tick
+  /// factory is 8.33 hundredths a tick - and a truncated percentage never reaches a hundred.
+  /// Sim/Construction.h turns it into the percentage the hit points and the refund want.
+  std::int32_t buildEffortHundredths;
 
   std::array<std::uint32_t, MAX_STRUCTURE_MODULES> modules; ///< Row indices; the first moduleCount count
   std::uint8_t moduleCount;
+
+  /// The module a builder is putting onto this standing structure, or NO_STRUCTURE_MODULE, and
+  /// what has gone into it, in the unit buildEffortHundredths uses. A module is built onto a
+  /// STANDING structure, so this cannot share the field above: that one reads 10,000 for the
+  /// whole of a module's construction and the hit points follow it.
+  std::uint32_t moduleUnderConstruction = NO_STRUCTURE_MODULE;
+  std::int32_t moduleEffortHundredths;
 
   /// What the structure is working on: the device a factory is building, the item a lab is
   /// researching, or NO_OBJECT. A production queue is S5's and hangs off the seat, not here.

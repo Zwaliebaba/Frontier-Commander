@@ -132,7 +132,7 @@ void Populate(Frontier::Sim& _sim)
   structure.y = 128;
   structure.state = Frontier::StructureState::Standing;
   structure.hitPoints = 600;
-  structure.buildProgressHundredths = 10000;
+  structure.buildEffortHundredths = 10000;
   structure.modules = {1, 2, 3, 0};
   structure.moduleCount = 3;
   structure.working = other;
@@ -291,7 +291,7 @@ public:
     moved(reload, L"a device's last reload slot");
 
     Frontier::Sim structure = Busy();
-    structure.Objects().FindStructure({3, Frontier::ObjectKind::Structure})->buildProgressHundredths -= 1;
+    structure.Objects().FindStructure({3, Frontier::ObjectKind::Structure})->buildEffortHundredths -= 1;
     moved(structure, L"a structure's build progress");
 
     Frontier::Sim projectile = Busy();

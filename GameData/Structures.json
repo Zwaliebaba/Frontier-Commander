@@ -58,7 +58,7 @@
       "id": "LabModule", "name": "Laboratory module", "model": "StructureModuleLab",
       "unlockedBy": "Laboratories",
       "costHundredths": 15000, "buildTimeTicks": 400,
-      "effect": "ShortenResearchTime", "amount": 25
+      "effect": "ShortenResearchTime", "amount": 30
     },
     {
       "id": "GeneratorModule", "name": "Generator module", "model": "StructureModuleGenerator",

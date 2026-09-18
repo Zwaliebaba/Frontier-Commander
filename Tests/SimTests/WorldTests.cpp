@@ -48,7 +48,7 @@ Frontier::Structure Building(std::uint8_t _seat, std::uint32_t _cell)
   structure.y = 32;
   structure.state = Frontier::StructureState::UnderConstruction;
   structure.hitPoints = 400;
-  structure.buildProgressHundredths = 4250;
+  structure.buildEffortHundredths = 4250;
   structure.modules = {1, 2, 0, 0};
   structure.moduleCount = 2;
   structure.workRemainingTicks = 40;

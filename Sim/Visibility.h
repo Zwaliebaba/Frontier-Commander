@@ -77,6 +77,19 @@ public:
   /// cell of the old one.
   void Reset(std::span<Seat> _seats, const Landscape& _landscape);
 
+  /// Un-counts the discs that reach the given cells and drops their stamps, so that the budget
+  /// counts them again against ground that has changed. **Called BEFORE the heights change**,
+  /// because un-counting a disc is only exact against the heights it was counted on.
+  ///
+  /// This is what a flatten costs, and it is what m1-vertical-slice/S9 left for S4 to narrow.
+  /// Reset was the honest answer while nothing called it; it is the wrong one now, because a
+  /// structure going up would black out every commander's explored map - history included - and
+  /// a game where building an extractor un-scouts the landscape is not the game. A disc that does
+  /// not reach the changed cells cannot have had a cell's visibility changed by them, so dropping
+  /// exactly the ones that do is not an approximation.
+  void InvalidateRegion(std::span<Seat> _seats, const Landscape& _landscape, std::uint32_t _cellX0, std::uint32_t _cellY0,
+                        std::uint32_t _cellX1, std::uint32_t _cellY1);
+
   [[nodiscard]] std::span<const ViewerStamp> Stamps() const noexcept
   {
     return m_stamps;

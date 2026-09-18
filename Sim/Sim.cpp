@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "Sim.h"
+#include "Construction.h"
 #include "OrderValidation.h"
 #include "StateHash.h"
 
@@ -86,15 +87,24 @@ void Sim::SetObstruction(std::uint32_t _cellX, std::uint32_t _cellY, std::uint8_
 
 bool Sim::FlattenTerrain(const HeightDelta& _delta)
 {
-  if (!m_landscape.ApplyDelta(_delta))
-  {
-    return false;
-  }
   // A stamped disc was worked out against the heights as they were, and un-counting it against the
   // new ones would take viewers off cells that were never counted and leave others lit for ever.
-  // So the whole fog is dropped and rebuilt: the budget refills it over the next few ticks, and a
-  // flatten is a rare event that the construction system of S4 will do once per structure.
-  m_visibility.Reset(m_seats, m_landscape);
+  // So the discs that REACH the rectangle are un-counted here, before the heights move, and the
+  // budget counts them again over the next few ticks. m1-vertical-slice/S9 dropped the whole fog
+  // instead and left the narrowing to S4, which is the task that actually flattens: a structure
+  // going up must not black out every commander's explored map, and it built one every few
+  // seconds. A disc that does not reach the rectangle cannot have a cell changed by it.
+  const std::uint32_t cellX0 = _delta.x / SAMPLES_PER_CELL_EDGE;
+  const std::uint32_t cellY0 = _delta.y / SAMPLES_PER_CELL_EDGE;
+  const std::uint32_t cellX1 = _delta.width == 0 ? cellX0 : (_delta.x + _delta.width - 1) / SAMPLES_PER_CELL_EDGE;
+  const std::uint32_t cellY1 = _delta.height == 0 ? cellY0 : (_delta.y + _delta.height - 1) / SAMPLES_PER_CELL_EDGE;
+  m_visibility.InvalidateRegion(m_seats, m_landscape, cellX0, cellY0, cellX1, cellY1);
+  if (!m_landscape.ApplyDelta(_delta))
+  {
+    // The stamps dropped above are not a fault: the budget counts those viewers again next tick,
+    // which is what it does for every viewer that moves.
+    return false;
+  }
   // The slope of every cell the rectangle touched has changed, and slope is passability, so the
   // graph is cut again. Rebuilding rather than invalidating: a delta can open or close an entrance,
   // and an entrance is a node, which invalidation does not move.
@@ -285,14 +295,24 @@ bool Sim::Apply(const Order& _order)
     device->group = static_cast<std::uint8_t>(order.operands[1]);
     return true;
 
+  case OrderKind::PlaceStructure:
+    return PlaceStructurePlan(*this, order.seat, static_cast<std::uint32_t>(order.operands[0]),
+                              static_cast<std::uint32_t>(order.operands[1]), static_cast<std::uint32_t>(order.operands[2]));
+
+  case OrderKind::CancelStructure:
+    return CancelStructure(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure});
+
+  case OrderKind::Demolish:
+    return DemolishStructure(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure});
+
+  case OrderKind::BuildModule:
+    return BeginModule(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure},
+                       static_cast<std::uint32_t>(order.operands[1]));
+
   case OrderKind::Attack:
   case OrderKind::Patrol:
   case OrderKind::Guard:
   case OrderKind::ReturnToRepair:
-  case OrderKind::PlaceStructure:
-  case OrderKind::CancelStructure:
-  case OrderKind::Demolish:
-  case OrderKind::BuildModule:
   case OrderKind::SetProduction:
   case OrderKind::CancelProduction:
   case OrderKind::SetResearch:
@@ -317,7 +337,10 @@ void Sim::AdvanceResearch() {}
 
 void Sim::AdvanceProduction() {}
 
-void Sim::AdvanceConstruction() {}
+void Sim::AdvanceConstruction()
+{
+  Frontier::AdvanceConstruction(*this);
+}
 
 void Sim::AdvanceMovement()
 {
@@ -344,7 +367,13 @@ void Sim::ResolveTargeting()
 
 void Sim::AdvanceProjectiles() {}
 
-void Sim::ResolveDamage() {}
+void Sim::ResolveDamage()
+{
+  // S10 adds the damage, the destruction and the experience around this. What is here is the tail
+  // of a wreck's life, which belongs to this stage (TechnicalDesign.md §4.8 names it "wrecks") and
+  // is implemented by S4 because S4 is what makes one.
+  AdvanceWrecks(m_world);
+}
 
 void Sim::AdvanceAiSeats() {}
 

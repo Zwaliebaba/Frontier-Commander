@@ -29,6 +29,12 @@
     <ClCompile Include="EconomyTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PlacementTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ConstructionTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="VisibilityTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
