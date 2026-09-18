@@ -7,6 +7,7 @@
 #include "Order.h"
 #include "OrderQueue.h"
 #include "Seat.h"
+#include "Visibility.h"
 #include "World.h"
 
 #include "ContentTree.h"
@@ -66,6 +67,14 @@ public:
   [[nodiscard]] const Economy& Power() const noexcept
   {
     return m_economy;
+  }
+
+  /// Stage 7's system (TechnicalDesign.md §4.6): the fog of war, which is also the replication
+  /// filter. The grids and the ghost stores live on the seats; what lives here is the stamps, the
+  /// record of which disc each viewer currently has counted, and the refresh's measurements.
+  [[nodiscard]] const Visibility& Sight() const noexcept
+  {
+    return m_visibility;
   }
 
   /// Enqueues an order. One for a tick already advanced is moved to the next tick, so that a late
@@ -191,6 +200,7 @@ private:
   World m_world;
   Landscape m_landscape;
   Economy m_economy;
+  Visibility m_visibility;
   OrderQueue m_orders;
   std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
   std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.

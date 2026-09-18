@@ -16,11 +16,12 @@ namespace Frontier
 
 /// "FCSP", little-endian, at the head of every snapshot.
 inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
-/// 7 since 2026-09-18: 4 brought the world's five object maps and the seat's economy, research,
+/// 8 since 2026-09-18: 4 brought the world's five object maps and the seat's economy, research,
 /// designs, caps, fog grid and ghost store (m1-vertical-slice/S1); 5 brought a device's primary
 /// order and stances and a seat's dropped orders (S2); 6 brought the content hash the stream is
-/// bound to (OpenQuestions.md Q20); 7 brings the lobby's device cap (S3).
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 7;
+/// bound to (OpenQuestions.md Q20); 7 brought the lobby's device cap (S3); 8 brings the fog grid's
+/// side and its wider viewer count, and the visibility stamps (S9).
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 8;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,
@@ -55,6 +56,8 @@ public:
   static constexpr std::uint32_t MAX_GHOSTS = 1u << 20;
   /// A tick cannot refuse more orders than a hostile client can send in one.
   static constexpr std::uint32_t MAX_REJECTIONS = 1u << 16;
+  /// One stamp per viewer, and a viewer is an object, so the object bound covers it.
+  static constexpr std::uint32_t MAX_STAMPS = MAX_OBJECTS;
 };
 
 } // namespace Frontier

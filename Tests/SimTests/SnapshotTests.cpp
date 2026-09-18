@@ -86,14 +86,17 @@ void Furnish(Frontier::Seat& _seat, std::uint32_t _salt)
   _seat.deviceCap = 120;
   _seat.structureCount = 2;
   _seat.structureCap = 80;
-  _seat.ghosts.push_back({{40 + _salt, Frontier::ObjectKind::Structure}, 1, 5, 12, 13, 900});
-  _seat.ghosts.push_back({{41 + _salt, Frontier::ObjectKind::Structure}, 2, 6, 30, 31, 950});
+  _seat.ghosts.Record({{40 + _salt, Frontier::ObjectKind::Structure}, 1, 5, 12, 13, 900});
+  _seat.ghosts.Record({{41 + _salt, Frontier::ObjectKind::Structure}, 2, 6, 30, 31, 950});
   // A small grid rather than a landscape's: what is under test is that the counts and the states
   // survive the stream, and 64 cells exercise that as well as a million would.
-  Frontier::SizeFog(_seat, 8);
-  _seat.fogViewers[3 + _salt] = 2;
-  _seat.fogState[3 + _salt] = Frontier::FogState::Visible;
-  _seat.fogState[9] = Frontier::FogState::Explored;
+  _seat.fog.Resize(8);
+  const std::uint32_t lit = 3 + _salt;
+  _seat.fog.AddViewer(lit % 8, lit / 8);
+  _seat.fog.AddViewer(lit % 8, lit / 8);
+  // Cell 9 is seen and then left: explored, which no viewer count can produce on its own.
+  _seat.fog.AddViewer(1, 1);
+  _seat.fog.RemoveViewer(1, 1);
 }
 
 /// One of each kind, so that every map, every record and the id counter are on the wire.
@@ -324,7 +327,11 @@ public:
     moved(cap, L"a seat's structure cap");
 
     Frontier::Sim ghost = Busy();
-    ghost.SeatAt(0).ghosts[1].seenTick += 1;
+    {
+      Frontier::Ghost later = ghost.SeatAt(0).ghosts.All()[1];
+      later.seenTick += 1;
+      ghost.SeatAt(0).ghosts.Record(later);
+    }
     moved(ghost, L"a seat's ghost store");
 
     Frontier::Sim surrender = Busy();
@@ -332,7 +339,7 @@ public:
     moved(surrender, L"a seat's surrender, which defeated alone does not say");
 
     Frontier::Sim fog = Busy();
-    fog.SeatAt(2).fogState[9] = Frontier::FogState::Visible;
+    fog.SeatAt(2).fog.AddViewer(1, 1);
     moved(fog, L"one cell of a seat's fog");
   }
 

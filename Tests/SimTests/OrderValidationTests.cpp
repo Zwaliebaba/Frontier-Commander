@@ -120,10 +120,8 @@ struct Fixture
   /// Makes seat 0 see the cell a position falls in, as S9's refresh will.
   void Reveal(std::int32_t _x, std::int32_t _z)
   {
-    const std::uint32_t side = sim.Terrain().Definition().cellsPerSide;
-    const std::size_t cell = static_cast<std::size_t>(_z >> Neuron::SUBUNITS_PER_CELL_SHIFT) * side +
-                             static_cast<std::size_t>(_x >> Neuron::SUBUNITS_PER_CELL_SHIFT);
-    sim.SeatAt(0).fogState[cell] = Frontier::FogState::Visible;
+    sim.SeatAt(0).fog.AddViewer(static_cast<std::uint32_t>(_x >> Neuron::SUBUNITS_PER_CELL_SHIFT),
+                                static_cast<std::uint32_t>(_z >> Neuron::SUBUNITS_PER_CELL_SHIFT));
   }
 };
 
@@ -219,7 +217,7 @@ public:
     Assert::IsTrue(Frontier::RejectReason::NotVisible == fixture.Judge(attack));
 
     // Seen once and remembered: the order becomes an attack-move to the cell it stood in.
-    fixture.sim.SeatAt(0).ghosts.push_back({fixture.theirStructure, 1, 0, 92, 92, 5});
+    fixture.sim.SeatAt(0).ghosts.Record({fixture.theirStructure, 1, 0, 92, 92, 5});
     const Frontier::OrderCheck checked = Frontier::ValidateOrder(attack, fixture.Context());
     Assert::IsTrue(checked.Accepted());
     Assert::IsTrue(Frontier::OrderKind::AttackMove == checked.order.kind, L"rewritten, not rejected");

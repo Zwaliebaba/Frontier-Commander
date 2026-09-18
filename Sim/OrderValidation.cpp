@@ -67,26 +67,19 @@ namespace
 
 bool CanSee(const Seat& _seat, const Landscape& _landscape, std::int32_t _x, std::int32_t _z)
 {
-  if (!_landscape.Created() || _seat.fogState.empty() || _x < 0 || _z < 0)
+  if (!_landscape.Created() || _seat.fog.Empty() || _x < 0 || _z < 0)
   {
     return false;
   }
-  const std::uint32_t side = _landscape.Definition().cellsPerSide;
   const std::uint32_t cellX = static_cast<std::uint32_t>(_x >> Neuron::SUBUNITS_PER_CELL_SHIFT);
   const std::uint32_t cellY = static_cast<std::uint32_t>(_z >> Neuron::SUBUNITS_PER_CELL_SHIFT);
-  if (cellX >= side || cellY >= side)
-  {
-    return false;
-  }
-  const std::size_t cell = static_cast<std::size_t>(cellY) * side + cellX;
-  return cell < _seat.fogState.size() && _seat.fogState[cell] == FogState::Visible;
+  return _seat.fog.Visible(cellX, cellY);
 }
 
 bool LastKnownPosition(const Seat& _seat, ObjectId _target, std::int32_t& _x, std::int32_t& _z)
 {
-  const auto ghost =
-    std::find_if(_seat.ghosts.begin(), _seat.ghosts.end(), [_target](const Ghost& _ghost) { return _ghost.structure == _target; });
-  if (ghost == _seat.ghosts.end())
+  const Ghost* ghost = _seat.ghosts.Find(_target);
+  if (ghost == nullptr)
   {
     return false;
   }

@@ -30,10 +30,10 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
   Add(_seat.deviceCap);
   Add(_seat.structureCount);
   Add(_seat.structureCap);
-  AddSpan(std::span<const std::uint8_t>(_seat.fogViewers));
-  AddSpan(std::span<const FogState>(_seat.fogState));
-  Add(static_cast<std::uint32_t>(_seat.ghosts.size()));
-  for (const Ghost& ghost : _seat.ghosts)
+  AddSpan(_seat.fog.Viewers());
+  AddSpan(_seat.fog.States());
+  Add(static_cast<std::uint32_t>(_seat.ghosts.Count()));
+  for (const Ghost& ghost : _seat.ghosts.All())
   {
     AddObjectId(ghost.structure);
     Add(ghost.seat);

@@ -51,10 +51,9 @@ bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
   }
   // A seat exists before the landscape does, so its fog grid is sized here rather than in the
   // constructor. S9 fills them; S1 gives every cell a viewer count and a state to hold.
-  for (Seat& seat : m_seats)
-  {
-    SizeFog(seat, m_landscape.Definition().cellsPerSide);
-  }
+  // A stamp names a cell of the landscape it was counted on, so a new landscape drops every stamp
+  // and clears every grid rather than leaving discs counted against ground that no longer exists.
+  m_visibility.Reset(m_seats, m_landscape);
   // The deposits are the definition's, so the index is rebuilt wherever the definition arrives:
   // here and in the snapshot's read. Nothing else sets a landscape.
   m_economy.SetLandscape(m_landscape);
@@ -63,7 +62,16 @@ bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
 
 bool Sim::FlattenTerrain(const HeightDelta& _delta)
 {
-  return m_landscape.ApplyDelta(_delta);
+  if (!m_landscape.ApplyDelta(_delta))
+  {
+    return false;
+  }
+  // A stamped disc was worked out against the heights as they were, and un-counting it against the
+  // new ones would take viewers off cells that were never counted and leave others lit for ever.
+  // So the whole fog is dropped and rebuilt: the budget refills it over the next few ticks, and a
+  // flatten is a rare event that the construction system of S4 will do once per structure.
+  m_visibility.Reset(m_seats, m_landscape);
+  return true;
 }
 
 void Sim::Submit(Order _order)
@@ -284,7 +292,10 @@ void Sim::AdvanceConstruction() {}
 
 void Sim::AdvanceMovement() {}
 
-void Sim::RefreshVisibility() {}
+void Sim::RefreshVisibility()
+{
+  m_visibility.Advance(m_world, m_seats, m_landscape, *m_content, m_tick);
+}
 
 // ── Stage 8 ─────────────────────────────────────────────────────────────────────────────────
 

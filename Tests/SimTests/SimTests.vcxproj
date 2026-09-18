@@ -111,6 +111,7 @@
     <ClCompile Include="SnapshotTests.cpp" />
     <ClCompile Include="WorldTests.cpp" />
     <ClCompile Include="EconomyTests.cpp" />
+    <ClCompile Include="VisibilityTests.cpp" />
     <ClCompile Include="OrderValidationTests.cpp" />
     <ClCompile Include="LandscapeTests.cpp" />
     <ClCompile Include="pch.cpp">

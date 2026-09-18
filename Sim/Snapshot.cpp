@@ -130,12 +130,15 @@ void WriteObjectId(Neuron::ByteWriter& _writer, ObjectId _id)
   return _reader.Read(_out.value) && ReadEnum(_reader, _out.kind, OBJECT_KIND_COUNT);
 }
 
-/// A fog grid is one byte per cell per seat, which is 16.8 MB on a Frontier landscape with eight
+/// A fog grid is three bytes per cell per seat, which is 25 MB on a Frontier landscape with eight
 /// seats and would put the snapshot back in the business of carrying the map rather than its
 /// definition (ADR-003). It is also almost entirely one value, because a commander explores a
 /// fraction of a landscape, so it is written as runs: a length and a value, and an untouched grid
-/// is one run. Deterministic, because the runs are a pure function of the bytes.
-void WriteRuns(Neuron::ByteWriter& _writer, std::span<const std::uint8_t> _values)
+/// is one run. Deterministic, because the runs are a pure function of the values.
+///
+/// Templated on the value's type since S9 widened the viewer count to sixteen bits (Sim/FogGrid.h
+/// says why), so the two grids of the pair no longer share one.
+template <class T> void WriteRuns(Neuron::ByteWriter& _writer, std::span<const T> _values)
 {
   const auto runEnd = [_values](std::size_t _from)
   {
@@ -165,7 +168,7 @@ void WriteRuns(Neuron::ByteWriter& _writer, std::span<const std::uint8_t> _value
 /// Reads a run-length grid, checking that the runs account for exactly the cells claimed and that
 /// every value is inside _valueCount, so that a hostile file cannot describe a grid that is not
 /// one. The cell count is the caller's to compare against the other grid of the pair.
-[[nodiscard]] bool ReadRuns(Neuron::ByteReader& _reader, std::uint32_t _valueCount, std::vector<std::uint8_t>& _out)
+template <class T> [[nodiscard]] bool ReadRuns(Neuron::ByteReader& _reader, std::uint32_t _valueCount, std::vector<T>& _out)
 {
   std::uint32_t cells = 0;
   std::uint32_t runs = 0;
@@ -178,8 +181,8 @@ void WriteRuns(Neuron::ByteWriter& _writer, std::span<const std::uint8_t> _value
   for (std::uint32_t run = 0; run < runs; ++run)
   {
     std::uint32_t length = 0;
-    std::uint8_t value = 0;
-    if (!_reader.Read(length) || !_reader.Read(value) || value >= _valueCount || length == 0 ||
+    T value{};
+    if (!_reader.Read(length) || !_reader.Read(value) || static_cast<std::uint32_t>(value) >= _valueCount || length == 0 ||
         length > cells - static_cast<std::uint32_t>(_out.size()))
     {
       return false;
@@ -223,11 +226,12 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   _writer.Write(_seat.deviceCap);
   _writer.Write(_seat.structureCount);
   _writer.Write(_seat.structureCap);
-  WriteRuns(_writer, _seat.fogViewers);
+  _writer.Write(_seat.fog.CellsPerSide());
+  WriteRuns(_writer, _seat.fog.Viewers());
   static_assert(std::is_same_v<std::underlying_type_t<FogState>, std::uint8_t>, "the run encoding reads a fog state as its byte");
-  WriteRuns(_writer, std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(_seat.fogState.data()), _seat.fogState.size()));
-  _writer.Write(static_cast<std::uint32_t>(_seat.ghosts.size()));
-  for (const Ghost& ghost : _seat.ghosts)
+  WriteRuns(_writer, std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(_seat.fog.States().data()), _seat.fog.Count()));
+  _writer.Write(static_cast<std::uint32_t>(_seat.ghosts.Count()));
+  for (const Ghost& ghost : _seat.ghosts.All())
   {
     WriteObjectId(_writer, ghost.structure);
     _writer.Write(ghost.seat);
@@ -298,30 +302,42 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
       return false;
     }
   }
+  std::uint32_t cellsPerSide = 0;
+  std::vector<std::uint16_t> viewers;
   std::vector<std::uint8_t> states;
   if (!_reader.Read(seat.deviceCount) || !_reader.Read(seat.deviceCap) || !_reader.Read(seat.structureCount) ||
-      !_reader.Read(seat.structureCap) || !ReadRuns(_reader, 256, seat.fogViewers) || !ReadRuns(_reader, 3, states) ||
-      states.size() != seat.fogViewers.size())
+      !_reader.Read(seat.structureCap) || !_reader.Read(cellsPerSide) || !ReadRuns(_reader, 0x10000u, viewers) ||
+      !ReadRuns(_reader, FOG_STATE_COUNT, states) || states.size() != viewers.size())
   {
     return false;
   }
-  seat.fogState.resize(states.size());
+  std::vector<FogState> fogStates(states.size());
   for (std::size_t cell = 0; cell < states.size(); ++cell)
   {
-    seat.fogState[cell] = static_cast<FogState>(states[cell]);
+    fogStates[cell] = static_cast<FogState>(states[cell]);
+  }
+  if (!seat.fog.Restore(cellsPerSide, std::move(viewers), std::move(fogStates)))
+  {
+    return false;
   }
   if (!_reader.Read(count) || count > Snapshot::MAX_GHOSTS)
   {
     return false;
   }
-  seat.ghosts.resize(count);
-  for (Ghost& ghost : seat.ghosts)
+  std::vector<Ghost> ghosts(count);
+  for (Ghost& ghost : ghosts)
   {
     if (!ReadObjectId(_reader, ghost.structure) || !_reader.Read(ghost.seat) || !_reader.Read(ghost.design) || !_reader.Read(ghost.cellX) ||
         !_reader.Read(ghost.cellY) || !_reader.Read(ghost.seenTick))
     {
       return false;
     }
+  }
+  // Ascending by structure id is what every reader and the hash depend on, so a stream that says
+  // otherwise is refused here rather than sorted into shape behind the caller's back.
+  if (!seat.ghosts.Restore(std::move(ghosts)))
+  {
+    return false;
   }
   if (!_reader.Read(count) || count > Snapshot::MAX_REJECTIONS)
   {
@@ -664,6 +680,19 @@ void Snapshot::Write(const Sim& _sim, Neuron::ByteWriter& _writer)
   }
   WriteLandscape(_writer, _sim.m_landscape);
   WriteWorld(_writer, _sim.m_world);
+  // The visibility stamps: what disc each viewer currently has counted into the grids. Derived
+  // from nothing - the counts depend on them and no walk of the world reproduces them - so they
+  // travel with the grids or a restored match un-counts the wrong cells on its first refresh.
+  _writer.Write(static_cast<std::uint32_t>(_sim.m_visibility.Stamps().size()));
+  for (const ViewerStamp& stamp : _sim.m_visibility.Stamps())
+  {
+    WriteObjectId(_writer, stamp.viewer);
+    _writer.Write(stamp.seat);
+    _writer.Write(stamp.cellX);
+    _writer.Write(stamp.cellY);
+    _writer.Write(stamp.radiusCells);
+    _writer.Write(stamp.refreshedTick);
+  }
   _writer.Write(_sim.m_lastRoll);
   _writer.Write(_sim.m_appliedOrders);
   _writer.Write(_sim.m_droppedOrders);
@@ -742,6 +771,25 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes, const Conte
   // arrives (Sim::CreateLandscape is the first). Without it a restored match would find no
   // deposits and every extractor would stop producing on the tick after the load.
   sim.m_economy.SetLandscape(sim.m_landscape);
+  std::uint32_t stampCount = 0;
+  if (!reader.Read(stampCount) || stampCount > Snapshot::MAX_STAMPS)
+  {
+    return std::nullopt;
+  }
+  std::vector<ViewerStamp> stamps(stampCount);
+  for (ViewerStamp& stamp : stamps)
+  {
+    if (!ReadObjectId(reader, stamp.viewer) || !reader.Read(stamp.seat) || !reader.Read(stamp.cellX) || !reader.Read(stamp.cellY) ||
+        !reader.Read(stamp.radiusCells) || !reader.Read(stamp.refreshedTick))
+    {
+      return std::nullopt;
+    }
+  }
+  // Ascending by viewer id, which the stamp lookups bisect on: refused rather than sorted.
+  if (!sim.m_visibility.Restore(std::move(stamps)))
+  {
+    return std::nullopt;
+  }
   std::uint32_t nextArrival = 0;
   std::uint32_t pending = 0;
   if (!reader.Read(sim.m_lastRoll) || !reader.Read(sim.m_appliedOrders) || !reader.Read(sim.m_droppedOrders) ||

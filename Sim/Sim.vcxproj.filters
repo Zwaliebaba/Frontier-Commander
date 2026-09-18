@@ -26,7 +26,13 @@
     <ClCompile Include="Deposit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Seat.cpp">
+    <ClCompile Include="FogGrid.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GhostStore.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Visibility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="OrderQueue.cpp">
@@ -59,6 +65,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Seat.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FogGrid.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GhostStore.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Visibility.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ObjectId.h">

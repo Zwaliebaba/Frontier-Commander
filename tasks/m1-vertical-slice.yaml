@@ -648,7 +648,41 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      MEASURED, AND IT IS THE FINDING. A full refresh of 200 viewers at a 20-cell radius costs
+      4,215,706 cell-height reads, 21,078 a viewer, and took 140 ms on the session's Linux harness
+      - nearly three times the whole 50 ms tick. The cause was Visibility::CellHeight rescanning a
+      cell's 25 samples on every query, so Landscape::Cell now carries highestSample, derived where
+      the slope and the water bit are derived, and the same refresh takes 16.4 ms. That is still a
+      third of the tick for one system and the figure to beat; the next easy win is the scan box,
+      which is twice the sight radius on each side because height may extend the radius, and so
+      scans 6,561 cells to light about 1,257 on ground where no viewer is raised at all. G3's
+      measurement on the owner's hardware decides whether it is worth taking.
+      THE VIEWER COUNT IS A uint16, NOT THE BYTE THE ACCEPTANCE ASKED FOR. Allied seats share one
+      grid and an alliance may be all eight seats at 200 devices and 300 structures each, so 4,000
+      viewers can hold one cell at a chokepoint. A byte saturating there could never be decremented
+      back to zero and the cell would stay lit for the rest of the match - a fog that wrongly
+      reveals is the worst failure this system has, and the second byte buys it away outright. The
+      snapshot's run encoder is templated on the value type for it.
+      ALLIED VISION IS SHARED BY WRITING, NOT BY UNION AT READ, which the acceptance left open. A
+      viewer stamps its disc into every seat of its own alliance. Union at read was rejected
+      because explored is history: a commander would otherwise not see ground their ally scouted an
+      hour ago unless the history were unioned too, and unioning history on every read costs more
+      than writing it once.
+      STAMPS ARE NEW STATE and they are the heart of it. A cell is visible while its count is
+      positive, so a viewer that moves must un-count exactly the disc it counted, and the only way
+      to un-count exactly is to remember - the cell, and the radius, since a sight upgrade changes
+      it. They are in the hash and in the snapshot at version 8.
+      A HEIGHT DELTA DROPS THE WHOLE FOG. A stamped disc was worked out against the heights as they
+      were; un-counting it against new ones takes viewers off cells that were never counted. So
+      Sim::FlattenTerrain resets visibility and the budget refills it over the next ticks. The cost
+      is that the explored history goes with it, which a test pins as a known consequence rather
+      than a surprise; narrowing the reset to the cells the delta touches is work for S4, which is
+      what will actually be calling it.
+      Seat.h's fogViewers/fogState and its ghost vector became FogGrid and GhostStore, so the
+      invariants - two arrays of one size, ghosts ascending by id - live with the data instead of
+      with every caller. Seat.cpp is gone; SizeFog is FogGrid::Resize.
 
   - id: S10
     title: Sim combat - targeting, stances, hit rolls, projectiles and splash, the damage formula, destruction, experience, retreat

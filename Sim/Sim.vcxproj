@@ -103,7 +103,9 @@
     <ClCompile Include="OrderValidation.cpp" />
     <ClCompile Include="Economy.cpp" />
     <ClCompile Include="Deposit.cpp" />
-    <ClCompile Include="Seat.cpp" />
+    <ClCompile Include="FogGrid.cpp" />
+    <ClCompile Include="GhostStore.cpp" />
+    <ClCompile Include="Visibility.cpp" />
     <ClCompile Include="OrderQueue.cpp" />
     <ClCompile Include="StateHash.cpp" />
     <ClCompile Include="Snapshot.cpp" />
@@ -118,6 +120,9 @@
     <ClInclude Include="Sim.h" />
     <ClInclude Include="MatchSettings.h" />
     <ClInclude Include="Seat.h" />
+    <ClInclude Include="FogGrid.h" />
+    <ClInclude Include="GhostStore.h" />
+    <ClInclude Include="Visibility.h" />
     <ClInclude Include="ObjectId.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="Structure.h" />

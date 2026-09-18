@@ -140,6 +140,7 @@ void Landscape::DeriveCells(std::uint32_t _cellX0, std::uint32_t _cellY0, std::u
     for (std::uint32_t cellX = _cellX0; cellX < _cellX1; ++cellX)
     {
       std::int32_t lowest = 32767;
+      std::int32_t highest = -32768;
       std::int32_t steepest = 0;
       const std::size_t origin =
         static_cast<std::size_t>(cellY) * SAMPLES_PER_CELL_EDGE * side + static_cast<std::size_t>(cellX) * SAMPLES_PER_CELL_EDGE;
@@ -148,11 +149,13 @@ void Landscape::DeriveCells(std::uint32_t _cellX0, std::uint32_t _cellY0, std::u
         const std::size_t row = origin + static_cast<std::size_t>(j) * side;
         std::int32_t previous = m_heights[row];
         lowest = std::min(lowest, previous);
+        highest = std::max(highest, previous);
         for (std::uint32_t i = 1; i <= SAMPLES_PER_CELL_EDGE; ++i)
         {
           const std::int32_t current = m_heights[row + i];
           steepest = std::max(steepest, current >= previous ? current - previous : previous - current);
           lowest = std::min(lowest, current);
+          highest = std::max(highest, current);
           previous = current;
         }
       }
@@ -169,6 +172,7 @@ void Landscape::DeriveCells(std::uint32_t _cellX0, std::uint32_t _cellY0, std::u
       Cell& cell = m_cells[static_cast<std::size_t>(cellY) * m_cellsPerSide + cellX];
       cell.slopePercent = static_cast<std::uint16_t>(std::min<std::int32_t>(65535, steepest * 100 / SAMPLE_SPACING_WORLD_UNITS));
       cell.flags = lowest < 0 ? CELL_WATER : 0;
+      cell.highestSample = static_cast<std::int16_t>(highest);
     }
   }
 }
