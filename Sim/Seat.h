@@ -14,9 +14,14 @@
 namespace Frontier
 {
 
-/// A research item the seat is part-way through. S6 owns the rules; this is what S1 stores.
+/// A research item a LAB is part-way through (Sim/Research.h). The lab is part of the record
+/// because "each lab researches one item" and "a destroyed lab loses the progress" are both rules,
+/// and neither can be enforced by a list that does not say whose progress it is. The countdown
+/// lives here rather than on the structure - which is where a factory's does - because a lab has
+/// one item and a factory has a queue, so for a factory the entry cannot say which countdown it is.
 struct ResearchProgress
 {
+  ObjectId lab;
   std::uint32_t item; ///< Row index in the research table
   std::uint32_t remainingTicks;
 

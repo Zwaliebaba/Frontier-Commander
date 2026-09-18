@@ -158,7 +158,7 @@ bool ExitCell(const Landscape& _landscape, const Footprint& _footprint, std::uin
   const std::int64_t left = static_cast<std::int64_t>(_footprint.cellX) - 1;
   const std::int64_t right = static_cast<std::int64_t>(_footprint.cellX) + _footprint.cellsX;
   std::vector<std::pair<std::int64_t, std::int64_t>> ring;
-  ring.reserve(static_cast<std::size_t>(2 * (_footprint.cellsX + _footprint.cellsY) + 4));
+  ring.reserve(static_cast<std::size_t>(_footprint.cellsX + _footprint.cellsY) * 2 + 4);
   for (std::int64_t x = left; x <= right; ++x)
   {
     ring.emplace_back(x, low);

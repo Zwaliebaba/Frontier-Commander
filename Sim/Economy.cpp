@@ -143,12 +143,12 @@ ObjectId Economy::ServingGenerator(ObjectId _extractor) const noexcept
   return found->generator;
 }
 
-void Economy::CollectSites(const World& _world, const ContentTree& _content, std::uint8_t _seat)
+void Economy::CollectSites(const World& _world, const ContentTree& _content, std::uint8_t _seat, std::int32_t _extractorRatePercent)
 {
   m_generators.clear();
   m_extractors.clear();
   _world.ForEachStructure(
-    [this, &_content, _seat](ObjectId _id, const Structure& _structure)
+    [this, &_content, _seat, _extractorRatePercent](ObjectId _id, const Structure& _structure)
     {
       if (_structure.seat != _seat || _structure.state != StructureState::Standing)
       {
@@ -172,8 +172,10 @@ void Economy::CollectSites(const World& _world, const ContentTree& _content, std
       // extractor standing on bare ground yields nothing rather than inventing power.
       if (row->role == StructureRole::Extractor && m_deposits.Has(_structure.cellX, _structure.cellY))
       {
+        const std::int32_t yield =
+          static_cast<std::int32_t>(static_cast<std::int64_t>(row->powerHundredthsPerTick) * (100 + _extractorRatePercent) / 100);
         m_extractors.push_back({_id, FootprintCenterSubunits(_structure.cellX, row->footprintCellsX),
-                                FootprintCenterSubunits(_structure.cellY, row->footprintCellsY), row->powerHundredthsPerTick, 0, 0});
+                                FootprintCenterSubunits(_structure.cellY, row->footprintCellsY), yield, 0, 0});
       }
     });
   // ForEachStructure walks in ascending id, so both arrays are already in the order the
@@ -275,7 +277,7 @@ void Economy::Advance(const World& _world, std::span<Seat> _seats, const Content
     // The tick's income: a served extractor and a command post, both from their rows, so that
     // rebalancing the numbers is an edit to Structures.json and not to this file.
     const auto seatIndex = static_cast<std::uint8_t>(index);
-    CollectSites(_world, _content, seatIndex);
+    CollectSites(_world, _content, seatIndex, seat.upgrades.extractorRatePercent);
     std::int64_t income = AssignService();
     _world.ForEachStructure(
       [&income, &_content, seatIndex](ObjectId, const Structure& _structure)

@@ -72,7 +72,9 @@ void Furnish(Frontier::Seat& _seat, std::uint32_t _salt)
 {
   _seat.stockpileCapHundredths = 250000 + static_cast<std::int32_t>(_salt);
   _seat.researchComplete = {1, 4, 9, 16 + _salt};
-  _seat.researchActive = {{7, 120}, {11, 60 + _salt}};
+  // The lab is part of the record now (m1-vertical-slice/S6): a destroyed lab loses its
+  // progress, and a list that does not say whose progress it is cannot enforce that.
+  _seat.researchActive = {{{3, Frontier::ObjectKind::Structure}, 7, 120}, {{4, Frontier::ObjectKind::Structure}, 11, 60 + _salt}};
   Frontier::DeviceDesign design{};
   design.chassis = 1 + _salt;
   design.drive = 2;
@@ -179,10 +181,6 @@ Frontier::Sim Busy()
 {
   Frontier::Sim sim(ThreeSeats(), NoContent());
   Populate(sim);
-  for (std::uint8_t seat = 0; seat < 3; ++seat)
-  {
-    Furnish(sim.SeatAt(seat), seat);
-  }
   for (std::uint32_t tick = 1; tick <= 50; ++tick)
   {
     sim.Submit(Chat(tick, static_cast<std::uint8_t>(tick % 4)));
@@ -193,6 +191,14 @@ Frontier::Sim Busy()
       sim.Submit(surrender);
     }
     sim.Advance();
+  }
+  // Furnished after the ticks rather than before them. Stages 2, 3 and 4 OWN several of these
+  // fields now - the counts, the caps, and a lab's progress, which m1-vertical-slice/S6 drops when
+  // the lab is not a standing lab - so a fixture that filled them first would be measuring what
+  // the tick left rather than what the stream carries.
+  for (std::uint8_t seat = 0; seat < 3; ++seat)
+  {
+    Furnish(sim.SeatAt(seat), seat);
   }
   sim.Submit(Chat(60, 0));
   sim.Submit(Chat(55, 1));

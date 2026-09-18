@@ -202,6 +202,19 @@ Frontier::LandscapeDefinition Ground()
   return design;
 }
 
+/// The Sim a snapshot of _sim reads back as. The failure is Assert::Fail rather than a check the
+/// caller makes, because that is what the other suites do and because clang-tidy can see it is
+/// noreturn where it cannot see that an assertion on has_value() guards the dereference.
+Frontier::Sim Reload(const Frontier::Sim& _sim)
+{
+  std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(_sim), Tables());
+  if (!reloaded.has_value())
+  {
+    Assert::Fail(L"the snapshot did not read back"); // noreturn, which is what the access below relies on
+  }
+  return *reloaded;
+}
+
 Frontier::ObjectId Standing(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, std::uint32_t _cellX, std::uint32_t _cellY)
 {
   Frontier::Structure structure{};
@@ -417,12 +430,11 @@ public:
     line.sim.Advance();
     const std::uint64_t hash = line.sim.ComputeHash();
 
-    std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(line.sim), Tables());
-    Assert::IsTrue(reloaded.has_value());
-    Assert::AreEqual(hash, reloaded->ComputeHash(), L"the queue and the upgrades are in the stream and in the hash");
-    Assert::AreEqual(std::size_t{1}, reloaded->Seats()[0].production.size());
-    Assert::AreEqual(3u, reloaded->Seats()[0].production.front().remaining);
-    Assert::AreEqual(25, reloaded->Seats()[0].upgrades.chassisHitPointPercent[0]);
+    const Frontier::Sim reloaded = Reload(line.sim);
+    Assert::AreEqual(hash, reloaded.ComputeHash(), L"the queue and the upgrades are in the stream and in the hash");
+    Assert::AreEqual(std::size_t{1}, reloaded.Seats()[0].production.size());
+    Assert::AreEqual(3u, reloaded.Seats()[0].production.front().remaining);
+    Assert::AreEqual(25, reloaded.Seats()[0].upgrades.chassisHitPointPercent[0]);
   }
 };
 

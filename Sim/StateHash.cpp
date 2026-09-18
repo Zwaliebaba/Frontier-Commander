@@ -15,6 +15,7 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
   Add(static_cast<std::uint32_t>(_seat.researchActive.size()));
   for (const ResearchProgress& progress : _seat.researchActive)
   {
+    AddObjectId(progress.lab);
     Add(progress.item);
     Add(progress.remainingTicks);
   }
@@ -31,6 +32,8 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
   AddSpan(std::span<const std::int32_t>(_seat.upgrades.weaponDamagePercent));
   AddSpan(std::span<const std::int32_t>(_seat.upgrades.weaponRatePercent));
   AddSpan(std::span<const std::int32_t>(_seat.upgrades.weaponAccuracyPercent));
+  Add(_seat.upgrades.extractorRatePercent);
+  Add(_seat.upgrades.structureHitPointPercent);
   Add(static_cast<std::uint32_t>(_seat.production.size()));
   for (const ProductionEntry& entry : _seat.production)
   {

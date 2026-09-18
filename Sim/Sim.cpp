@@ -4,6 +4,7 @@
 #include "Construction.h"
 #include "OrderValidation.h"
 #include "Production.h"
+#include "Research.h"
 #include "StateHash.h"
 
 #include <algorithm>
@@ -322,12 +323,17 @@ bool Sim::Apply(const Order& _order)
     return SaveDesign(*this, order.seat, static_cast<std::uint32_t>(order.operands[0]),
                       DesignFromOrder(order.operands[1], order.operands[2], order.operands[3]));
 
+  case OrderKind::SetResearch:
+    return SetResearch(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure},
+                       static_cast<std::uint32_t>(order.operands[1]));
+
+  case OrderKind::CancelResearch:
+    return CancelResearch(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure});
+
   case OrderKind::Attack:
   case OrderKind::Patrol:
   case OrderKind::Guard:
   case OrderKind::ReturnToRepair:
-  case OrderKind::SetResearch:
-  case OrderKind::CancelResearch:
     // Validated here and applied by the task that owns the system (m1-vertical-slice/S2): the
     // order passed every check this task can make, and there is nothing yet to apply it to. It
     // counts as applied rather than dropped, because nothing was wrong with it.
@@ -343,7 +349,10 @@ void Sim::AdvanceEconomy()
   m_economy.Advance(m_world, m_seats, *m_content);
 }
 
-void Sim::AdvanceResearch() {}
+void Sim::AdvanceResearch()
+{
+  Frontier::AdvanceResearch(*this);
+}
 
 void Sim::AdvanceProduction()
 {

@@ -7,6 +7,7 @@
 #include "Placement.h"
 #include "Plan.h"
 #include "Production.h"
+#include "Research.h"
 
 #include "FixedPoint.h"
 
@@ -374,7 +375,8 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
 
   case OrderKind::SetResearch:
   {
-    if (OwnedStructure(_order, _context) == nullptr)
+    const Structure* structure = OwnedStructure(_order, _context);
+    if (structure == nullptr)
     {
       return Reject(_order, RejectReason::NotOwned);
     }
@@ -382,11 +384,38 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::Malformed);
     }
-    const std::uint32_t item = static_cast<std::uint32_t>(_order.operands[1]);
-    const bool done = std::find(seat.researchComplete.begin(), seat.researchComplete.end(), item) != seat.researchComplete.end();
-    // Researching what is already researched is the one thing S2 can say about the tree; S6 adds
-    // the prerequisites and the rows themselves.
-    return done ? Reject(_order, RejectReason::NotResearched) : Accept(_order);
+    const auto item = static_cast<std::uint32_t>(_order.operands[1]);
+    if (_context.content == nullptr)
+    {
+      // Without the tables there is no tree; the one thing that can still be said is that an item
+      // already complete is not one to start.
+      return std::find(seat.researchComplete.begin(), seat.researchComplete.end(), item) != seat.researchComplete.end()
+               ? Reject(_order, RejectReason::NotResearched)
+               : Accept(_order);
+    }
+    const std::vector<StructureDesc>& rows = _context.content->structures.structures;
+    if (structure->state != StructureState::Standing || structure->design >= rows.size() ||
+        rows[structure->design].role != StructureRole::ResearchLab)
+    {
+      return Reject(_order, RejectReason::InvalidTarget);
+    }
+    if (item >= _context.content->research.size())
+    {
+      return Reject(_order, RejectReason::Malformed);
+    }
+    // One item a lab: a lab already working is not idle, whatever it is working on.
+    const bool busy = std::any_of(seat.researchActive.begin(), seat.researchActive.end(), [&_order](const ResearchProgress& _progress)
+                                  { return _progress.lab.value == static_cast<std::uint32_t>(_order.operands[0]); });
+    if (busy)
+    {
+      return Reject(_order, RejectReason::InvalidTarget);
+    }
+    if (!Available(seat, *_context.content, item))
+    {
+      return Reject(_order, RejectReason::NotResearched);
+    }
+    return seat.powerHundredths >= _context.content->research[item].costHundredths ? Accept(_order)
+                                                                                   : Reject(_order, RejectReason::CannotAfford);
   }
 
   case OrderKind::CancelStructure:
@@ -464,7 +493,17 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
   }
 
   case OrderKind::CancelResearch:
-    return OwnershipOnly(_order, _context);
+  {
+    if (OwnedStructure(_order, _context) == nullptr)
+    {
+      return Reject(_order, RejectReason::NotOwned);
+    }
+    // There is nothing to cancel in a lab that is not working, and saying so is more use to a
+    // commander than a silent success.
+    const bool working = std::any_of(seat.researchActive.begin(), seat.researchActive.end(), [&_order](const ResearchProgress& _progress)
+                                     { return _progress.lab.value == static_cast<std::uint32_t>(_order.operands[0]); });
+    return working ? Accept(_order) : Reject(_order, RejectReason::InvalidTarget);
+  }
 
   case OrderKind::SaveDesign:
   {

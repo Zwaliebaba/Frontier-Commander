@@ -38,6 +38,9 @@
     <ClCompile Include="ProductionTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ResearchTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="VisibilityTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

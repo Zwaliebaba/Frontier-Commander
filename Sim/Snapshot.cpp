@@ -30,6 +30,7 @@ void WriteSettings(Neuron::ByteWriter& _writer, const MatchSettings& _settings)
   {
     _writer.Write(seat.kind);
     _writer.Write(seat.alliance);
+    _writer.WriteBool(seat.autoResearch);
   }
 }
 
@@ -59,7 +60,7 @@ template <class Enum> [[nodiscard]] bool ReadEnum(Neuron::ByteReader& _reader, E
   }
   for (SeatSettings& seat : settings.seats)
   {
-    if (!ReadEnum(_reader, seat.kind, 3) || !_reader.Read(seat.alliance))
+    if (!ReadEnum(_reader, seat.kind, 3) || !_reader.Read(seat.alliance) || !_reader.ReadBool(seat.autoResearch))
     {
       return false;
     }
@@ -208,6 +209,7 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   _writer.Write(static_cast<std::uint32_t>(_seat.researchActive.size()));
   for (const ResearchProgress& progress : _seat.researchActive)
   {
+    WriteObjectId(_writer, progress.lab);
     _writer.Write(progress.item);
     _writer.Write(progress.remainingTicks);
   }
@@ -242,6 +244,8 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   {
     _writer.Write(percent);
   }
+  _writer.Write(_seat.upgrades.extractorRatePercent);
+  _writer.Write(_seat.upgrades.structureHitPointPercent);
   _writer.Write(static_cast<std::uint32_t>(_seat.production.size()));
   for (const ProductionEntry& entry : _seat.production)
   {
@@ -301,7 +305,7 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   seat.researchActive.resize(count);
   for (ResearchProgress& progress : seat.researchActive)
   {
-    if (!_reader.Read(progress.item) || !_reader.Read(progress.remainingTicks))
+    if (!ReadObjectId(_reader, progress.lab) || !_reader.Read(progress.item) || !_reader.Read(progress.remainingTicks))
     {
       return false;
     }
@@ -342,7 +346,8 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   };
   if (!readPercents(seat.upgrades.chassisArmorPercent) || !readPercents(seat.upgrades.chassisHitPointPercent) ||
       !readPercents(seat.upgrades.weaponDamagePercent) || !readPercents(seat.upgrades.weaponRatePercent) ||
-      !readPercents(seat.upgrades.weaponAccuracyPercent))
+      !readPercents(seat.upgrades.weaponAccuracyPercent) || !_reader.Read(seat.upgrades.extractorRatePercent) ||
+      !_reader.Read(seat.upgrades.structureHitPointPercent))
   {
     return false;
   }

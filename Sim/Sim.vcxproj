@@ -105,6 +105,7 @@
     <ClCompile Include="Placement.cpp" />
     <ClCompile Include="Construction.cpp" />
     <ClCompile Include="Production.cpp" />
+    <ClCompile Include="Research.cpp" />
     <ClCompile Include="Deposit.cpp" />
     <ClCompile Include="FogGrid.cpp" />
     <ClCompile Include="GhostStore.cpp" />
@@ -145,6 +146,7 @@
     <ClInclude Include="Plan.h" />
     <ClInclude Include="Design.h" />
     <ClInclude Include="Production.h" />
+    <ClInclude Include="Research.h" />
     <ClInclude Include="Deposit.h" />
     <ClInclude Include="Order.h" />
     <ClInclude Include="OrderQueue.h" />

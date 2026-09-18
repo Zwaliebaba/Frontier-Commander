@@ -73,6 +73,11 @@ struct SeatSettings
 {
   SeatKind kind;
   std::uint8_t alliance; ///< Seats sharing a number share vision and victory (GameDesign.md §2).
+  /// Every idle lab picks the cheapest item it may start, at the beginning of the tick
+  /// (m1-vertical-slice/S6). A lobby option because a scripted seat wants it always and a human
+  /// wants it when they are tired of the panel, and because a setting that changes mid-match would
+  /// be an order and this is not one.
+  bool autoResearch = false;
 
   [[nodiscard]] constexpr bool operator==(const SeatSettings&) const noexcept = default;
 };

@@ -643,11 +643,19 @@ tasks:
       - Sim/Research.h
       - Sim/Research.cpp
       - Sim/Seat.h
+      - Sim/MatchSettings.h
       - Sim/OrderValidation.cpp
+      - Sim/Economy.h
+      - Sim/Economy.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Sim/StateHash.cpp
       - Sim/Sim.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - Content/DesignStats.h
       - Tests/SimTests/ResearchTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
     acceptance:
@@ -662,7 +670,34 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      PROGRESS BELONGS TO A LAB AND NOT TO A SEAT. "Each lab researches one item" and "a destroyed
+      lab loses the progress" are both rules, and a list that does not say WHOSE progress it is can
+      enforce neither, so ResearchProgress gained the lab. The countdown stays in that record rather
+      than on the structure - which is where a factory's is - because a lab has one item and a
+      factory has a queue, so for a factory the entry cannot say which countdown is its.
+      TWO UPGRADE EFFECTS HAD NOWHERE TO GO. ResearchEffect has ExtractorRate and StructureHitPoints
+      and ClassUpgrades had a slot for neither, so they are two more fields on it rather than two
+      more places an upgrade can live: one home for "what research has done to this commander" is
+      what makes a derivation trustworthy. Economy reads the first where an extractor yields;
+      Research reads the second where a structure's maximum is wanted.
+      THE UNLOCK EFFECT DOES NOTHING, AND THAT IS NOT AN OMISSION. A row says what unlocks it and an
+      item says what it unlocks; the simulation reads the first (UnlockedFor), so an item joining
+      researchComplete IS the unlock. The other direction is what the research panel lists and what
+      ContentValidator checks, and a second mechanism would be a second thing to keep in step.
+      WHAT AN UPGRADE WALKS THE WORLD FOR is one thing only: the current hit points. Everything
+      derived is read from the seat's upgrades wherever it is wanted (S5), so a percentage landing
+      there already reaches every fielded device; what has to be rescaled is the damage a device is
+      carrying, because a device at half health must still be at half health when its maximum grows.
+      Maximums are taken before and after and the fraction is multiplied through.
+      Auto-research is a per-seat lobby option, so SeatSettings gained a bool and the snapshot is at
+      version 11. It fills every idle lab at the start of the tick with the cheapest available item,
+      ties broken by the lower row index so two hosts pick the same pair.
+      SnapshotTests now furnishes its seats AFTER the ticks rather than before: stages 2, 3 and 4
+      own several of those fields now, and a fixture that filled them first was measuring what the
+      tick left rather than what the stream carries. Its research entries were being erased by stage
+      3, which made one assertion read an empty vector.
 
   - id: S7
     title: Sim pathing - cluster graph, hierarchical A*, budgeted planning and refinement
