@@ -99,6 +99,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Sim.cpp" />
+    <ClCompile Include="World.cpp" />
+    <ClCompile Include="Seat.cpp" />
     <ClCompile Include="OrderQueue.cpp" />
     <ClCompile Include="StateHash.cpp" />
     <ClCompile Include="Snapshot.cpp" />
@@ -113,6 +115,13 @@
     <ClInclude Include="Sim.h" />
     <ClInclude Include="MatchSettings.h" />
     <ClInclude Include="Seat.h" />
+    <ClInclude Include="ObjectId.h" />
+    <ClInclude Include="Device.h" />
+    <ClInclude Include="Structure.h" />
+    <ClInclude Include="Projectile.h" />
+    <ClInclude Include="Feature.h" />
+    <ClInclude Include="Wreck.h" />
+    <ClInclude Include="World.h" />
     <ClInclude Include="Order.h" />
     <ClInclude Include="OrderQueue.h" />
     <ClInclude Include="StateHash.h" />

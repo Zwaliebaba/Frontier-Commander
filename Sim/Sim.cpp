@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <utility>
 
 namespace Frontier
 {
@@ -22,13 +23,32 @@ Sim::Sim(const MatchSettings& _settings)
   for (std::uint8_t index = 0; index < seatCount; ++index)
   {
     const SeatSettings& lobby = _settings.seats[index];
-    m_seats.push_back({lobby.kind, lobby.alliance, power, lobby.kind == SeatKind::Empty});
+    // Field by field rather than an aggregate initialiser: a Seat gains fields as the systems
+    // arrive, and a positional list would put the next one in the wrong place in silence.
+    Seat seat{};
+    seat.kind = lobby.kind;
+    seat.alliance = lobby.alliance;
+    seat.powerHundredths = power;
+    // The stockpile and army caps are the economy's (S3); until it exists nothing produces, so a
+    // cap of zero stops nothing and is honest about not being set.
+    seat.defeated = lobby.kind == SeatKind::Empty;
+    m_seats.push_back(std::move(seat));
   }
 }
 
 bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
 {
-  return m_landscape.Create(_definition);
+  if (!m_landscape.Create(_definition))
+  {
+    return false;
+  }
+  // A seat exists before the landscape does, so its fog grid is sized here rather than in the
+  // constructor. S9 fills them; S1 gives every cell a viewer count and a state to hold.
+  for (Seat& seat : m_seats)
+  {
+    SizeFog(seat, m_landscape.Definition().cellsPerSide);
+  }
+  return true;
 }
 
 bool Sim::FlattenTerrain(const HeightDelta& _delta)
@@ -78,7 +98,7 @@ std::uint64_t Sim::ComputeHash() const noexcept
   {
     m_landscape.AddToHash(hash);
   }
-  // The object maps go here, each in ascending id order, as the systems arrive (ADR-002).
+  m_world.AddToHash(hash);
   hash.Add(m_lastRoll);
   hash.Add(m_appliedOrders);
   hash.Add(m_droppedOrders);

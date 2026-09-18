@@ -58,10 +58,117 @@ Frontier::Sim Reload(const Frontier::Sim& _sim)
   return *reloaded;
 }
 
+/// Fills a seat's every variable-length field, so that the snapshot's counts and bounds are
+/// exercised rather than written as zero. The systems that will do this are S3, S5 and S6.
+void Furnish(Frontier::Seat& _seat, std::uint32_t _salt)
+{
+  _seat.stockpileCapHundredths = 250000 + static_cast<std::int32_t>(_salt);
+  _seat.researchComplete = {1, 4, 9, 16 + _salt};
+  _seat.researchActive = {{7, 120}, {11, 60 + _salt}};
+  Frontier::DeviceDesign design{};
+  design.chassis = 1 + _salt;
+  design.drive = 2;
+  design.modules = {3, 4, 0, 0, 0, 0, 0, 0};
+  design.moduleCount = 2;
+  _seat.designs.push_back(design);
+  design.chassis = 9;
+  design.moduleCount = 1;
+  _seat.designs.push_back(design);
+  _seat.deviceCount = 3 + _salt;
+  _seat.deviceCap = 120;
+  _seat.structureCount = 2;
+  _seat.structureCap = 80;
+  _seat.ghosts.push_back({{40 + _salt, Frontier::ObjectKind::Structure}, 1, 5, 12, 13, 900});
+  _seat.ghosts.push_back({{41 + _salt, Frontier::ObjectKind::Structure}, 2, 6, 30, 31, 950});
+  // A small grid rather than a landscape's: what is under test is that the counts and the states
+  // survive the stream, and 64 cells exercise that as well as a million would.
+  Frontier::SizeFog(_seat, 8);
+  _seat.fogViewers[3 + _salt] = 2;
+  _seat.fogState[3 + _salt] = Frontier::FogState::Visible;
+  _seat.fogState[9] = Frontier::FogState::Explored;
+}
+
+/// One of each kind, so that every map, every record and the id counter are on the wire.
+void Populate(Frontier::Sim& _sim)
+{
+  Frontier::Device device{};
+  device.seat = 0;
+  device.design = 1;
+  device.x = 4096;
+  device.y = 256;
+  device.z = -2048;
+  device.facing = 0x8000;
+  device.hitPoints = 240;
+  device.experience = 12;
+  device.destinationX = 8192;
+  device.destinationZ = 1024;
+  device.moving = true;
+  device.reloadTicks = {5, 2, 0, 0, 0, 0, 0, 0};
+  const Frontier::ObjectId shooter = _sim.Objects().Create(device);
+  device.seat = 1;
+  device.x = -4096;
+  device.moving = false;
+  const Frontier::ObjectId other = _sim.Objects().Create(device);
+
+  Frontier::Structure structure{};
+  structure.seat = 0;
+  structure.design = 3;
+  structure.cellX = 17;
+  structure.cellY = 42;
+  structure.y = 128;
+  structure.state = Frontier::StructureState::Standing;
+  structure.hitPoints = 600;
+  structure.buildProgressHundredths = 10000;
+  structure.modules = {1, 2, 3, 0};
+  structure.moduleCount = 3;
+  structure.working = other;
+  structure.workRemainingTicks = 55;
+  _sim.Objects().Create(structure);
+
+  Frontier::Projectile projectile{};
+  projectile.seat = 0;
+  projectile.shooter = shooter;
+  projectile.module = 4;
+  projectile.x = 4200;
+  projectile.y = 300;
+  projectile.z = -2000;
+  projectile.impactX = -4096;
+  projectile.impactY = 256;
+  projectile.impactZ = 0;
+  projectile.ticksToImpact = 9;
+  _sim.Objects().Create(projectile);
+
+  Frontier::Feature feature{};
+  feature.design = 2;
+  feature.cellX = 60;
+  feature.cellY = 61;
+  feature.y = 96;
+  feature.facing = 0x2000;
+  _sim.Objects().Create(feature);
+
+  Frontier::Wreck wreck{};
+  wreck.seat = 1;
+  wreck.origin = other;
+  wreck.design = 1;
+  wreck.x = -4000;
+  wreck.y = 250;
+  wreck.z = 100;
+  wreck.facing = 0xC000;
+  wreck.decayTicks = 300;
+  const Frontier::ObjectId hulk = _sim.Objects().Create(wreck);
+  // A removed object must not come back through the snapshot, and the counter must not rewind.
+  Assert::IsTrue(_sim.Objects().Remove(hulk));
+}
+
 /// A match a little way in, with a surrendered seat, orders applied and dropped, and orders pending.
 Frontier::Sim Busy()
 {
   Frontier::Sim sim(ThreeSeats());
+  Populate(sim);
+  for (std::uint8_t seat = 0; seat < 3; ++seat)
+  {
+    Furnish(sim.SeatAt(seat), seat);
+  }
   for (std::uint32_t tick = 1; tick <= 50; ++tick)
   {
     sim.Submit(Chat(tick, static_cast<std::uint8_t>(tick % 4)));
@@ -118,6 +225,104 @@ public:
     }
     Assert::IsTrue(original.Orders().Empty());
     Assert::IsTrue(reloaded.Orders().Empty());
+  }
+
+  TEST_METHOD(APopulatedWorldRoundTripsWithItsIdsAndItsCounter)
+  {
+    const Frontier::Sim original = Busy();
+    const Frontier::Sim reloaded = Reload(original);
+    const Frontier::World& before = original.Objects();
+    const Frontier::World& after = reloaded.Objects();
+    for (const Frontier::ObjectKind kind : {Frontier::ObjectKind::Device, Frontier::ObjectKind::Structure, Frontier::ObjectKind::Projectile,
+                                            Frontier::ObjectKind::Feature, Frontier::ObjectKind::Wreck})
+    {
+      Assert::AreEqual(before.Count(kind), after.Count(kind));
+    }
+    Assert::AreEqual(std::size_t{0}, after.Count(Frontier::ObjectKind::Wreck), L"the removed wreck did not come back");
+    Assert::AreEqual(before.NextId(), after.NextId(), L"the counter is state: the next id must be the same one");
+
+    std::vector<std::uint32_t> ids;
+    before.ForEachDevice(
+      [&ids, &after](Frontier::ObjectId _id, const Frontier::Device& _device)
+      {
+        ids.push_back(_id.value);
+        const Frontier::Device* reloadedDevice = after.FindDevice(_id);
+        Assert::IsNotNull(reloadedDevice, L"every id resolves in the reloaded world");
+        Assert::IsTrue(_device == *reloadedDevice, L"and to a record equal field for field");
+      });
+    Assert::AreEqual(std::size_t{2}, ids.size());
+    before.ForEachStructure([&after](Frontier::ObjectId _id, const Frontier::Structure& _structure)
+                            { Assert::IsTrue(_structure == *after.FindStructure(_id)); });
+    before.ForEachProjectile([&after](Frontier::ObjectId _id, const Frontier::Projectile& _projectile)
+                             { Assert::IsTrue(_projectile == *after.FindProjectile(_id)); });
+    before.ForEachFeature([&after](Frontier::ObjectId _id, const Frontier::Feature& _feature)
+                          { Assert::IsTrue(_feature == *after.FindFeature(_id)); });
+  }
+
+  TEST_METHOD(TheHashMovesForASingleFieldOfEveryRecordAndEverySeat)
+  {
+    // The hash is what a determinism test compares, so a field the hash does not read is a field
+    // two machines may disagree about in silence. One mutation apiece, each one must move it.
+    const Frontier::Sim original = Busy();
+    const std::uint64_t baseline = original.ComputeHash();
+
+    const auto moved = [baseline](Frontier::Sim& _sim, const wchar_t* _what) { Assert::AreNotEqual(baseline, _sim.ComputeHash(), _what); };
+
+    Frontier::Sim device = Busy();
+    device.Objects().FindDevice({1, Frontier::ObjectKind::Device})->hitPoints += 1;
+    moved(device, L"a device's hit points");
+
+    Frontier::Sim reload = Busy();
+    reload.Objects().FindDevice({1, Frontier::ObjectKind::Device})->reloadTicks[7] = 1;
+    moved(reload, L"a device's last reload slot");
+
+    Frontier::Sim structure = Busy();
+    structure.Objects().FindStructure({3, Frontier::ObjectKind::Structure})->buildProgressHundredths -= 1;
+    moved(structure, L"a structure's build progress");
+
+    Frontier::Sim projectile = Busy();
+    projectile.Objects().FindProjectile({4, Frontier::ObjectKind::Projectile})->impactZ += 1;
+    moved(projectile, L"a projectile's impact");
+
+    Frontier::Sim feature = Busy();
+    feature.Objects().FindFeature({5, Frontier::ObjectKind::Feature})->facing += 1;
+    moved(feature, L"a feature's facing");
+
+    Frontier::Sim counter = Busy();
+    counter.Objects().SetNextId(counter.Objects().NextId() + 1);
+    moved(counter, L"the id counter, which decides every id still to be issued");
+
+    Frontier::Sim removed = Busy();
+    Assert::IsTrue(removed.Objects().Remove({1, Frontier::ObjectKind::Device}));
+    moved(removed, L"a device removed");
+
+    Frontier::Sim power = Busy();
+    power.SeatAt(1).powerHundredths += 1;
+    moved(power, L"a seat's power");
+
+    Frontier::Sim research = Busy();
+    research.SeatAt(1).researchActive[0].remainingTicks -= 1;
+    moved(research, L"a seat's research in progress");
+
+    Frontier::Sim design = Busy();
+    design.SeatAt(2).designs[1].moduleCount = 2;
+    moved(design, L"a seat's design");
+
+    Frontier::Sim cap = Busy();
+    cap.SeatAt(0).structureCap += 1;
+    moved(cap, L"a seat's structure cap");
+
+    Frontier::Sim ghost = Busy();
+    ghost.SeatAt(0).ghosts[1].seenTick += 1;
+    moved(ghost, L"a seat's ghost store");
+
+    Frontier::Sim surrender = Busy();
+    surrender.SeatAt(0).surrendered = true;
+    moved(surrender, L"a seat's surrender, which defeated alone does not say");
+
+    Frontier::Sim fog = Busy();
+    fog.SeatAt(2).fogState[9] = Frontier::FogState::Visible;
+    moved(fog, L"one cell of a seat's fog");
   }
 
   TEST_METHOD(WritingTheSameSimTwiceGivesTheSameBytes)

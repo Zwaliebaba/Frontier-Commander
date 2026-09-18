@@ -17,6 +17,11 @@
 namespace Frontier
 {
 
+/// The most module mounts a chassis may carry. GameDesign.md §6 gives the heaviest two; the bound
+/// is what the loader refuses beyond and what Sim sizes a design's mount array by, so a row and a
+/// record can never disagree about how many there are.
+inline constexpr std::uint32_t MAX_MOUNTS = 8;
+
 /// The five weapon classes of the damage matrix (GameDesign.md §8). The order is the matrix's
 /// row order and the wire's.
 enum class WeaponClass : std::uint8_t

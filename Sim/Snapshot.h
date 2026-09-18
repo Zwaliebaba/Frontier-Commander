@@ -16,8 +16,9 @@ namespace Frontier
 
 /// "FCSP", little-endian, at the head of every snapshot.
 inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
-/// 3 since 2026-09-18: a tile carries the biome it is coloured by (OpenQuestions.md Q18).
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 3;
+/// 4 since 2026-09-18: the world's five object maps and the seat's economy, research, designs,
+/// caps, fog grid and ghost store (m1-vertical-slice/S1).
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 4;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,
@@ -40,6 +41,13 @@ public:
   static constexpr std::uint32_t MAX_POSITIONS = 4096;
   static constexpr std::uint32_t MAX_DELTAS = 1u << 20;
   static constexpr std::uint32_t MAX_PALETTE_BYTES = 256;
+  /// Bounds on a hostile file rather than limits a match reaches: a Frontier landscape's cell
+  /// count is 1,048,576, and no match approaches a million objects of one kind.
+  static constexpr std::uint32_t MAX_OBJECTS = 1u << 20;
+  static constexpr std::uint32_t MAX_FOG_CELLS = 1u << 20;
+  static constexpr std::uint32_t MAX_DESIGNS = 256;
+  static constexpr std::uint32_t MAX_RESEARCH = 4096;
+  static constexpr std::uint32_t MAX_GHOSTS = 1u << 20;
 };
 
 } // namespace Frontier

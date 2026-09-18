@@ -6,7 +6,9 @@
 #include "Order.h"
 #include "OrderQueue.h"
 #include "Seat.h"
+#include "World.h"
 
+#include "Assertion.h"
 #include "Random.h"
 
 #include <cstdint>
@@ -77,6 +79,26 @@ public:
     return m_seats;
   }
 
+  /// Every device, structure, projectile, feature and wreck of the match (TechnicalDesign.md §4.3).
+  [[nodiscard]] const World& Objects() const noexcept
+  {
+    return m_world;
+  }
+
+  /// The mutable world and a mutable seat exist for the same reason FlattenTerrain does: the
+  /// systems that will own them are S2 to S11, and until they exist the host and the tests are
+  /// what put a match into a state worth hashing. Every stage of Advance reaches m_world and
+  /// m_seats directly, so these two narrow to nothing once the systems arrive.
+  [[nodiscard]] World& Objects() noexcept
+  {
+    return m_world;
+  }
+  [[nodiscard]] Seat& SeatAt(std::uint8_t _seat) noexcept
+  {
+    FRONTIER_ASSERT(_seat < m_seats.size());
+    return m_seats[_seat];
+  }
+
   [[nodiscard]] const Neuron::Random& Stream() const noexcept
   {
     return m_random;
@@ -142,6 +164,7 @@ private:
   std::uint32_t m_tick = 0;
   Neuron::Random m_random;
   std::vector<Seat> m_seats;
+  World m_world;
   Landscape m_landscape;
   OrderQueue m_orders;
   std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.

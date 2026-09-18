@@ -26,7 +26,6 @@ constexpr std::int32_t MAX_DISTANCE_SUBUNITS = 100000000; ///< 390,625 world uni
 constexpr std::uint32_t MAX_TICKS = 1000000;              ///< Fourteen hours
 constexpr std::int32_t MAX_PERCENT = 10000;
 constexpr std::int32_t MAX_FACTOR_HUNDREDTHS = 100000;
-constexpr std::uint32_t MAX_MOUNTS = 8;
 constexpr std::uint32_t MAX_FOOTPRINT_CELLS = 16;
 constexpr std::uint32_t MAX_MODEL_VERTICES = 65535;
 /// A model may be drawn from a hundredth of its authored size to a hundred times it. The Species

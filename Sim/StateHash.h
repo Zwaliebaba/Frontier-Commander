@@ -1,8 +1,15 @@
 #pragma once
 
-#include "Hash.h"
+#include "Device.h"
+#include "Feature.h"
+#include "ObjectId.h"
 #include "Order.h"
+#include "Projectile.h"
 #include "Seat.h"
+#include "Structure.h"
+#include "Wreck.h"
+
+#include "Hash.h"
 
 #include <cstdint>
 #include <span>
@@ -39,6 +46,15 @@ public:
 
   void AddSeat(const Seat& _seat) noexcept;
   void AddOrder(const Order& _order) noexcept;
+
+  /// Each record with the id it is stored under, because two worlds holding the same records at
+  /// different ids are different states: the ids are on the wire and in every later reference.
+  void AddObjectId(ObjectId _id) noexcept;
+  void AddDevice(ObjectId _id, const Device& _device) noexcept;
+  void AddStructure(ObjectId _id, const Structure& _structure) noexcept;
+  void AddProjectile(ObjectId _id, const Projectile& _projectile) noexcept;
+  void AddFeature(ObjectId _id, const Feature& _feature) noexcept;
+  void AddWreck(ObjectId _id, const Wreck& _wreck) noexcept;
 
   [[nodiscard]] std::uint64_t Value() const noexcept
   {

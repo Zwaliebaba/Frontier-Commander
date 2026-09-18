@@ -4,6 +4,7 @@
 
 #include "Hash.h"
 
+#include <type_traits>
 #include <utility>
 
 namespace Frontier
@@ -115,6 +116,420 @@ void WriteLandscape(Neuron::ByteWriter& _writer, const Landscape& _landscape)
   }
 }
 
+void WriteObjectId(Neuron::ByteWriter& _writer, ObjectId _id)
+{
+  _writer.Write(_id.value);
+  _writer.Write(_id.kind);
+}
+
+[[nodiscard]] bool ReadObjectId(Neuron::ByteReader& _reader, ObjectId& _out)
+{
+  return _reader.Read(_out.value) && ReadEnum(_reader, _out.kind, OBJECT_KIND_COUNT);
+}
+
+/// A fog grid is one byte per cell per seat, which is 16.8 MB on a Frontier landscape with eight
+/// seats and would put the snapshot back in the business of carrying the map rather than its
+/// definition (ADR-003). It is also almost entirely one value, because a commander explores a
+/// fraction of a landscape, so it is written as runs: a length and a value, and an untouched grid
+/// is one run. Deterministic, because the runs are a pure function of the bytes.
+void WriteRuns(Neuron::ByteWriter& _writer, std::span<const std::uint8_t> _values)
+{
+  const auto runEnd = [_values](std::size_t _from)
+  {
+    std::size_t end = _from + 1;
+    while (end < _values.size() && _values[end] == _values[_from])
+    {
+      ++end;
+    }
+    return end;
+  };
+  std::uint32_t runs = 0;
+  for (std::size_t index = 0; index < _values.size(); index = runEnd(index))
+  {
+    ++runs;
+  }
+  _writer.Write(static_cast<std::uint32_t>(_values.size()));
+  _writer.Write(runs);
+  for (std::size_t index = 0; index < _values.size();)
+  {
+    const std::size_t end = runEnd(index);
+    _writer.Write(static_cast<std::uint32_t>(end - index));
+    _writer.Write(_values[index]);
+    index = end;
+  }
+}
+
+/// Reads a run-length grid, checking that the runs account for exactly the cells claimed and that
+/// every value is inside _valueCount, so that a hostile file cannot describe a grid that is not
+/// one. The cell count is the caller's to compare against the other grid of the pair.
+[[nodiscard]] bool ReadRuns(Neuron::ByteReader& _reader, std::uint32_t _valueCount, std::vector<std::uint8_t>& _out)
+{
+  std::uint32_t cells = 0;
+  std::uint32_t runs = 0;
+  if (!_reader.Read(cells) || cells > Snapshot::MAX_FOG_CELLS || !_reader.Read(runs) || runs > cells)
+  {
+    return false;
+  }
+  _out.clear();
+  _out.reserve(cells);
+  for (std::uint32_t run = 0; run < runs; ++run)
+  {
+    std::uint32_t length = 0;
+    std::uint8_t value = 0;
+    if (!_reader.Read(length) || !_reader.Read(value) || value >= _valueCount || length == 0 ||
+        length > cells - static_cast<std::uint32_t>(_out.size()))
+    {
+      return false;
+    }
+    _out.insert(_out.end(), length, value);
+  }
+  return _out.size() == cells;
+}
+
+/// The seat in the order StateHash::AddSeat reads it, so that a reader checking one against the
+/// other has one order to check.
+void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
+{
+  _writer.Write(_seat.kind);
+  _writer.Write(_seat.alliance);
+  _writer.Write(_seat.powerHundredths);
+  _writer.Write(_seat.stockpileCapHundredths);
+  _writer.Write(static_cast<std::uint32_t>(_seat.researchComplete.size()));
+  for (const std::uint32_t item : _seat.researchComplete)
+  {
+    _writer.Write(item);
+  }
+  _writer.Write(static_cast<std::uint32_t>(_seat.researchActive.size()));
+  for (const ResearchProgress& progress : _seat.researchActive)
+  {
+    _writer.Write(progress.item);
+    _writer.Write(progress.remainingTicks);
+  }
+  _writer.Write(static_cast<std::uint32_t>(_seat.designs.size()));
+  for (const DeviceDesign& design : _seat.designs)
+  {
+    _writer.Write(design.chassis);
+    _writer.Write(design.drive);
+    for (const std::uint32_t module : design.modules)
+    {
+      _writer.Write(module);
+    }
+    _writer.Write(design.moduleCount);
+  }
+  _writer.Write(_seat.deviceCount);
+  _writer.Write(_seat.deviceCap);
+  _writer.Write(_seat.structureCount);
+  _writer.Write(_seat.structureCap);
+  WriteRuns(_writer, _seat.fogViewers);
+  static_assert(std::is_same_v<std::underlying_type_t<FogState>, std::uint8_t>, "the run encoding reads a fog state as its byte");
+  WriteRuns(_writer, std::span<const std::uint8_t>(reinterpret_cast<const std::uint8_t*>(_seat.fogState.data()), _seat.fogState.size()));
+  _writer.Write(static_cast<std::uint32_t>(_seat.ghosts.size()));
+  for (const Ghost& ghost : _seat.ghosts)
+  {
+    WriteObjectId(_writer, ghost.structure);
+    _writer.Write(ghost.seat);
+    _writer.Write(ghost.design);
+    _writer.Write(ghost.cellX);
+    _writer.Write(ghost.cellY);
+    _writer.Write(ghost.seenTick);
+  }
+  _writer.WriteBool(_seat.defeated);
+  _writer.WriteBool(_seat.surrendered);
+}
+
+[[nodiscard]] bool ReadSeat(Neuron::ByteReader& _reader, Seat& _out)
+{
+  Seat seat{};
+  std::uint32_t count = 0;
+  if (!ReadEnum(_reader, seat.kind, 3) || !_reader.Read(seat.alliance) || !_reader.Read(seat.powerHundredths) ||
+      !_reader.Read(seat.stockpileCapHundredths) || !_reader.Read(count) || count > Snapshot::MAX_RESEARCH)
+  {
+    return false;
+  }
+  seat.researchComplete.resize(count);
+  for (std::uint32_t& item : seat.researchComplete)
+  {
+    if (!_reader.Read(item))
+    {
+      return false;
+    }
+  }
+  if (!_reader.Read(count) || count > Snapshot::MAX_RESEARCH)
+  {
+    return false;
+  }
+  seat.researchActive.resize(count);
+  for (ResearchProgress& progress : seat.researchActive)
+  {
+    if (!_reader.Read(progress.item) || !_reader.Read(progress.remainingTicks))
+    {
+      return false;
+    }
+  }
+  if (!_reader.Read(count) || count > Snapshot::MAX_DESIGNS)
+  {
+    return false;
+  }
+  seat.designs.resize(count);
+  for (DeviceDesign& design : seat.designs)
+  {
+    if (!_reader.Read(design.chassis) || !_reader.Read(design.drive))
+    {
+      return false;
+    }
+    for (std::uint32_t& module : design.modules)
+    {
+      if (!_reader.Read(module))
+      {
+        return false;
+      }
+    }
+    if (!_reader.Read(design.moduleCount) || design.moduleCount > MAX_MOUNTS)
+    {
+      return false;
+    }
+  }
+  std::vector<std::uint8_t> states;
+  if (!_reader.Read(seat.deviceCount) || !_reader.Read(seat.deviceCap) || !_reader.Read(seat.structureCount) ||
+      !_reader.Read(seat.structureCap) || !ReadRuns(_reader, 256, seat.fogViewers) || !ReadRuns(_reader, 3, states) ||
+      states.size() != seat.fogViewers.size())
+  {
+    return false;
+  }
+  seat.fogState.resize(states.size());
+  for (std::size_t cell = 0; cell < states.size(); ++cell)
+  {
+    seat.fogState[cell] = static_cast<FogState>(states[cell]);
+  }
+  if (!_reader.Read(count) || count > Snapshot::MAX_GHOSTS)
+  {
+    return false;
+  }
+  seat.ghosts.resize(count);
+  for (Ghost& ghost : seat.ghosts)
+  {
+    if (!ReadObjectId(_reader, ghost.structure) || !_reader.Read(ghost.seat) || !_reader.Read(ghost.design) || !_reader.Read(ghost.cellX) ||
+        !_reader.Read(ghost.cellY) || !_reader.Read(ghost.seenTick))
+    {
+      return false;
+    }
+  }
+  if (!_reader.ReadBool(seat.defeated) || !_reader.ReadBool(seat.surrendered))
+  {
+    return false;
+  }
+  _out = std::move(seat);
+  return true;
+}
+
+/// The five maps in kind order, each in ascending id, as the hash reads them. The kind is the
+/// section rather than a field, so only the id's value is on the wire.
+void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
+{
+  _writer.Write(static_cast<std::uint32_t>(_world.Count(ObjectKind::Device)));
+  _world.ForEachDevice(
+    [&_writer](ObjectId _id, const Device& _device)
+    {
+      _writer.Write(_id.value);
+      _writer.Write(_device.seat);
+      _writer.Write(_device.design);
+      _writer.Write(_device.x);
+      _writer.Write(_device.y);
+      _writer.Write(_device.z);
+      _writer.Write(_device.facing);
+      _writer.Write(_device.hitPoints);
+      _writer.Write(_device.experience);
+      WriteObjectId(_writer, _device.target);
+      _writer.Write(_device.destinationX);
+      _writer.Write(_device.destinationZ);
+      _writer.WriteBool(_device.moving);
+      for (const std::uint32_t reload : _device.reloadTicks)
+      {
+        _writer.Write(reload);
+      }
+    });
+  _writer.Write(static_cast<std::uint32_t>(_world.Count(ObjectKind::Structure)));
+  _world.ForEachStructure(
+    [&_writer](ObjectId _id, const Structure& _structure)
+    {
+      _writer.Write(_id.value);
+      _writer.Write(_structure.seat);
+      _writer.Write(_structure.design);
+      _writer.Write(_structure.cellX);
+      _writer.Write(_structure.cellY);
+      _writer.Write(_structure.y);
+      _writer.Write(_structure.state);
+      _writer.Write(_structure.hitPoints);
+      _writer.Write(_structure.buildProgressHundredths);
+      for (const std::uint32_t module : _structure.modules)
+      {
+        _writer.Write(module);
+      }
+      _writer.Write(_structure.moduleCount);
+      WriteObjectId(_writer, _structure.working);
+      _writer.Write(_structure.workRemainingTicks);
+    });
+  _writer.Write(static_cast<std::uint32_t>(_world.Count(ObjectKind::Projectile)));
+  _world.ForEachProjectile(
+    [&_writer](ObjectId _id, const Projectile& _projectile)
+    {
+      _writer.Write(_id.value);
+      _writer.Write(_projectile.seat);
+      WriteObjectId(_writer, _projectile.shooter);
+      _writer.Write(_projectile.module);
+      _writer.Write(_projectile.x);
+      _writer.Write(_projectile.y);
+      _writer.Write(_projectile.z);
+      _writer.Write(_projectile.impactX);
+      _writer.Write(_projectile.impactY);
+      _writer.Write(_projectile.impactZ);
+      _writer.Write(_projectile.ticksToImpact);
+    });
+  _writer.Write(static_cast<std::uint32_t>(_world.Count(ObjectKind::Feature)));
+  _world.ForEachFeature(
+    [&_writer](ObjectId _id, const Feature& _feature)
+    {
+      _writer.Write(_id.value);
+      _writer.Write(_feature.design);
+      _writer.Write(_feature.cellX);
+      _writer.Write(_feature.cellY);
+      _writer.Write(_feature.y);
+      _writer.Write(_feature.facing);
+    });
+  _writer.Write(static_cast<std::uint32_t>(_world.Count(ObjectKind::Wreck)));
+  _world.ForEachWreck(
+    [&_writer](ObjectId _id, const Wreck& _wreck)
+    {
+      _writer.Write(_id.value);
+      _writer.Write(_wreck.seat);
+      WriteObjectId(_writer, _wreck.origin);
+      _writer.Write(_wreck.design);
+      _writer.Write(_wreck.x);
+      _writer.Write(_wreck.y);
+      _writer.Write(_wreck.z);
+      _writer.Write(_wreck.facing);
+      _writer.Write(_wreck.decayTicks);
+    });
+  _writer.Write(_world.NextId());
+}
+
+/// Reads a section's count, bounded; false when the stream is refused.
+[[nodiscard]] bool ReadCount(Neuron::ByteReader& _reader, std::uint32_t& _out)
+{
+  return _reader.Read(_out) && _out <= Snapshot::MAX_OBJECTS;
+}
+
+[[nodiscard]] bool ReadWorld(Neuron::ByteReader& _reader, World& _world)
+{
+  std::uint32_t count = 0;
+  if (!ReadCount(_reader, count))
+  {
+    return false;
+  }
+  for (std::uint32_t index = 0; index < count; ++index)
+  {
+    ObjectId id{0, ObjectKind::Device};
+    Device device{};
+    if (!_reader.Read(id.value) || !_reader.Read(device.seat) || !_reader.Read(device.design) || !_reader.Read(device.x) ||
+        !_reader.Read(device.y) || !_reader.Read(device.z) || !_reader.Read(device.facing) || !_reader.Read(device.hitPoints) ||
+        !_reader.Read(device.experience) || !ReadObjectId(_reader, device.target) || !_reader.Read(device.destinationX) ||
+        !_reader.Read(device.destinationZ) || !_reader.ReadBool(device.moving))
+    {
+      return false;
+    }
+    for (std::uint32_t& reload : device.reloadTicks)
+    {
+      if (!_reader.Read(reload))
+      {
+        return false;
+      }
+    }
+    if (!_world.Restore(id, device))
+    {
+      return false;
+    }
+  }
+  if (!ReadCount(_reader, count))
+  {
+    return false;
+  }
+  for (std::uint32_t index = 0; index < count; ++index)
+  {
+    ObjectId id{0, ObjectKind::Structure};
+    Structure structure{};
+    if (!_reader.Read(id.value) || !_reader.Read(structure.seat) || !_reader.Read(structure.design) || !_reader.Read(structure.cellX) ||
+        !_reader.Read(structure.cellY) || !_reader.Read(structure.y) || !ReadEnum(_reader, structure.state, 4) ||
+        !_reader.Read(structure.hitPoints) || !_reader.Read(structure.buildProgressHundredths))
+    {
+      return false;
+    }
+    for (std::uint32_t& module : structure.modules)
+    {
+      if (!_reader.Read(module))
+      {
+        return false;
+      }
+    }
+    if (!_reader.Read(structure.moduleCount) || structure.moduleCount > MAX_STRUCTURE_MODULES ||
+        !ReadObjectId(_reader, structure.working) || !_reader.Read(structure.workRemainingTicks) || !_world.Restore(id, structure))
+    {
+      return false;
+    }
+  }
+  if (!ReadCount(_reader, count))
+  {
+    return false;
+  }
+  for (std::uint32_t index = 0; index < count; ++index)
+  {
+    ObjectId id{0, ObjectKind::Projectile};
+    Projectile projectile{};
+    if (!_reader.Read(id.value) || !_reader.Read(projectile.seat) || !ReadObjectId(_reader, projectile.shooter) ||
+        !_reader.Read(projectile.module) || !_reader.Read(projectile.x) || !_reader.Read(projectile.y) || !_reader.Read(projectile.z) ||
+        !_reader.Read(projectile.impactX) || !_reader.Read(projectile.impactY) || !_reader.Read(projectile.impactZ) ||
+        !_reader.Read(projectile.ticksToImpact) || !_world.Restore(id, projectile))
+    {
+      return false;
+    }
+  }
+  if (!ReadCount(_reader, count))
+  {
+    return false;
+  }
+  for (std::uint32_t index = 0; index < count; ++index)
+  {
+    ObjectId id{0, ObjectKind::Feature};
+    Feature feature{};
+    if (!_reader.Read(id.value) || !_reader.Read(feature.design) || !_reader.Read(feature.cellX) || !_reader.Read(feature.cellY) ||
+        !_reader.Read(feature.y) || !_reader.Read(feature.facing) || !_world.Restore(id, feature))
+    {
+      return false;
+    }
+  }
+  if (!ReadCount(_reader, count))
+  {
+    return false;
+  }
+  for (std::uint32_t index = 0; index < count; ++index)
+  {
+    ObjectId id{0, ObjectKind::Wreck};
+    Wreck wreck{};
+    if (!_reader.Read(id.value) || !_reader.Read(wreck.seat) || !ReadObjectId(_reader, wreck.origin) || !_reader.Read(wreck.design) ||
+        !_reader.Read(wreck.x) || !_reader.Read(wreck.y) || !_reader.Read(wreck.z) || !_reader.Read(wreck.facing) ||
+        !_reader.Read(wreck.decayTicks) || !_world.Restore(id, wreck))
+    {
+      return false;
+    }
+  }
+  std::uint32_t nextId = 0;
+  if (!_reader.Read(nextId))
+  {
+    return false;
+  }
+  _world.SetNextId(nextId);
+  return true;
+}
+
 [[nodiscard]] bool ReadPositions(Neuron::ByteReader& _reader, std::vector<CellPosition>& _out)
 {
   std::uint32_t count = 0;
@@ -213,13 +628,10 @@ void Snapshot::Write(const Sim& _sim, Neuron::ByteWriter& _writer)
   _writer.Write(static_cast<std::uint8_t>(_sim.m_seats.size()));
   for (const Seat& seat : _sim.m_seats)
   {
-    _writer.Write(seat.kind);
-    _writer.Write(seat.alliance);
-    _writer.Write(seat.powerHundredths);
-    _writer.WriteBool(seat.defeated);
+    WriteSeat(_writer, seat);
   }
   WriteLandscape(_writer, _sim.m_landscape);
-  // The object maps go here, one count and its records per kind, as the systems arrive (ADR-003).
+  WriteWorld(_writer, _sim.m_world);
   _writer.Write(_sim.m_lastRoll);
   _writer.Write(_sim.m_appliedOrders);
   _writer.Write(_sim.m_droppedOrders);
@@ -280,13 +692,12 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes)
   }
   for (Seat& seat : sim.m_seats)
   {
-    if (!ReadEnum(reader, seat.kind, 3) || !reader.Read(seat.alliance) || !reader.Read(seat.powerHundredths) ||
-        !reader.ReadBool(seat.defeated))
+    if (!ReadSeat(reader, seat))
     {
       return std::nullopt;
     }
   }
-  if (!ReadLandscape(reader, sim.m_landscape))
+  if (!ReadLandscape(reader, sim.m_landscape) || !ReadWorld(reader, sim.m_world))
   {
     return std::nullopt;
   }
