@@ -10,7 +10,7 @@ The Species look lights the world with two directional lights and no ambient (`S
 
 ## Decision
 
-**Lighting is the Species model, unchanged.** Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then clamped, one normal per triangle and one colour per triangle (`Client/Shaders/TerrainPS.hlsl`; `Client/Lighting.h`). The Garden's pair, a near-white key at 23 degrees and a horizontal orange sun at three and a half times white, is the built-in until `Content\Biomes.json` carries one per biome. A face neither light reaches is black; that is the look, and the owner kept it.
+**Lighting is the Species model, unchanged.** Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then clamped, one normal per triangle and one colour per triangle (`Client/Shaders/TerrainPS.hlsl`; `Client/Lighting.h`). The Garden's pair, a near-white key at 23 degrees and a horizontal orange sun at three and a half times white, is the built-in until `GameData\Biomes.json` carries one per biome. A face neither light reaches is black; that is the look, and the owner kept it.
 
 **A team-colour slot is neither lit nor fogged.** A vertex whose colour alpha is `VERTEX_ALPHA_UNLIT` (0) is written as it is. Lights of up to (5.0, 2.35, 0.77) would tint every team colour orange, which the owner refused; and a fog that greys or blacks the colour at distance is worse than a tint, because the commander's colour is the one thing pillar 3 wants to survive distance. Every other vertex carries `VERTEX_ALPHA_LIT` (1). The terrain shader honours the rule though the terrain never uses the slot, so that the geometry pass of `m1-vertical-slice/K1` has a reference to copy rather than a comment to interpret.
 
@@ -31,6 +31,7 @@ Why, on the frames: from the same vantage on the Small landscape, the Species fo
 - The world does not fade to nothing. A biome's fog colour in `Biomes.json` (`SpeciesLook.md` §11) is carried for the linear mode and unused by the default; the desaturation has no colour to carry.
 - A world pass that forgets the reversed depth tests `LESS` against a buffer cleared to 0 and draws nothing, which a capture shows at once; a pass that forgets the clear value draws everything over everything. The rule sits in `SceneTarget.h` beside the format.
 - The far plane moves with the landscape, so a frustum-culling figure or a depth figure measured on Small does not carry to Large.
+- **The two frames were drawn with no sky.** Nothing draws one yet: the sky is the black clear colour, as Species's is, and its three additive layers are `m2-skirmish/T8`. The evidence above is the horizon band, which is exactly the part of the frame those layers occupy, so the comparison is re-made with the sky drawn before it is final. `OpenQuestions.md` Q17 carries that, together with the sky's scaling, which this ADR did not settle.
 - The owner has not seen the frames on a real display: this ADR is written on the statistics of two frames drawn by WARP. If the owner overrides at T22, the superseding ADR flips `DEFAULT_FOG_MODE` and nothing else moves: the far plane and the reversed depth are right under either fog.
 - The unlit-and-unfogged slot puts a branch in every world pixel shader. It is one comparison on an interpolated constant.
 

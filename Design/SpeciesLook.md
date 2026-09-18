@@ -151,7 +151,7 @@ A `CheckOpenGLState` that asserted all of this exists and is disabled; the comme
 
 **Drift**: `Clouds::Advance` adds (0.03, 0, −0.01) to the texture offset per 0.1-second server tick, which is 0.3 repeats per second on the first layer — about 570 world units per second across the 17,000-unit square, by arithmetic. Each quad is split 4×4 to keep per-vertex fog from banding.
 
-**Sizes are absolute, not map-relative.** 14,000 and 17,000 units were chosen for maps up to 5,400 across. A *Frontier Commander* landscape of 65,536 units needs these to scale with the map, or to become a camera-relative sky.
+**Sizes are absolute, not map-relative.** 14,000 and 17,000 units were chosen for maps up to 5,400 across. A *Frontier Commander* landscape of 65,536 units needs these to scale with the map, or to become a camera-relative sky. **Frontier takes neither as written: the layers follow the camera and their noise is sampled in world space** (owner, 2026-09-18, `OpenQuestions.md` Q17). Each layer is a quad covering the view at its own height, so it never runs out and never shows an edge, and its texture coordinates come from the world position under each vertex rather than from the quad, so a cloud feature keeps the size it was authored at on a landscape of any size and stays over the same piece of ground. Species's drift becomes an offset added to those world coordinates, the same animation in a different space. The layer heights, the world-space repeat period that replaces the per-square repeat counts, and the drift rate are measured on a frame by `m2-skirmish/T8` and recorded in its ADR. ADR-005 settled the fog's scaling and left the sky's; this is the sky's.
 
 ---
 
@@ -235,7 +235,7 @@ Negative gravity rises: fire and control flashes float up. The `Particle.bmp` te
 
 ## 11. What this means for Frontier Commander
 
-**Carry as data.** One entry per biome in `Content\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
+**Carry as data.** One entry per biome in `GameData\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
 
 **Carry as rules for the pixel shader.** Lambert only; no ambient; two directional lights whose colours may exceed 1.0, summed and clamped after the sum; one normal per triangle; one colour per triangle. That is a shader of a dozen lines, and it is the whole of the lighting.
 

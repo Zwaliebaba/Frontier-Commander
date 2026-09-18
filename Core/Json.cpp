@@ -157,11 +157,21 @@ namespace
 class Parser
 {
 public:
-  Parser(std::string_view _text, std::string_view _file, JsonError& _error) noexcept
+  Parser(std::string_view _text, std::string_view _file, JsonError& _error)
     : m_text(_text),
       m_file(_file),
       m_error(_error)
   {
+    // Where every line begins, once, so that giving a value its position is a search rather than
+    // a walk from the start of the document.
+    m_lineStarts.push_back(0);
+    for (std::size_t index = 0; index < m_text.size(); ++index)
+    {
+      if (m_text[index] == '\n')
+      {
+        m_lineStarts.push_back(index + 1);
+      }
+    }
   }
 
   bool ParseDocument(JsonValue& _out)
@@ -208,25 +218,23 @@ private:
     }
   }
 
-  bool Fail(std::size_t _offset, const char* _message)
+  /// The 1-based line and column of an offset, from the line starts the constructor recorded.
+  void PositionOf(std::size_t _offset, int& _line, int& _column) const noexcept
   {
     if (_offset > m_text.size())
     {
       _offset = m_text.size();
     }
-    int line = 1;
-    std::size_t lineStart = 0;
-    for (std::size_t index = 0; index < _offset; ++index)
-    {
-      if (m_text[index] == '\n')
-      {
-        ++line;
-        lineStart = index + 1;
-      }
-    }
+    const auto above = std::upper_bound(m_lineStarts.begin(), m_lineStarts.end(), _offset);
+    const std::size_t index = static_cast<std::size_t>(above - m_lineStarts.begin()) - 1;
+    _line = static_cast<int>(index) + 1;
+    _column = static_cast<int>(_offset - m_lineStarts[index]) + 1;
+  }
+
+  bool Fail(std::size_t _offset, const char* _message)
+  {
+    PositionOf(_offset, m_error.line, m_error.column);
     m_error.file = std::string(m_file);
-    m_error.line = line;
-    m_error.column = static_cast<int>(_offset - lineStart) + 1;
     m_error.message = _message;
     return false;
   }
@@ -237,6 +245,20 @@ private:
     {
       return Fail(m_position, "expected a value, found the end of the document");
     }
+    const std::size_t start = m_position;
+    if (!ParseValueAt(_out, _depth))
+    {
+      return false;
+    }
+    int line = 0;
+    int column = 0;
+    PositionOf(start, line, column);
+    _out.SetPosition(line, column);
+    return true;
+  }
+
+  bool ParseValueAt(JsonValue& _out, int _depth)
+  {
     switch (Peek())
     {
     case '{':
@@ -699,6 +721,7 @@ private:
   std::string_view m_file;
   JsonError& m_error;
   std::size_t m_position = 0;
+  std::vector<std::size_t> m_lineStarts;
 };
 
 // --- The writer --------------------------------------------------------------------------------

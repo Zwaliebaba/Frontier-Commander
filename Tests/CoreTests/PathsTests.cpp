@@ -53,7 +53,7 @@ public:
     const std::filesystem::path directory = Neuron::Paths::ExecutableDirectory();
     Assert::IsTrue(directory.is_absolute());
     Assert::IsTrue(std::filesystem::is_directory(directory));
-    Assert::IsTrue(Neuron::Paths::ContentDirectory() == directory / L"Content");
+    Assert::IsTrue(Neuron::Paths::GameDataDirectory() == directory / L"GameData");
     Assert::IsTrue(Neuron::Paths::ModsDirectory() == directory / L"Mods");
   }
 
@@ -64,7 +64,7 @@ public:
     const std::filesystem::path userRoot = scratch.path / L"Profile";
     Neuron::Paths::OverrideForTests(executable, userRoot);
     Assert::IsTrue(Neuron::Paths::ExecutableDirectory() == executable);
-    Assert::IsTrue(Neuron::Paths::ContentDirectory() == executable / L"Content");
+    Assert::IsTrue(Neuron::Paths::GameDataDirectory() == executable / L"GameData");
     const std::filesystem::path user = Neuron::Paths::UserDirectory();
     Assert::IsTrue(user == userRoot / L"FrontierCommander");
     Assert::IsTrue(std::filesystem::is_directory(user), L"the user directory was not created on first use");

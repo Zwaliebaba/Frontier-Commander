@@ -98,6 +98,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ContentLoader.cpp" />
+    <ClCompile Include="ContentValidator.cpp" />
+    <ClCompile Include="DesignStats.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
@@ -105,6 +108,18 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="LandscapeDefinition.h" />
+    <ClInclude Include="BiomeDesc.h" />
+    <ClInclude Include="ComponentDesc.h" />
+    <ClInclude Include="ContentLoader.h" />
+    <ClInclude Include="ContentTree.h" />
+    <ClInclude Include="ContentValidator.h" />
+    <ClInclude Include="DamageTable.h" />
+    <ClInclude Include="DesignStats.h" />
+    <ClInclude Include="ModelDesc.h" />
+    <ClInclude Include="ResearchItemDesc.h" />
+    <ClInclude Include="SoundEventDesc.h" />
+    <ClInclude Include="StampDesc.h" />
+    <ClInclude Include="StructureDesc.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Core\Core.vcxproj">

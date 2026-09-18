@@ -17,7 +17,11 @@ public:
   [[nodiscard]] static std::filesystem::path ExecutableDirectory();
 
   /// <executable directory>\Content, read-only content.
-  [[nodiscard]] static std::filesystem::path ContentDirectory();
+  /// The game's data beside the executable: tables, textures, models, sounds. Named for what it
+  /// holds and not for the project that reads it, because `Content` is a library of loaders and
+  /// this is the tree they load; keeping one name for both put assets inside a source directory,
+  /// which is what this separation undoes (owner, 2026-09-18).
+  [[nodiscard]] static std::filesystem::path GameDataDirectory();
 
   /// <executable directory>\Mods.
   [[nodiscard]] static std::filesystem::path ModsDirectory();

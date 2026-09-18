@@ -4,6 +4,15 @@
 * text=auto
 
 ###############################################################################
+# Content that is bytes, never text. Git's own detection would almost certainly
+# get these right, but a palette read exactly by the terrain lookup and a wave
+# played as it is are two files where "almost certainly" is not the standard.
+###############################################################################
+*.dds -text
+*.wav -text
+*.bmp -text
+
+###############################################################################
 # Set default behavior for command prompt diff.
 #
 # This is need for earlier builds of msysgit that does not have it on by

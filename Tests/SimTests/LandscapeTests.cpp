@@ -289,6 +289,36 @@ public:
                    std::vector<Frontier::Landscape::Cell>(landscape.Cells().begin(), landscape.Cells().end()));
   }
 
+  TEST_METHOD(ATilesPaletteRidesTheSnapshotAndStaysOutOfTheHash)
+  {
+    // A tile's palette colours the ground and generates none of it (OpenQuestions.md Q18), so two
+    // matches differing only in it run identically and must hash identically; the snapshot still
+    // has to carry it, or a rejoining client would colour the landscape differently.
+    Frontier::LandscapeDefinition plain = LoadDefinition(1);
+    Frontier::LandscapeDefinition regioned = plain;
+    Assert::IsTrue(regioned.tiles.size() >= 2, L"the fixture has tiles to colour differently");
+    regioned.tiles[0].palette = "Desert";
+    regioned.tiles[1].palette = "Icecaps";
+
+    Frontier::Sim first(TwoSeats());
+    Frontier::Sim second(TwoSeats());
+    Assert::IsTrue(first.CreateLandscape(plain));
+    Assert::IsTrue(second.CreateLandscape(regioned));
+    Assert::IsTrue(std::vector<std::int16_t>(first.Terrain().Heights().begin(), first.Terrain().Heights().end()) ==
+                     std::vector<std::int16_t>(second.Terrain().Heights().begin(), second.Terrain().Heights().end()),
+                   L"a palette changes no height");
+    Assert::AreEqual(first.ComputeHash(), second.ComputeHash(), L"and no hash");
+
+    const std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(second));
+    if (!reloaded.has_value())
+    {
+      Assert::Fail(L"the snapshot did not read back");
+    }
+    Assert::IsTrue(reloaded->Terrain().Definition() == regioned, L"the snapshot carries every tile's palette");
+    Assert::AreEqual(std::string("Desert"), reloaded->Terrain().Definition().tiles[0].palette);
+    Assert::AreEqual(std::string("Icecaps"), reloaded->Terrain().Definition().tiles[1].palette);
+  }
+
   TEST_METHOD(TheSnapshotCarriesTheDefinitionAndTheDeltasNotTheSamples)
   {
     Frontier::Sim sim(TwoSeats());

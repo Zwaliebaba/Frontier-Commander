@@ -53,8 +53,14 @@ struct LandscapeTile
   std::int32_t lowlandExponentHundredths;
   std::uint8_t method;       ///< 0 mean of four, 1 one pair, 2 one sample
   std::uint32_t edgeFalloff; ///< Samples from the border over which the tile is pulled to the plain
+  /// The biome this tile is coloured by, or empty for the landscape's own (OpenQuestions.md Q18,
+  /// owner 2026-09-18). Two tiles of different biomes blend across their overlap by the same
+  /// edgeFalloff weight their heights merge by, so a region boundary is where the ground already
+  /// changes. It colours and never generates: the heights are the same whatever this says, which
+  /// is why it is not in the state hash (Landscape::AddToHash) though the snapshot carries it.
+  std::string palette;
 
-  [[nodiscard]] constexpr bool operator==(const LandscapeTile&) const noexcept = default;
+  [[nodiscard]] bool operator==(const LandscapeTile&) const noexcept = default;
 };
 
 struct CellPosition

@@ -51,7 +51,16 @@ tasks:
     verify:
       - python3 Tools/CheckTaskDag.py
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Design/Interface.md, written 2026-09-17. Its §11 lists eleven things no document supplied,
+      each against the task that owns it, four of which block K4: the inverse of FitAuthored, what
+      Core/RenderView.h must grow for R2, a wire record for the order rejections S2 already
+      computes, and the chrome palette file. Its §12 lists nine rulings, three against a reference
+      document: text at 16 pixels in one face rather than Species's 12 and 13, one-pixel borders,
+      and the right button giving orders while the middle button aims the camera, which M0 had
+      bound the other way and G1 changes. The owner's merge of the pull request is the acceptance
+      of all nine.
 
   - id: C1
     title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
@@ -96,10 +105,10 @@ tasks:
       - Design/TechnicalDesign.md
     acceptance:
       - "One row aggregate per table with plain camelCase fields (R8), every number an integer in the unit its name says (hundredths for factors and percentages, ticks for times, subunits for distances, power in hundredths): ChassisDesc, DriveDesc, ModuleDesc, ResearchItemDesc, StructureDesc and its module rows, DamageTable (five weapon classes by ten target classes plus armorFactor and the armour kind per weapon class), BiomeDesc (palette, water and wave bitmaps, the two lights, fog, sky), LandscapeDefinition (the schema m0-foundation/T16 wrote), StampDesc, ModelDesc (positions, colours, triangles, markers, fragments), SoundEventDesc"
-      - 'ContentLoader reads Content\ from Paths::ContentDirectory() or a directory given to it, file by file, into a ContentTree, and stops at the first file that fails with the file, line and column; ContentValidator then checks the whole tree: every research prerequisite exists and the tree has no cycle, every unlock names a real component or structure, every model, texture and sound a row names exists, no id is duplicated, every number is within the range its field declares, and every landscape''s palette names a biome'
+      - 'ContentLoader reads GameData\ from Paths::GameDataDirectory() or a directory given to it, file by file, into a ContentTree, and stops at the first file that fails with the file, line and column; ContentValidator then checks the whole tree: every research prerequisite exists and the tree has no cycle, every unlock names a real component or structure, every model, texture and sound a row names exists, no id is duplicated, every number is within the range its field declares, and every landscape''s palette names a biome'
       - "DesignStats derives speed, hit points, armour, cost, build time and sight from a chassis, a drive and modules by the formulas of GameDesign.md §6, in integer arithmetic, and ContentTests reproduces the two worked examples (104 world units per second, 130 power, 13 seconds; 29, 490, 49) once C2's tables exist, against literal rows until then"
       - FrontierHost --validate [directory] loads and validates with that code and exits 0 or non-zero printing every diagnostic; it is a step in CI guarded on Content\\Components.json existing, added to the workflow in this task
-      - 'ContentTests loads a tree written to a temporary directory by the test, never Content\ in place, and refuses each of a set of deliberately broken documents with the right file and line: a missing prerequisite, a cycle, an unknown model, a duplicate id, a number out of range, a malformed file'
+      - 'ContentTests loads a tree written to a temporary directory by the test, never GameData\ in place, and refuses each of a set of deliberately broken documents with the right file and line: a missing prerequisite, a cycle, an unknown model, a duplicate id, a number out of range, a malformed file'
       - The content ADR, numbered when written, records the directory layout, every schema with a version field, the range of every numeric field, and the rule that a loader change and a content change ship together
     verify:
       - python3 Tools/CheckTaskDag.py
@@ -108,7 +117,21 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Green on CI run 44 (b474d6c), with the loader, the validator, the derivation and the host's
+      --validate. ADR-006 is the content ADR. Two things it needed did not exist: Neuron::TICKS_PER_SECOND,
+      which ADR-002 had fixed at 20 and no code had yet declared, now in Core/FixedPoint.h beside
+      the other units; and a line on a JsonValue, so that a fault in what a value means rather
+      than in its syntax points at the value. ContentTree::origins records the file and line of
+      every row as it is read, which is how a duplicate id or a missing prerequisite names a line
+      although it spans files. The CI step is guarded on GameData\Components.json, which C2 writes,
+      so it skips until then. Run 43 was red on clang-tidy alone, for three fair findings the
+      session's own linter had been missing because it was passing -p with no compilation
+      database, which silently drops the repository's configuration: the fixture documents were
+      pointers to const rather than constants, both scratch destructors called a filesystem
+      function that can throw, and the host's main built a path from a command-line argument.
+      Run without that flag, the session's clang-tidy reproduces every one of them.
 
   - id: C2
     title: Author the M1 content tables
@@ -118,13 +141,13 @@ tasks:
     project: Content
     depends_on: [C1]
     files:
-      - Content/Components.json
-      - Content/Structures.json
-      - Content/Research.json
-      - Content/Damage.json
-      - Content/Biomes.json
-      - Content/Landscapes/Slice.json
-      - Content/Sounds.json
+      - GameData/Components.json
+      - GameData/Structures.json
+      - GameData/Research.json
+      - GameData/Damage.json
+      - GameData/Biomes.json
+      - GameData/Landscapes/Slice.json
+      - GameData/Sounds.json
       - Tests/ContentTests/DesignStatsTests.cpp
     acceptance:
       - "Components.json: chassis Light I, Medium I, Heavy I; drives Wheels, Half-track, Tracks; modules Machine gun, Cannon, Mortar, Builder, every number from the GameDesign.md §6 tables"
@@ -135,6 +158,7 @@ tasks:
       - "Landscapes/Slice.json: a Small landscape whose seed the landscape tool reports as passing all four guarantees, with two starts and twelve deposits placed per GameDesign.md §3 (a modest cluster at each start, the largest midway)"
       - FrontierHost --validate passes over the tree, and the CI step runs it
       - The DesignStats test now reads the tables and reproduces the worked examples from them
+      - "The terrain draws from the biome's palette rather than the built-in gradient: the loading and the four Species palettes landed early, on 2026-09-18, so this task points the Default biome at GameData/Textures/LandscapeDefault.dds and checks the capture's frames are coloured by it. Getting GameData beside the executable is the owner's step and no build target does it, so until that is in place the capture logs the gradient and this line is not yet checkable"
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Tools/LandscapeTool.py --report Small --seeds 100
@@ -160,7 +184,7 @@ tasks:
       - Runs on Linux on the standard library
     verify:
       - python3 Tools/CheckTaskDag.py
-      - python3 Tools/CheckBalance.py Content
+      - python3 Tools/CheckBalance.py GameData
     parallel_safe: true
     status: todo
 
@@ -180,28 +204,36 @@ tasks:
       - Tools/ImportSounds.py
       - Tools/ImportTextures.py
       - Tools/MakePlaceholderModels.py
-      - Content/Models/ChassisLight.json
-      - Content/Models/ChassisMedium.json
-      - Content/Models/ChassisHeavy.json
-      - Content/Models/DriveWheels.json
-      - Content/Models/DriveHalfTrack.json
-      - Content/Models/DriveTracks.json
-      - Content/Models/ModuleMachineGun.json
-      - Content/Models/ModuleCannon.json
-      - Content/Models/ModuleMortar.json
-      - Content/Models/ModuleBuilder.json
-      - Content/Models/CommandPost.json
-      - Content/Models/Extractor.json
-      - Content/Models/Generator.json
-      - Content/Models/Factory.json
-      - Content/Models/ResearchLab.json
-      - Content/Models/Tower.json
-      - Content/Models/Shell.json
-      - Content/Models/Wreck.json
-      - Content/Models/Deposit.json
-      - Content/Textures/LandscapeDefault.dds
-      - Content/Textures/SpectrumFont.dds
-      - Content/Textures/Icons.dds
+      # Tools/MakeTerrainPalette.py and the four general Species palettes landed with C1's
+      # follow-up on 2026-09-18 (OpenQuestions.md Q18): GameData/Textures/Landscape{Default,
+      # Desert,Earth,Icecaps}.dds, each with its bottom six rows ramped into the water colour so
+      # that any two blend at the shore. C4 brings the font, the icons, the water and wave
+      # textures and the cloud noise; M2 authors the four biomes the Species set does not cover,
+      # its other four palettes being recolours of Default for one location each.
+      - GameData/Models/ChassisLight.json
+      - GameData/Models/ChassisMedium.json
+      - GameData/Models/ChassisHeavy.json
+      - GameData/Models/DriveWheels.json
+      - GameData/Models/DriveHalfTrack.json
+      - GameData/Models/DriveTracks.json
+      - GameData/Models/ModuleMachineGun.json
+      - GameData/Models/ModuleCannon.json
+      - GameData/Models/ModuleMortar.json
+      - GameData/Models/ModuleBuilder.json
+      - GameData/Models/CommandPost.json
+      - GameData/Models/Extractor.json
+      - GameData/Models/Generator.json
+      - GameData/Models/Factory.json
+      - GameData/Models/ResearchLab.json
+      - GameData/Models/Tower.json
+      - GameData/Models/FactoryModule.json
+      - GameData/Models/LabModule.json
+      - GameData/Models/GeneratorModule.json
+      - GameData/Models/Shell.json
+      - GameData/Models/Wreck.json
+      - GameData/Models/Deposit.json
+      - GameData/Textures/SpectrumFont.dds
+      - GameData/Textures/Icons.dds
       - Design/ADR/README.md
       - Design/ADR/ADR-<next>-species-content.md
       - Design/SpeciesLineage.md
@@ -214,7 +246,7 @@ tasks:
       - "The provenance ADR lists every Species-derived file in the tree with its source path, states that the owner accepts the provenance risk including distribution to other players in M3 and inside mods (OpenQuestions.md R5), and repeats what is excluded regardless"
     verify:
       - python3 Tools/CheckTaskDag.py
-      - python3 Tools/MakePlaceholderModels.py Content/Models
+      - python3 Tools/MakePlaceholderModels.py GameData/Models
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
     parallel_safe: true
     status: todo
@@ -639,7 +671,7 @@ tasks:
       - "The AI seat observes through its own fog grid and ghost store into a blackboard: known enemy structures, a threat map at cluster resolution, its economy and army composition; it runs at stage 11 within a budget and emits orders for tick t plus its delay through the ordinary queue"
       - "The behaviour list is fixed for M1: claim the nearest deposits with extractors and a generator within 48 cells, build a factory and a lab, research by auto-research, design by AiDesigner (expected damage per power against the seen enemy composition through the damage matrix, best design per role), produce to a composition, attack-move with a group when its strength exceeds a threshold, rebuild what is lost"
       - No wall time, no float, no thread; the AI's decisions are a function of the state and the tick
-      - "Tests: AI against AI on Content/Landscapes/Slice.json from a fixed seed reproduces hash for hash in two Sims; within 12,000 ticks both seats have a served extractor, a factory and a lab and have fielded a device, and first contact has occurred; a 36,000-tick run reaches a decided victory state, run in a test that CI can afford (its duration is recorded in the notes)"
+      - "Tests: AI against AI on GameData/Landscapes/Slice.json from a fixed seed reproduces hash for hash in two Sims; within 12,000 ticks both seats have a served extractor, a factory and a lab and have fielded a device, and first contact has occurred; a 36,000-tick run reaches a decided victory state, run in a test that CI can afford (its duration is recorded in the notes)"
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
@@ -979,7 +1011,7 @@ tasks:
     acceptance:
       - "LocalHost runs Sim, Net's Host and the AI seat on its own thread driven by wall time, mapping wall time to ticks in exactly one place, slowing the match clock rather than skipping when it falls behind; it talks to the client only through LoopbackTransport"
       - "The client loop is the seven steps of §3: pump, drain the network, apply frames, interpolate 100 milliseconds behind, build the render view, route input, draw and present; it has no simulation clock"
-      - Starting the executable starts a match on Content/Landscapes/Slice.json with the human in seat 0 and the scripted AI in seat 1 at the lobby defaults, until M2's lobby exists
+      - Starting the executable starts a match on GameData/Landscapes/Slice.json with the human in seat 0 and the scripted AI in seat 1 at the lobby defaults, until M2's lobby exists
       - "Selection by click and drag rectangle through Replica's picking; orders by right click (Move, or Attack on an enemy), by hotkey (attack-move, stop, stances) and, until K4's panels, by hotkey plus click for structure placement with the footprint ghost; every order becomes an OrderMessage and nothing in the executable touches Sim"
       - "The end of the match shows a win or loss overlay; Escape pauses the local host and shows a menu with resume and quit; Alt+F4 quits"
       - A click moves a unit in about 250 milliseconds over loopback, measured with the log and recorded in the notes

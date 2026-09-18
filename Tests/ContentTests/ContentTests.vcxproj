@@ -105,13 +105,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="SuiteSmoke.cpp" />
+    <ClCompile Include="ContentLoaderTests.cpp" />
+    <ClCompile Include="ContentValidatorTests.cpp" />
+    <ClCompile Include="DesignStatsTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="BrokenFixtures.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Content\Content.vcxproj">
