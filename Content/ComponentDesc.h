@@ -88,6 +88,10 @@ struct ChassisDesc
   ChassisClass chassisClass;
   std::string unlockedBy; ///< A research item's id, or empty for a row available from the first tick
   std::string model;      ///< A model id; its MarkerMount* and MarkerDrive* carry the other parts
+  /// The factor the model is drawn at, in hundredths of its authored size; 100 is native. It sits
+  /// on the row rather than on the model so that one model serves two rows at two sizes, which is
+  /// what a placeholder primitive does before the authored models exist (SpeciesLineage.md §5).
+  std::int32_t modelScaleHundredths = 100;
   std::int32_t hitPoints;
   std::int32_t kineticArmor;
   std::int32_t thermalArmor;
@@ -106,6 +110,10 @@ struct DriveDesc
   DriveClass driveClass;
   std::string unlockedBy;
   std::string model;
+  /// The factor the model is drawn at, in hundredths of its authored size; 100 is native. It sits
+  /// on the row rather than on the model so that one model serves two rows at two sizes, which is
+  /// what a placeholder primitive does before the authored models exist (SpeciesLineage.md §5).
+  std::int32_t modelScaleHundredths = 100;
   std::int32_t speedFactorHundredths;
   std::int32_t maxSlopePercent;
   bool crossesWater;
@@ -122,6 +130,10 @@ struct ModuleDesc
   SystemKind systemKind; ///< None for a weapon; the weapon half is read only then
   std::string unlockedBy;
   std::string model; ///< Its MarkerMuzzle is where a shot leaves
+  /// The factor the model is drawn at, in hundredths of its authored size; 100 is native. It sits
+  /// on the row rather than on the model so that one model serves two rows at two sizes, which is
+  /// what a placeholder primitive does before the authored models exist (SpeciesLineage.md §5).
+  std::int32_t modelScaleHundredths = 100;
   std::int32_t weightPenaltyPercent;
   std::int32_t costHundredths;
   std::uint8_t chassisClassMask; ///< Bit per ChassisClass; 0 means every chassis takes it

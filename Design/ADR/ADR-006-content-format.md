@@ -14,6 +14,8 @@
 
 **Every number is an integer in the unit its name says** (`AGENTS.md` R6; ADR-002), and the name carries the unit: `costHundredths`, `buildTimeTicks`, `sightSubunits`, `speedFactorHundredths`, `weightPenaltyPercent`. Factors and percentages are hundredths, times are ticks, distances are subunits of 1/256 world unit, power is hundredths. Nothing in `Content` is a float — not because R16 reaches here, which it does not, but because a row is compared, hashed for the content digest of M3 and replicated, and a float is unreliable at all three. The renderer's own numbers, a light's direction and colour, are hundredths for the same reason and the client converts them once.
 
+**A row that names a model also carries the scale it is drawn at**, `modelScaleHundredths`, absent meaning 100 and native. It sits on the row rather than on the model, so that one model serves two rows at two sizes: a placeholder primitive stands in for several things before the authored models exist, and the Species review found shapes needing 0.45 and 0.6 to fit the footprints they were given (`SpeciesLineage.md` §5). Scaling a model scales its markers with it, so a drive or a module attaches where the scaled chassis puts it; that is the consumer's arithmetic (`m1-vertical-slice/R2`), and this ADR only fixes where the number lives.
+
 **A table authored in seconds is converted once, in `Content`.** `Neuron::TICKS_PER_SECOND` is declared in `Core/FixedPoint.h` beside the other units, which ADR-002 fixed at 20 and no code had yet needed.
 
 **Every file carries a `version`, and a reader refuses a version it does not know by name** rather than reading it as best it can. The table files are at version 1 together; the landscape, stamp and model documents carry their own, declared beside their row, because a tool writes them one at a time.
@@ -37,6 +39,7 @@
 - `JsonValue` grew two integers. A content tree is tens of kilobytes, so the cost is nothing; a program parsing megabytes of JSON with this reader would notice, and none does.
 - Rows keep the order their files declare, so a listing is a loop and the content hash of M3 has a stable order to digest. A lookup by id is a linear search, which is right for tables of tens of rows and wrong for thousands; if a table ever reaches thousands, this is the decision to revisit.
 - Nothing yet loads `Content\Interface.json`, the chrome palette `Design/Interface.md` §3 specifies. It is a table like any other and `C2` adds it with its row aggregate.
+- A structure module names a model like everything else, and the placeholder set of `C4` had none, which `C2` would have met as a validation failure. `C4`'s file list now carries one per M1 structure module.
 - A landscape definition is validated against **this build's** constants — samples a side, sample spacing, the outside height — rather than reading them, so a definition written by a tool of another shape is refused rather than silently regenerated differently.
 
 ## Measurements

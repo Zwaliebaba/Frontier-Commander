@@ -29,6 +29,11 @@ constexpr std::int32_t MAX_FACTOR_HUNDREDTHS = 100000;
 constexpr std::uint32_t MAX_MOUNTS = 8;
 constexpr std::uint32_t MAX_FOOTPRINT_CELLS = 16;
 constexpr std::uint32_t MAX_MODEL_VERTICES = 65535;
+/// A model may be drawn from a hundredth of its authored size to a hundred times it. The Species
+/// review found shapes needing 0.45 and 0.6 to fit their footprints (SpeciesLineage.md §5), so the
+/// range is generous at the small end and bounded at the large one.
+constexpr std::int32_t MIN_MODEL_SCALE_HUNDREDTHS = 1;
+constexpr std::int32_t MAX_MODEL_SCALE_HUNDREDTHS = 10000;
 constexpr std::uint32_t MAX_STAMP_SAMPLES = 1025;
 
 /// Reads a whole file as text. Returns false when it cannot be opened or read.
@@ -395,6 +400,8 @@ constexpr std::uint32_t TABLE_VERSION = 1;
   return _reader.Object(_row, "a chassis") && _reader.String(_row, "id", _out.id) && _reader.String(_row, "name", _out.name) &&
          _reader.Enumerated<ChassisClass>(_row, "class", CHASSIS_CLASS_NAMES, _out.chassisClass) &&
          _reader.OptionalString(_row, "unlockedBy", _out.unlockedBy) && _reader.String(_row, "model", _out.model) &&
+         _reader.OptionalInt32(_row, "modelScaleHundredths", MIN_MODEL_SCALE_HUNDREDTHS, MAX_MODEL_SCALE_HUNDREDTHS,
+                               _out.modelScaleHundredths) &&
          _reader.Int32(_row, "hitPoints", 1, MAX_HIT_POINTS, _out.hitPoints) &&
          _reader.Int32(_row, "kineticArmor", 0, MAX_ARMOR, _out.kineticArmor) &&
          _reader.Int32(_row, "thermalArmor", 0, MAX_ARMOR, _out.thermalArmor) &&
@@ -417,6 +424,8 @@ constexpr std::uint32_t TABLE_VERSION = 1;
   return _reader.Object(_row, "a drive") && _reader.String(_row, "id", _out.id) && _reader.String(_row, "name", _out.name) &&
          _reader.Enumerated<DriveClass>(_row, "class", DRIVE_CLASS_NAMES, _out.driveClass) &&
          _reader.OptionalString(_row, "unlockedBy", _out.unlockedBy) && _reader.String(_row, "model", _out.model) &&
+         _reader.OptionalInt32(_row, "modelScaleHundredths", MIN_MODEL_SCALE_HUNDREDTHS, MAX_MODEL_SCALE_HUNDREDTHS,
+                               _out.modelScaleHundredths) &&
          _reader.Int32(_row, "speedFactorHundredths", 1, MAX_FACTOR_HUNDREDTHS, _out.speedFactorHundredths) &&
          _reader.Int32(_row, "maxSlopePercent", 0, MAX_PERCENT, _out.maxSlopePercent) &&
          _reader.Boolean(_row, "crossesWater", _out.crossesWater) &&
@@ -429,6 +438,8 @@ constexpr std::uint32_t TABLE_VERSION = 1;
   if (!_reader.Object(_row, "a module") || !_reader.String(_row, "id", _out.id) || !_reader.String(_row, "name", _out.name) ||
       !_reader.Enumerated<SystemKind>(_row, "systemKind", SYSTEM_KIND_NAMES, _out.systemKind) ||
       !_reader.OptionalString(_row, "unlockedBy", _out.unlockedBy) || !_reader.String(_row, "model", _out.model) ||
+      !_reader.OptionalInt32(_row, "modelScaleHundredths", MIN_MODEL_SCALE_HUNDREDTHS, MAX_MODEL_SCALE_HUNDREDTHS,
+                             _out.modelScaleHundredths) ||
       !_reader.Int32(_row, "weightPenaltyPercent", 0, 100, _out.weightPenaltyPercent) ||
       !_reader.Int32(_row, "costHundredths", 1, MAX_POWER_HUNDREDTHS, _out.costHundredths))
   {
@@ -538,6 +549,8 @@ constexpr std::uint32_t TABLE_VERSION = 1;
          _reader.Enumerated<StructureRole>(_row, "role", STRUCTURE_ROLE_NAMES, _out.role) &&
          _reader.Enumerated<StrengthClass>(_row, "strength", STRENGTH_CLASS_NAMES, _out.strength) &&
          _reader.OptionalString(_row, "unlockedBy", _out.unlockedBy) && _reader.String(_row, "model", _out.model) &&
+         _reader.OptionalInt32(_row, "modelScaleHundredths", MIN_MODEL_SCALE_HUNDREDTHS, MAX_MODEL_SCALE_HUNDREDTHS,
+                               _out.modelScaleHundredths) &&
          _reader.UInt32(_row, "footprintCellsX", 1, MAX_FOOTPRINT_CELLS, _out.footprintCellsX) &&
          _reader.UInt32(_row, "footprintCellsY", 1, MAX_FOOTPRINT_CELLS, _out.footprintCellsY) &&
          _reader.Int32(_row, "hitPoints", 1, MAX_HIT_POINTS, _out.hitPoints) &&
@@ -568,6 +581,8 @@ constexpr std::uint32_t TABLE_VERSION = 1;
 {
   return _reader.Object(_row, "a structure module") && _reader.String(_row, "id", _out.id) && _reader.String(_row, "name", _out.name) &&
          _reader.OptionalString(_row, "unlockedBy", _out.unlockedBy) && _reader.String(_row, "model", _out.model) &&
+         _reader.OptionalInt32(_row, "modelScaleHundredths", MIN_MODEL_SCALE_HUNDREDTHS, MAX_MODEL_SCALE_HUNDREDTHS,
+                               _out.modelScaleHundredths) &&
          _reader.Int32(_row, "costHundredths", 1, MAX_POWER_HUNDREDTHS, _out.costHundredths) &&
          _reader.UInt32(_row, "buildTimeTicks", 1, MAX_TICKS, _out.buildTimeTicks) &&
          _reader.Enumerated<StructureModuleEffect>(_row, "effect", STRUCTURE_MODULE_EFFECT_NAMES, _out.effect) &&

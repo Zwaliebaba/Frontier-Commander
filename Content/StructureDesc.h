@@ -56,6 +56,10 @@ struct StructureModuleDesc
   std::string name;
   std::string unlockedBy;
   std::string model;
+  /// The factor the model is drawn at, in hundredths of its authored size; 100 is native. It sits
+  /// on the row rather than on the model so that one model serves two rows at two sizes, which is
+  /// what a placeholder primitive does before the authored models exist (SpeciesLineage.md §5).
+  std::int32_t modelScaleHundredths = 100;
   std::int32_t costHundredths;
   std::uint32_t buildTimeTicks;
   StructureModuleEffect effect;
@@ -72,6 +76,10 @@ struct StructureDesc
   StrengthClass strength;
   std::string unlockedBy;
   std::string model;
+  /// The factor the model is drawn at, in hundredths of its authored size; 100 is native. It sits
+  /// on the row rather than on the model so that one model serves two rows at two sizes, which is
+  /// what a placeholder primitive does before the authored models exist (SpeciesLineage.md §5).
+  std::int32_t modelScaleHundredths = 100;
   std::uint32_t footprintCellsX;
   std::uint32_t footprintCellsY;
   std::int32_t hitPoints;

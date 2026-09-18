@@ -219,6 +219,9 @@ tasks:
       - Content/Models/Factory.json
       - Content/Models/ResearchLab.json
       - Content/Models/Tower.json
+      - Content/Models/FactoryModule.json
+      - Content/Models/LabModule.json
+      - Content/Models/GeneratorModule.json
       - Content/Models/Shell.json
       - Content/Models/Wreck.json
       - Content/Models/Deposit.json

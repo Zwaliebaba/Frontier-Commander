@@ -197,6 +197,58 @@ public:
     Assert::IsTrue(diagnostic.message.find("five in all") != std::string::npos);
   }
 
+  TEST_METHOD(TheModelScaleDefaultsToNativeAndIsReadWhereItIsGiven)
+  {
+    const ScratchTree tree;
+    Frontier::ContentTree loaded;
+    std::vector<Frontier::ContentDiagnostic> diagnostics;
+    Assert::IsTrue(Frontier::LoadContent(tree.path, loaded, diagnostics));
+    // No fixture row carries the member, so every one of them is at native scale.
+    Assert::AreEqual(100, loaded.FindChassis("LightI")->modelScaleHundredths, L"a row with no scale is native");
+    Assert::AreEqual(100, loaded.FindDrive("Wheels")->modelScaleHundredths);
+    Assert::AreEqual(100, loaded.FindModule("Cannon")->modelScaleHundredths);
+    Assert::AreEqual(100, loaded.FindStructure("Factory")->modelScaleHundredths);
+    Assert::AreEqual(100, loaded.FindStructureModule("FactoryModule")->modelScaleHundredths);
+
+    // The Species review found shapes needing 0.45 and 0.6 to fit their footprints.
+    WriteFixture(tree.path / "Structures.json", "{\n"
+                                                "  \"version\": 1,\n"
+                                                "  \"structures\": [\n"
+                                                "    { \"id\": \"Mine\", \"name\": \"Mine\", \"role\": \"Extractor\",\n"
+                                                "      \"strength\": \"Soft\", \"model\": \"m\", \"modelScaleHundredths\": 45,\n"
+                                                "      \"footprintCellsX\": 1, \"footprintCellsY\": 1, \"hitPoints\": 1,\n"
+                                                "      \"kineticArmor\": 0, \"thermalArmor\": 0, \"costHundredths\": 1,\n"
+                                                "      \"buildTimeTicks\": 1, \"sightSubunits\": 1, \"moduleSlots\": 0 }\n"
+                                                "  ],\n"
+                                                "  \"modules\": []\n"
+                                                "}\n");
+    Frontier::ContentTree scaled;
+    Assert::IsTrue(Frontier::LoadContent(tree.path, scaled, diagnostics));
+    Assert::AreEqual(45, scaled.FindStructure("Mine")->modelScaleHundredths);
+  }
+
+  TEST_METHOD(AModelScaleOutsideItsRangeIsRefusedAtItsOwnLine)
+  {
+    const ScratchTree tree;
+    WriteFixture(tree.path / "Components.json", "{\n"
+                                                "  \"version\": 1,\n"
+                                                "  \"chassis\": [\n"
+                                                "    {\n"
+                                                "      \"id\": \"LightI\", \"name\": \"Light I\", \"class\": \"Light\", \"model\": \"m\",\n"
+                                                "      \"modelScaleHundredths\": 0,\n"
+                                                "      \"hitPoints\": 100, \"kineticArmor\": 5, \"thermalArmor\": 5,\n"
+                                                "      \"baseSpeedSubunitsPerTick\": 1024, \"sightSubunits\": 327680,\n"
+                                                "      \"costHundredths\": 6000, \"mounts\": 1\n"
+                                                "    }\n"
+                                                "  ],\n"
+                                                "  \"drives\": [],\n"
+                                                "  \"modules\": []\n"
+                                                "}\n");
+    const Frontier::ContentDiagnostic diagnostic = RefusedBy(tree);
+    Assert::AreEqual(6, diagnostic.line, L"a model drawn at nothing is a table bug, not a hidden model");
+    Assert::IsTrue(diagnostic.message.find("modelScaleHundredths") != std::string::npos);
+  }
+
   TEST_METHOD(ADiagnosticPrintsInTheFormTheBuildToolsPrint)
   {
     const Frontier::ContentDiagnostic located{"Components.json", 12, 5, "'mounts' is between 1 and 8"};
