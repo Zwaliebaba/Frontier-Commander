@@ -1067,6 +1067,7 @@ tasks:
       - Tests/ClientTests/ModelBuffersTests.cpp
       - Tests/ClientTests/ClientTests.vcxproj
       - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Design/ADR/ADR-011-model-normals.md
       - Design/ADR/README.md
       - Design/TechnicalDesign.md
     acceptance:
@@ -1080,7 +1081,28 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      ADR-011 is the decision TechnicalDesign.md 6.4 deferred: the loader splits and bakes, it does
+      not take the normal from the pixel shader's derivatives. The argument that settled it is not
+      the cost - it is that the terrain's way of fixing the derivative's sign, "if the normal points
+      down, flip it", is the ground knowing it faces up, and a model has no such rule. The cost is
+      arithmetic either way: over the twenty-two models in GameData\Models the colour alone, which a
+      derivative renderer still has to split on because a flat attribute comes from the triangle's
+      first vertex, costs 232 vertices against the descriptions' 176; keying the normal in as well
+      costs 528, which is 14.8 kB for the whole set. Measured through LoadContent and BuildModelMesh
+      rather than estimated. The outward normal turned out to be cross(c - a, b - a) and not the
+      textbook cross(b - a, c - a): the placeholder generator winds a front face clockwise seen from
+      outside, which is what Direct3D calls front by default, and all 264 triangles agree; getting it
+      backwards lights every model from inside and the symptom says nothing, so a test pins all six
+      faces of a box and ModelMesh::inwardFacingTriangles counts the disagreements for authored
+      models later. What this task does NOT have is the captured frame its acceptance asks for -
+      G2 composes devices into the capture and R2 fills the render view, so no frame with a model in
+      it exists yet. ADR-011 says so in its own measurements section and names what would overturn
+      it. The pass is written and registered but nothing calls it: App.cpp is G2's file, not this
+      one's. The acceptance's "one instance buffer per model per frame" is implemented as one buffer
+      per frame holding a contiguous run per model, one draw per run - the same batching with one
+      allocation instead of a resource per model per frame.
 
   - id: K2
     title: Client fog pass

@@ -66,6 +66,12 @@
     <ClCompile Include="TerrainPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ModelBuffers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="GeometryPass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="WaterPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -140,11 +146,23 @@
     <ClInclude Include="TerrainPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="ModelBuffers.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="GeometryPass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="WaterPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\GeometryPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\GeometryVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\PresentPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

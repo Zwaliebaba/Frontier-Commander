@@ -112,6 +112,7 @@
     <ClCompile Include="TerrainChunkTests.cpp" />
     <ClCompile Include="CameraTests.cpp" />
     <ClCompile Include="FrameTimerTests.cpp" />
+    <ClCompile Include="ModelBuffersTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

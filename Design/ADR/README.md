@@ -14,6 +14,7 @@ One file per engineering decision, numbered from `ADR-001` in this repository (`
 | [`ADR-008`](ADR-008-fog-grid-encoding.md) | The fog grid, the first O(area) state a snapshot carries, is run-length encoded; ADR-003's refusal of compression superseded for that one section on the measurement it demanded, every other section unchanged | 2026-09-18 |
 | [`ADR-009`](ADR-009-content-in-the-simulation.md) | The simulation reads the content tree, taken by reference at construction and never written; a snapshot carries the digest of the tables it was written against and refuses any other, so reloading against different rules is a refusal rather than a silent divergence | 2026-09-18 |
 | [`ADR-010`](ADR-010-species-content.md) | The Species-derived content: the owner's acceptance of the provenance risk, including distribution in M3 and inside mods; the inventory of every file that has come across and the tool that converted it; the exclusions enforced in `Tools/ImportSounds.py` rather than remembered | 2026-09-18 |
+| [`ADR-011`](ADR-011-model-normals.md) | Model normals baked by the loader onto a split vertex rather than taken from the pixel shader's derivatives, because the colour already forces the split and the derivative's sign has no answer on a model; the outward normal is the SDK's `cross(c − a, b − a)`, pinned by a test and checked by a winding count; the captured frame K1 asked for is owed once G2 lands | 2026-09-18 |
 
 ## When to write one
 
