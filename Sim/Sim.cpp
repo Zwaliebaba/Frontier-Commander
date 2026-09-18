@@ -11,8 +11,9 @@
 namespace Frontier
 {
 
-Sim::Sim(const MatchSettings& _settings)
+Sim::Sim(const MatchSettings& _settings, const ContentTree& _content)
   : m_settings(_settings),
+    m_content(&_content),
     m_random(_settings.seed)
 {
   FRONTIER_ASSERT(_settings.seatCount >= MIN_SEATS && _settings.seatCount <= MAX_SEATS);

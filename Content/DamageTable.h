@@ -30,15 +30,21 @@ inline constexpr std::uint8_t TARGET_CLASS_COUNT = DRIVE_CLASS_COUNT + STRENGTH_
   return static_cast<std::uint8_t>(DRIVE_CLASS_COUNT + static_cast<std::uint8_t>(_strength));
 }
 
+// Every array below is initialised where it is declared, and that is not decoration. This is the
+// only member of ContentTree that is not a std::vector, so it is the only one a default-initialised
+// tree leaves holding whatever was in that memory: `ContentTree tree;` would otherwise give a
+// damage matrix of garbage, and because every call site in the tree happens to write `{}`, nothing
+// would have caught it. Found on 2026-09-18 by the content digest hashing the same fixture twice
+// and getting two answers (m1-vertical-slice, OpenQuestions.md Q20).
 struct DamageTable
 {
   /// [weapon class][target class], a percentage applied to the weapon's damage.
-  std::array<std::array<std::int32_t, TARGET_CLASS_COUNT>, WEAPON_CLASS_COUNT> modifierPercent;
+  std::array<std::array<std::int32_t, TARGET_CLASS_COUNT>, WEAPON_CLASS_COUNT> modifierPercent = {};
   /// How much of the target's armour this weapon class meets: 100 for the kinetic weapons and
   /// flame, 50 for energy, 0 for artillery.
-  std::array<std::int32_t, WEAPON_CLASS_COUNT> armorFactorPercent;
+  std::array<std::int32_t, WEAPON_CLASS_COUNT> armorFactorPercent = {};
   /// Which armour value it meets.
-  std::array<ArmorKind, WEAPON_CLASS_COUNT> armorKind;
+  std::array<ArmorKind, WEAPON_CLASS_COUNT> armorKind = {};
 
   [[nodiscard]] bool operator==(const DamageTable&) const noexcept = default;
 };

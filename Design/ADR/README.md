@@ -12,6 +12,7 @@ One file per engineering decision, numbered from `ADR-001` in this repository (`
 | [`ADR-006`](ADR-006-content-format.md) | The content format: one plain row aggregate per table with integer fields in the unit their names say, a version per file refused by name, fail-fast loading and exhaustive validation, a line on every diagnostic including the ones that span files, `FrontierHost --validate` as CI's gate, and `DesignStats` as the one derivation | 2026-09-17 |
 | [`ADR-007`](ADR-007-view-budget.md) | The view budget: the fog range absolute in world units with a ceiling on the desaturation, superseding ADR-005's fractions on the owner's frame; terrain chunk residency bounded by radius with the coarsest level resident everywhere, which holds for the four shipping size classes and is stated as O(area) that a quadtree must replace beyond them; the renderer's distances explicitly not line of sight | 2026-09-18 |
 | [`ADR-008`](ADR-008-fog-grid-encoding.md) | The fog grid, the first O(area) state a snapshot carries, is run-length encoded; ADR-003's refusal of compression superseded for that one section on the measurement it demanded, every other section unchanged | 2026-09-18 |
+| [`ADR-009`](ADR-009-content-in-the-simulation.md) | The simulation reads the content tree, taken by reference at construction and never written; a snapshot carries the digest of the tables it was written against and refuses any other, so reloading against different rules is a refusal rather than a silent divergence | 2026-09-18 |
 
 ## When to write one
 

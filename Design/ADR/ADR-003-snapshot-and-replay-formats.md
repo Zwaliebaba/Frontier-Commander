@@ -1,6 +1,6 @@
 # ADR-003 — The snapshot and replay formats
 
-**Status:** Accepted; the refusal of compression is superseded, for the fog grid alone, by [`ADR-008`](ADR-008-fog-grid-encoding.md) (2026-09-18), on the measurement this ADR asked for. Everything else here stands.
+**Status:** Accepted; `Snapshot::Read`'s signature and one field of the layout are superseded by [`ADR-009`](ADR-009-content-in-the-simulation.md) (2026-09-18), which binds a snapshot to the content it was written against; the refusal of compression is superseded, for the fog grid alone, by [`ADR-008`](ADR-008-fog-grid-encoding.md) (2026-09-18), on the measurement this ADR asked for. Everything else here stands.
 **Date:** 2026-09-17
 **Owner:** the author, on `Design/TechnicalDesign.md` §4.9 and §9
 
@@ -15,7 +15,8 @@ The determinism tests of `TechnicalDesign.md` §10 need a snapshot from M0: a `S
 | Field | Bytes | Note |
 |---|---|---|
 | magic | 4 | `"FCSP"`, `SNAPSHOT_MAGIC` = 0x50534346 |
-| version | 2 | `SNAPSHOT_VERSION`: 2 with the landscape section (`m0-foundation/T17`), 3 with a tile's palette (`OpenQuestions.md` Q18), 4 with the object maps and the seat's own state (`m1-vertical-slice/S1`), 5 with a device's primary order and stances and a seat's dropped orders (`S2`) |
+| version | 2 | `SNAPSHOT_VERSION`: 2 with the landscape section (`m0-foundation/T17`), 3 with a tile's palette (`OpenQuestions.md` Q18), 4 with the object maps and the seat's own state (`m1-vertical-slice/S1`), 5 with a device's primary order and stances and a seat's dropped orders (`S2`), 6 with the content digest (ADR-009) |
+| content digest | 8 | `ContentHash` of the tables the match is played by (ADR-009). Read and compared before any field, so a stream written against other rules is refused rather than read |
 | settings | 34 | seed (8), size class, seat count, base level, power level, technology tiers, victory (1 each), survival ticks (4), then eight seats' kind and alliance (2 each): the lobby, verbatim |
 | tick | 4 | |
 | Random state | 16 | the four xoshiro128\*\* words |

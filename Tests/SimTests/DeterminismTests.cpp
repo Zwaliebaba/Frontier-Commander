@@ -18,6 +18,14 @@ namespace SimTests
 
 namespace
 {
+/// The tables a match is played by. These suites exercise the simulation rather than the rules, so
+/// an empty tree is the honest one: no row is read, and Q20's binding is still exercised, because
+/// the snapshot carries this tree's hash and refuses any other.
+const Frontier::ContentTree& NoContent()
+{
+  static const Frontier::ContentTree tree{};
+  return tree;
+}
 
 // The three tests TechnicalDesign.md §10 says exist from M0, over a Sim with no systems yet: the
 // tick, the one draw stage 8 makes, the seats, the queue and the hash are what they exercise, so
@@ -85,7 +93,7 @@ private:
 /// The Sim a snapshot of _sim reads back as; a snapshot that does not read back fails the test here.
 Frontier::Sim Reload(const Frontier::Sim& _sim)
 {
-  std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(_sim));
+  std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(_sim), NoContent());
   if (!reloaded.has_value())
   {
     Assert::Fail(L"the snapshot did not read back"); // noreturn, which is what the optional access below relies on
@@ -110,8 +118,8 @@ public:
   TEST_METHOD(TwoMatchesFromOneSeedAndOneOrderStreamHashIdenticallyEveryTick)
   {
     const Frontier::MatchSettings settings = FourSeats(0x5EEDull);
-    Frontier::Sim a(settings);
-    Frontier::Sim b(settings);
+    Frontier::Sim a(settings, NoContent());
+    Frontier::Sim b(settings, NoContent());
     OrderStream stream(7);
     std::uint32_t submitted = 0;
     for (std::uint32_t tick = 1; tick <= MATCH_TICKS; ++tick)
@@ -136,7 +144,7 @@ public:
   TEST_METHOD(ASnapshotReloadedContinuesToTheSameHashes)
   {
     const Frontier::MatchSettings settings = FourSeats(0xC0FFEEull);
-    Frontier::Sim original(settings);
+    Frontier::Sim original(settings, NoContent());
     OrderStream stream(11);
     for (std::uint32_t tick = 1; tick <= SNAPSHOT_TICK; ++tick)
     {
@@ -178,7 +186,7 @@ public:
   TEST_METHOD(ARecordedOrderStreamReplayedFromTheSeedReproducesTheHashes)
   {
     const Frontier::MatchSettings settings = FourSeats(0xABCDEFull);
-    Frontier::Sim live(settings);
+    Frontier::Sim live(settings, NoContent());
     OrderStream stream(23);
     std::vector<Frontier::Order> recorded;
     std::vector<std::uint64_t> hashes;
@@ -195,7 +203,7 @@ public:
     }
     // A replay is the settings, the seed and the order stream (TechnicalDesign.md §4.9): the whole
     // stream is known up front, so it is fed up front, and the hash must not care.
-    Frontier::Sim replay(settings);
+    Frontier::Sim replay(settings, NoContent());
     for (const Frontier::Order& order : recorded)
     {
       replay.Submit(order);
@@ -218,7 +226,7 @@ public:
     // ADR-002's measurement: an empty tick and a hash of the empty state, in nanoseconds each,
     // written to the test output for the run that records them.
     const Frontier::MatchSettings settings = FourSeats(1);
-    Frontier::Sim sim(settings);
+    Frontier::Sim sim(settings, NoContent());
     const auto tickStart = std::chrono::steady_clock::now();
     for (std::uint32_t tick = 0; tick < MATCH_TICKS; ++tick)
     {

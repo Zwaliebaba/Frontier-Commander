@@ -19,6 +19,14 @@ namespace SimTests
 
 namespace
 {
+/// The tables a match is played by. These suites exercise the simulation rather than the rules, so
+/// an empty tree is the honest one: no row is read, and Q20's binding is still exercised, because
+/// the snapshot carries this tree's hash and refuses any other.
+const Frontier::ContentTree& NoContent()
+{
+  static const Frontier::ContentTree tree{};
+  return tree;
+}
 
 Frontier::MatchSettings ThreeSeats()
 {
@@ -50,7 +58,7 @@ Frontier::Order Chat(std::uint32_t _tick, std::uint8_t _seat)
 /// The Sim a snapshot of _sim reads back as; a snapshot that does not read back fails the test here.
 Frontier::Sim Reload(const Frontier::Sim& _sim)
 {
-  std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(_sim));
+  std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(_sim), NoContent());
   if (!reloaded.has_value())
   {
     Assert::Fail(L"the snapshot did not read back"); // noreturn, which is what the optional access below relies on
@@ -166,7 +174,7 @@ void Populate(Frontier::Sim& _sim)
 /// A match a little way in, with a surrendered seat, orders applied and dropped, and orders pending.
 Frontier::Sim Busy()
 {
-  Frontier::Sim sim(ThreeSeats());
+  Frontier::Sim sim(ThreeSeats(), NoContent());
   Populate(sim);
   for (std::uint8_t seat = 0; seat < 3; ++seat)
   {
@@ -328,6 +336,31 @@ public:
     moved(fog, L"one cell of a seat's fog");
   }
 
+  TEST_METHOD(ASnapshotIsRefusedAgainstTablesItWasNotWrittenAgainst)
+  {
+    // The whole of Q20's answer: a match reloaded against different rules is a different match,
+    // and the digest turns that from a divergence nobody notices into a refusal here.
+    Frontier::ContentTree tables{};
+    Frontier::ChassisDesc chassis{};
+    chassis.id = "ChassisLight";
+    chassis.hitPoints = 100;
+    tables.components.chassis.push_back(chassis);
+
+    Frontier::Sim sim(ThreeSeats(), tables);
+    sim.Advance();
+    const std::vector<std::byte> bytes = Frontier::Snapshot::Write(sim);
+
+    Assert::IsTrue(Frontier::Snapshot::Read(bytes, tables).has_value(), L"the tables it was written against");
+    Assert::IsFalse(Frontier::Snapshot::Read(bytes, NoContent()).has_value(), L"no tables at all");
+
+    Frontier::ContentTree edited = tables;
+    edited.components.chassis[0].hitPoints += 1;
+    Assert::IsFalse(Frontier::Snapshot::Read(bytes, edited).has_value(), L"one number of one row changed");
+
+    Frontier::ContentTree same = tables;
+    Assert::IsTrue(Frontier::Snapshot::Read(bytes, same).has_value(), L"an equal tree, not the same object");
+  }
+
   TEST_METHOD(WritingTheSameSimTwiceGivesTheSameBytes)
   {
     const Frontier::Sim sim = Busy();
@@ -341,14 +374,14 @@ public:
     const std::vector<std::byte> bytes = Frontier::Snapshot::Write(Busy());
     for (std::size_t length = 0; length < bytes.size(); ++length)
     {
-      if (Frontier::Snapshot::Read(std::span<const std::byte>(bytes.data(), length)).has_value())
+      if (Frontier::Snapshot::Read(std::span<const std::byte>(bytes.data(), length), NoContent()).has_value())
       {
         Assert::Fail((L"a snapshot cut to " + std::to_wstring(length) + L" bytes read back").c_str());
       }
     }
     std::vector<std::byte> longer = bytes;
     longer.push_back(std::byte{0});
-    Assert::IsFalse(Frontier::Snapshot::Read(longer).has_value(), L"trailing bytes are refused");
+    Assert::IsFalse(Frontier::Snapshot::Read(longer, NoContent()).has_value(), L"trailing bytes are refused");
   }
 
   TEST_METHOD(AnAlteredByteIsRefused)
@@ -358,7 +391,7 @@ public:
     {
       std::vector<std::byte> altered = bytes;
       altered[index] ^= std::byte{0x5A};
-      if (Frontier::Snapshot::Read(altered).has_value())
+      if (Frontier::Snapshot::Read(altered, NoContent()).has_value())
       {
         Assert::Fail((L"a snapshot with byte " + std::to_wstring(index) + L" altered read back").c_str());
       }
@@ -369,15 +402,15 @@ public:
   {
     Neuron::ByteWriter writer;
     writer.WriteHeader({Frontier::SNAPSHOT_MAGIC, static_cast<std::uint16_t>(Frontier::SNAPSHOT_VERSION + 1)});
-    Assert::IsFalse(Frontier::Snapshot::Read(writer.Bytes()).has_value(), L"a later version is refused");
+    Assert::IsFalse(Frontier::Snapshot::Read(writer.Bytes(), NoContent()).has_value(), L"a later version is refused");
     writer.Clear();
     writer.WriteHeader({Frontier::SNAPSHOT_MAGIC ^ 1u, Frontier::SNAPSHOT_VERSION});
-    Assert::IsFalse(Frontier::Snapshot::Read(writer.Bytes()).has_value(), L"another magic is refused");
+    Assert::IsFalse(Frontier::Snapshot::Read(writer.Bytes(), NoContent()).has_value(), L"another magic is refused");
   }
 
   TEST_METHOD(ASnapshotBeforeTheFirstTickReadsBack)
   {
-    const Frontier::Sim fresh(ThreeSeats());
+    const Frontier::Sim fresh(ThreeSeats(), NoContent());
     Assert::AreEqual(static_cast<std::uint32_t>(0), fresh.Tick());
     Assert::AreEqual(static_cast<std::uint64_t>(0), fresh.Hash());
     const Frontier::Sim reloaded = Reload(fresh);

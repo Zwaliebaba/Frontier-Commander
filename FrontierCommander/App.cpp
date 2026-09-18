@@ -74,6 +74,15 @@ constexpr float PI = 3.14159265358979323846f;
 }
 
 /// A two-seat lobby, the least a match needs.
+/// The tables a match is played by (OpenQuestions.md Q20). Empty until m1-vertical-slice/C2
+/// authors them and the loader is wired to GameData: no row is read by the stages that exist, and
+/// an empty tree is honest about that where a tree loaded from nothing would not be.
+[[nodiscard]] const Frontier::ContentTree& MatchContent()
+{
+  static const Frontier::ContentTree tree{};
+  return tree;
+}
+
 [[nodiscard]] MatchSettings Lobby()
 {
   MatchSettings settings{};
@@ -263,7 +272,7 @@ int App::RunWindowed()
   Neuron::SwapChain swapChain(device, window.Handle(), window.ClientWidth(), window.ClientHeight());
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::PresentPass present(device, scene);
-  Sim sim(Lobby());
+  Sim sim(Lobby(), MatchContent());
   if (!sim.CreateLandscape(SmallLandscape()))
   {
     Neuron::Log::Write(Neuron::LogLevel::Error, "the built-in landscape was refused");
@@ -338,7 +347,7 @@ int App::RunCapture()
   Neuron::GraphicsDevice device(m_options.warp);
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::FrameCapture capture(device, Neuron::AUTHORED_WIDTH_PIXELS, Neuron::AUTHORED_HEIGHT_PIXELS, Neuron::SCENE_COLOR_FORMAT);
-  Sim sim(Lobby());
+  Sim sim(Lobby(), MatchContent());
   if (!sim.CreateLandscape(SmallLandscape()))
   {
     Neuron::Log::Write(Neuron::LogLevel::Error, "the built-in landscape was refused");

@@ -18,6 +18,14 @@ namespace SimTests
 
 namespace
 {
+/// The tables a match is played by. These suites exercise the simulation rather than the rules, so
+/// an empty tree is the honest one: no row is read, and Q20's binding is still exercised, because
+/// the snapshot carries this tree's hash and refuses any other.
+const Frontier::ContentTree& NoContent()
+{
+  static const Frontier::ContentTree tree{};
+  return tree;
+}
 
 constexpr std::int32_t CELL = Neuron::SUBUNITS_PER_CELL;
 
@@ -62,7 +70,7 @@ Frontier::Order Ordered(Frontier::OrderKind _kind, std::uint8_t _seat, std::int3
 /// A match with a landscape, a device for each seat and a standing structure for seat 0.
 struct Fixture
 {
-  Frontier::Sim sim{TwoSeats()};
+  Frontier::Sim sim{TwoSeats(), NoContent()};
   Frontier::ObjectId mine;
   Frontier::ObjectId theirs;
   Frontier::ObjectId myStructure;

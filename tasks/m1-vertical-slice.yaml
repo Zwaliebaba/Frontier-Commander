@@ -338,7 +338,7 @@ tasks:
       the review added, so that a turtled base cannot bank an army and generators are the
       target at this game's distances.
     project: Sim
-    depends_on: [S2]
+    depends_on: [S2, C2, C5]
     files:
       - Sim/Economy.h
       - Sim/Economy.cpp
@@ -1102,3 +1102,40 @@ tasks:
     notes: >
       Owner's task. An agent prepares the ADR addendum from the capture run's log and the PR
       that archives the plan once the owner reports.
+
+  - id: C5
+    title: The content tree in the simulation, and the snapshot's binding to it
+    intent: >
+      Every simulation system from S3 on reads rows rather than literals, which nothing made
+      possible: Sim took MatchSettings and nothing else, and no task owned the wiring
+      (OpenQuestions.md Q20, owner 2026-09-18). Sim takes the tree by reference and never writes
+      it, and a snapshot carries the digest of the tables it was written against so that reloading
+      against different rules is a refusal rather than a divergence nobody notices.
+    project: Sim
+    depends_on: [C1, S1]
+    blocked_by: []
+    files:
+      - Content/ContentHash.h
+      - Content/ContentHash.cpp
+      - Content/DamageTable.h
+      - Sim/Sim.h
+      - Sim/Sim.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Design/ADR/ADR-009-content-in-the-simulation.md
+      - Tests/ContentTests/ContentHashTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
+    acceptance:
+      - Sim takes the ContentTree by reference at construction and exposes it; binding a temporary is a compile error rather than a dangling pointer found at run time
+      - ContentHash digests every field of every table the simulation reads - components, structures, research, the damage matrix - and nothing the client alone reads, with strings length-prefixed so two rows whose ids run together cannot digest as one
+      - A snapshot carries the digest and Snapshot::Read refuses a tree that differs, before it reads a field; the state hash is untouched, because the digest is a precondition rather than per-tick state
+      - ContentHashTests moves one field of every table and each mutation moves the digest, so a field added to a row without a line in the digest fails a test rather than diverging in silence
+      - ADR-009 records the decision, what it forecloses - the self-describing snapshot that would outlive its tables - and what it cost
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: done

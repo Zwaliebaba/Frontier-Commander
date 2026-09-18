@@ -8,6 +8,8 @@
 #include "Seat.h"
 #include "World.h"
 
+#include "ContentTree.h"
+
 #include "Assertion.h"
 #include "Random.h"
 
@@ -29,8 +31,19 @@ class Snapshot;
 class Sim
 {
 public:
-  /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed.
-  explicit Sim(const MatchSettings& _settings);
+  /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed,
+  /// and the tables every system reads (OpenQuestions.md Q20, owner 2026-09-18). The tree is held
+  /// by reference and never written: ADR-006 has one process hold one tree that nothing writes to
+  /// after loading, so the simulation reads rows and owns none. **The tree must outlive the Sim**,
+  /// which is why binding a temporary is deleted rather than left to be discovered at runtime.
+  Sim(const MatchSettings& _settings, const ContentTree& _content);
+  Sim(const MatchSettings& _settings, ContentTree&& _content) = delete;
+
+  /// The tables this match is played by. Never null.
+  [[nodiscard]] const ContentTree& Content() const noexcept
+  {
+    return *m_content;
+  }
 
   /// Generates the landscape from its definition: the heightfield the systems of M1 read. False,
   /// with no landscape, for a definition the generator refuses.
@@ -161,6 +174,7 @@ private:
   [[nodiscard]] bool Apply(const Order& _order);
 
   MatchSettings m_settings;
+  const ContentTree* m_content;
   std::uint32_t m_tick = 0;
   Neuron::Random m_random;
   std::vector<Seat> m_seats;

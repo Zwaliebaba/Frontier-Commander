@@ -11,6 +11,14 @@ namespace SimTests
 
 namespace
 {
+/// The tables a match is played by. These suites exercise the simulation rather than the rules, so
+/// an empty tree is the honest one: no row is read, and Q20's binding is still exercised, because
+/// the snapshot carries this tree's hash and refuses any other.
+const Frontier::ContentTree& NoContent()
+{
+  static const Frontier::ContentTree tree{};
+  return tree;
+}
 
 Frontier::MatchSettings TwoSides(Frontier::VictoryCondition _victory, std::uint32_t _survivalTicks)
 {
@@ -45,7 +53,7 @@ TEST_CLASS(SimTests)
 public:
   TEST_METHOD(TheSeatsComeFromTheLobby)
   {
-    const Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    const Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     Assert::AreEqual(static_cast<std::size_t>(3), sim.Seats().size());
     Assert::IsTrue(sim.Seats()[0].kind == Frontier::SeatKind::Human);
     Assert::AreEqual(1, static_cast<int>(sim.Seats()[1].alliance));
@@ -58,7 +66,7 @@ public:
 
   TEST_METHOD(TheTickAndTheRandomAdvanceOnlyInAdvance)
   {
-    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     const Neuron::Random::State before = sim.Stream().GetState();
     sim.Submit(Of(Frontier::OrderKind::Chat, 0, 1));
     Assert::IsTrue(before == sim.Stream().GetState(), L"Submit must not draw");
@@ -73,7 +81,7 @@ public:
 
   TEST_METHOD(AnOrderForAPastTickAppliesOnTheNextOne)
   {
-    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     for (int tick = 0; tick < 5; ++tick)
     {
       sim.Advance();
@@ -87,7 +95,7 @@ public:
 
   TEST_METHOD(OrdersThatFailValidationAreDroppedAndCounted)
   {
-    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     sim.Submit(Of(Frontier::OrderKind::Chat, 7, 1)); // no such seat
     sim.Submit(Of(Frontier::OrderKind::Chat, 2, 1)); // an empty seat
     sim.Submit(Of(Frontier::OrderKind::Move, 0, 1)); // names an object nobody owns
@@ -99,7 +107,7 @@ public:
 
   TEST_METHOD(SurrenderDefeatsTheSeatAndTheLastAllianceWins)
   {
-    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     sim.Advance();
     Assert::IsFalse(sim.Finished());
     sim.Submit(Of(Frontier::OrderKind::Surrender, 1, 2));
@@ -115,7 +123,7 @@ public:
 
   TEST_METHOD(SurvivalEndsWhenTheClockRunsOutAndEqualPowerIsADraw)
   {
-    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Survival, 10));
+    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Survival, 10), NoContent());
     for (int tick = 0; tick < 9; ++tick)
     {
       sim.Advance();
@@ -128,7 +136,7 @@ public:
 
   TEST_METHOD(PublishIsDueOnEverySecondTick)
   {
-    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    Frontier::Sim sim(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     Assert::IsFalse(sim.PublishDue());
     sim.Advance();
     Assert::IsFalse(sim.PublishDue());
@@ -140,8 +148,8 @@ public:
 
   TEST_METHOD(TheHashCoversTheSeatsTheTickAndTheStream)
   {
-    Frontier::Sim a(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
-    Frontier::Sim b(TwoSides(Frontier::VictoryCondition::Annihilation, 0));
+    Frontier::Sim a(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
+    Frontier::Sim b(TwoSides(Frontier::VictoryCondition::Annihilation, 0), NoContent());
     Assert::AreEqual(a.ComputeHash(), b.ComputeHash());
     a.Advance();
     Assert::AreNotEqual(a.ComputeHash(), b.ComputeHash(), L"the tick and the draw change the hash");
@@ -154,7 +162,7 @@ public:
     Assert::AreNotEqual(a.ComputeHash(), b.ComputeHash(), L"a defeated seat changes the hash");
     Frontier::MatchSettings other = TwoSides(Frontier::VictoryCondition::Annihilation, 0);
     other.seed = 100;
-    const Frontier::Sim c(other);
+    const Frontier::Sim c(other, NoContent());
     Assert::AreNotEqual(b.ComputeHash(), c.ComputeHash(), L"the seed reaches the hash through the Random state");
   }
 };

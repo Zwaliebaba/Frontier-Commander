@@ -2,6 +2,8 @@
 
 #include "Snapshot.h"
 
+#include "ContentHash.h"
+
 #include "Hash.h"
 
 #include <type_traits>
@@ -645,6 +647,9 @@ void Snapshot::Write(const Sim& _sim, Neuron::ByteWriter& _writer)
 {
   const std::size_t start = _writer.Size();
   _writer.WriteHeader({SNAPSHOT_MAGIC, SNAPSHOT_VERSION});
+  // The rules the match is played by, so that reloading against others is refused rather than
+  // silently played out differently (OpenQuestions.md Q20).
+  _writer.Write(ContentHash(_sim.Content()));
   WriteSettings(_writer, _sim.m_settings);
   _writer.Write(_sim.m_tick);
   for (const std::uint32_t word : _sim.m_random.GetState())
@@ -684,11 +689,16 @@ std::vector<std::byte> Snapshot::Write(const Sim& _sim)
   return writer.Release();
 }
 
-std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes)
+std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes, const ContentTree& _content)
 {
   Neuron::ByteReader reader(_bytes);
   Neuron::StreamHeader header{};
   if (!reader.ReadHeader(SNAPSHOT_MAGIC, SNAPSHOT_VERSION, SNAPSHOT_VERSION, header))
+  {
+    return std::nullopt;
+  }
+  std::uint64_t content = 0;
+  if (!reader.Read(content) || content != ContentHash(_content))
   {
     return std::nullopt;
   }
@@ -697,7 +707,7 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes)
   {
     return std::nullopt;
   }
-  Sim sim(settings);
+  Sim sim(settings, _content);
   Neuron::Random::State state{};
   if (!reader.Read(sim.m_tick))
   {

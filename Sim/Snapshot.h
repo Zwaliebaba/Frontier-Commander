@@ -16,10 +16,11 @@ namespace Frontier
 
 /// "FCSP", little-endian, at the head of every snapshot.
 inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
-/// 5 since 2026-09-18: 4 brought the world's five object maps and the seat's economy, research,
-/// designs, caps, fog grid and ghost store (m1-vertical-slice/S1); 5 brings a device's primary
-/// order and stances and a seat's dropped orders (S2).
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 5;
+/// 6 since 2026-09-18: 4 brought the world's five object maps and the seat's economy, research,
+/// designs, caps, fog grid and ghost store (m1-vertical-slice/S1); 5 brought a device's primary
+/// order and stances and a seat's dropped orders (S2); 6 brings the content hash the stream is
+/// bound to (OpenQuestions.md Q20).
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 6;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,
@@ -32,8 +33,11 @@ public:
   static void Write(const Sim& _sim, Neuron::ByteWriter& _writer);
   [[nodiscard]] static std::vector<std::byte> Write(const Sim& _sim);
 
-  /// The Sim the bytes hold, or nothing when the stream is short, of another version, or altered.
-  [[nodiscard]] static std::optional<Sim> Read(std::span<const std::byte> _bytes);
+  /// The Sim the bytes hold, or nothing when the stream is short, of another version, altered, or
+  /// **written against tables other than _content**: a match reloaded against different rules is a
+  /// different match, and the hash the stream carries turns that from a divergence nobody notices
+  /// into a refusal here (OpenQuestions.md Q20, owner 2026-09-18). The tree must outlive the Sim.
+  [[nodiscard]] static std::optional<Sim> Read(std::span<const std::byte> _bytes, const ContentTree& _content);
 
   /// The most orders a snapshot may carry pending, a bound on a hostile file rather than a limit
   /// a match reaches: eight seats at one order a tick for a minute is under a thousand.

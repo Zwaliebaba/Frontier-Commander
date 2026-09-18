@@ -24,6 +24,14 @@ namespace SimTests
 
 namespace
 {
+/// The tables a match is played by. These suites exercise the simulation rather than the rules, so
+/// an empty tree is the honest one: no row is read, and Q20's binding is still exercised, because
+/// the snapshot carries this tree's hash and refuses any other.
+const Frontier::ContentTree& NoContent()
+{
+  static const Frontier::ContentTree tree{};
+  return tree;
+}
 
 // The goldens Tools/LandscapeTool.py wrote (Tests/SimTests/Fixtures/Landscape/README.md): the C++
 // is held to them and is never the one that changes them.
@@ -300,8 +308,8 @@ public:
     regioned.tiles[0].palette = "Desert";
     regioned.tiles[1].palette = "Icecaps";
 
-    Frontier::Sim first(TwoSeats());
-    Frontier::Sim second(TwoSeats());
+    Frontier::Sim first(TwoSeats(), NoContent());
+    Frontier::Sim second(TwoSeats(), NoContent());
     Assert::IsTrue(first.CreateLandscape(plain));
     Assert::IsTrue(second.CreateLandscape(regioned));
     Assert::IsTrue(std::vector<std::int16_t>(first.Terrain().Heights().begin(), first.Terrain().Heights().end()) ==
@@ -309,7 +317,7 @@ public:
                    L"a palette changes no height");
     Assert::AreEqual(first.ComputeHash(), second.ComputeHash(), L"and no hash");
 
-    const std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(second));
+    const std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(Frontier::Snapshot::Write(second), NoContent());
     if (!reloaded.has_value())
     {
       Assert::Fail(L"the snapshot did not read back");
@@ -321,7 +329,7 @@ public:
 
   TEST_METHOD(TheSnapshotCarriesTheDefinitionAndTheDeltasNotTheSamples)
   {
-    Frontier::Sim sim(TwoSeats());
+    Frontier::Sim sim(TwoSeats(), NoContent());
     Assert::IsFalse(sim.Terrain().Created());
     Assert::IsTrue(sim.CreateLandscape(LoadDefinition(4)));
     Assert::IsTrue(sim.Terrain().Created());
@@ -336,7 +344,7 @@ public:
     sim.Advance();
     const std::vector<std::byte> bytes = Frontier::Snapshot::Write(sim);
     Assert::IsTrue(bytes.size() < 4096, L"the snapshot carries the definition and the deltas, not 526 KB of samples");
-    std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(bytes);
+    std::optional<Frontier::Sim> reloaded = Frontier::Snapshot::Read(bytes, NoContent());
     if (!reloaded.has_value())
     {
       Assert::Fail(L"the snapshot did not read back");
@@ -352,7 +360,7 @@ public:
     sim.Advance();
     Assert::AreEqual(sim.Hash(), reloaded->Hash());
 
-    Frontier::Sim other(TwoSeats());
+    Frontier::Sim other(TwoSeats(), NoContent());
     Assert::IsTrue(other.CreateLandscape(LoadDefinition(5)));
     Assert::AreNotEqual(sim.ComputeHash(), other.ComputeHash(), L"the landscape reaches the hash");
   }

@@ -14,6 +14,9 @@
     <ClCompile Include="ContentLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ContentHash.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ContentValidator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -41,6 +44,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ContentTree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ContentHash.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ContentValidator.h">
