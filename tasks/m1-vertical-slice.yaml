@@ -181,6 +181,8 @@ tasks:
     depends_on: [C2]
     files:
       - Tools/CheckBalance.py
+      - GameData/Components.json
+      - Design/GameDesign.md
     acceptance:
       - Reads Components.json, Damage.json, Research.json and Structures.json; enumerates every design (chassis, drive, one module set) available at each research tier; derives its statistics by the same formulas as Content/DesignStats
       - "For each pair of designs computes the expected time to kill in both directions from damage, rate, hit chance at short range, the matrix, armorFactor and hit points, and a power-normalised score; prints per tier the designs that beat every other design of equal or lower cost, which is the dominance finding, and the best three designs per role"
@@ -190,7 +192,36 @@ tasks:
       - python3 Tools/CheckTaskDag.py
       - python3 Tools/CheckBalance.py GameData
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      ONE TABLE EDIT: the medium chassis was underpriced at 150 and is now 170, in
+      GameData/Components.json and in GameDesign.md 6's table. At tier 2, with tracks not yet
+      researched, MediumI/HalfTrack/MachineGun beat every design costing no more at equal power
+      spent, the light cannon included - and the light cannon is the anti-armour answer that tier
+      is meant to have. 288 hit points behind 12 armour outlast 100 behind 5 by more than the
+      extra power, and 12 armour floors a machine gun's 8 damage to a third, so nothing cheap
+      could punish it either. 160 clears every tier; 170 is taken for margin, because a table
+      that only just passes fails on the next edit.
+      THE COMPARISON IS AT EQUAL POWER SPENT, not one against one. The first run compared duels
+      and reported 48 dominators, every one of them a heavier thing beating a lighter one, which
+      is true and useless. Each side now fields cost-many of its design for the same budget and
+      the budget cancels, which is what "per power spent" in the acceptance means.
+      TWO BLIND SPOTS ARE DECLARED RATHER THAN LEFT TO FIRE. There is no movement in the model,
+      so a pair of designs differing only in drive cannot be compared - the drive is bought for
+      speed, slope and water - and such a pair is excluded from what a design must BEAT, though
+      it still counts as a COUNTER: without the first the script reports that tracks dominate
+      half-tracks dominate wheels, its own blind spot restated; without the second it reports
+      that a tracked cannon dominates its tier while a wheeled cannon of the same price beats it
+      outright. And GameDesign.md 8 says an indirect weapon decides its hit at impact "against
+      whatever is in the splash radius at the predicted landing cell, so a moving target can walk
+      out from under a mortar" - the table states the hit chance against the landing cell and
+      carries no shell flight time to work the difference out from, so a design armed only with
+      indirect weapons is listed and left unranked rather than counted a dominator on its stated
+      100 percent.
+      The arithmetic is Content/DesignStats.cpp's and Content/DamageTable.h's, reimplemented
+      because the acceptance asks for Linux and the standard library. Two implementations that
+      disagree would be a finding in itself, and DesignStatsTests re-derives GameDesign.md 6's
+      worked examples from the same tables, so both ends are pinned.
 
   - id: C4
     title: Importers, placeholder models, the Species textures and font as DDS; the provenance ADR

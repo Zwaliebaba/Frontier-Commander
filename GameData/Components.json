@@ -13,7 +13,7 @@
       "unlockedBy": "MediumChassis",
       "hitPoints": 250, "kineticArmor": 12, "thermalArmor": 10,
       "baseSpeedSubunitsPerTick": 704, "sightSubunits": 294912,
-      "costHundredths": 15000, "mounts": 1
+      "costHundredths": 17000, "mounts": 1
     },
     {
       "id": "HeavyI", "name": "Heavy I", "class": "Heavy", "model": "ChassisHeavyI",

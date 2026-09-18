@@ -149,7 +149,7 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 | Class | Hit points | Kinetic armour | Thermal armour | Base speed (wu/s) | Sight (cells) | Cost | Mounts | Note |
 |---|---|---|---|---|---|---|---|---|
 | Light | 100 | 5 | 5 | 80 | 20 | 60 | 1 | Fast to build, fast to move, cheap to lose |
-| Medium | 250 | 12 | 10 | 55 | 18 | 150 | 1 | The line unit |
+| Medium | 250 | 12 | 10 | 55 | 18 | 170 | 1 | The line unit; 150 until `Tools/CheckBalance.py` priced it (2026-09-18) |
 | Heavy | 500 | 25 | 18 | 40 | 16 | 320 | 2 on Heavy II | Slow; the second mount is Heavy II's |
 
 **Drive** sets speed as a function of terrain, the slope it can climb, whether it crosses water, and a hit-point multiplier. Six classes, of which four are in the first version:
@@ -222,7 +222,7 @@ Target classes are the six drive classes for devices and the four strength class
 | Artillery | 100 | 100 | 100 | 100 | 100 | 20 | 130 | 120 | 100 | 60 |
 | Energy | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 80 |
 
-Anti-light is the machine gun's class: strong against light drives and soft structures, weak against tracks and bunkers; anti-tank the reverse; flame strong against everything light and useless against bunkers; artillery indifferent to armour and poor against anything that walks out from under it. **The tables are checked before the design screen exists**: a headless script under `Tools/` runs every design against every design per tier and per power spent, and a design that dominates its tier is a table bug to fix first.
+Anti-light is the machine gun's class: strong against light drives and soft structures, weak against tracks and bunkers; anti-tank the reverse; flame strong against everything light and useless against bunkers; artillery indifferent to armour and poor against anything that walks out from under it. **The tables are checked before the design screen exists**: a headless script under `Tools/` runs every design against every design per tier and per power spent, and a design that dominates its tier is a table bug to fix first. That script is `Tools/CheckBalance.py` (2026-09-18), and its first run found one: the **medium chassis was underpriced at 150**. At tier 2, with tracks not yet researched, a medium half-track with a machine gun beat every design costing no more at equal power spent — including the light cannon, which is the anti-armour answer that tier is supposed to have. The medium's 288 hit points behind 12 armour outlasted the light's 100 by more than the extra power cost, and 12 armour floors a machine gun's 8 damage to a third, so nothing cheap could punish it either. Repricing the medium to **170** clears every tier; nothing else moved, and the script compares at equal power precisely so that the answer is not "of course the bigger one wins a duel".
 
 **Hitting.** A weapon has a hit chance at short range and a lower one at long range, both percentages, both modified by the device's rank and by research; the simulation rolls once per shot from its own random stream. Direct-fire weapons decide the hit at the moment of firing, and the projectile is a visual that arrives when it arrives. Indirect-fire weapons decide at impact against whatever is in the splash radius at the predicted landing cell, so a moving target can walk out from under a mortar.
 
