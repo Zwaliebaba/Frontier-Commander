@@ -1,6 +1,6 @@
-# Open questions — answered
+# Open questions
 
-**Status: ANSWERED. The twenty-two of 2026-09-17, the six the external review raised included, and Q17 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: one open (Q18, raised 2026-09-18). Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -62,6 +62,26 @@ The Species sky is the black clear colour with three additive layers over it: a 
 **Answered: option 3 (owner, 2026-09-18).** Recommendation: option 3. Species already animates the clouds by adding to the texture offset each tick, so sampling in world space rather than in layer space is a small change to the same mechanism. It is the only option that is independent of landscape size, which is the actual problem; the other two trade one of authored cloud scale or a fixed relationship with the ground to get there.
 
 **Whichever is chosen, ADR-005's comparison is re-made with the sky drawn**, and the fog ruling is confirmed or superseded on those frames rather than on the black-sky ones. That is cheap: the capture already draws frames 100 and 200 from one vantage under the two fog modes, and it would draw them again with the sky in place.
+
+## Open
+
+### Q18 — How does one landscape carry more than one terrain type? (raised 2026-09-18)
+
+Species keeps eight 64×64 palettes under `Terrain/`, and a palette is a lookup table rather than a texture on the ground: slope runs along x, height up y, and every terrain vertex reads its colour from that square (`SpeciesTerrain.md` §6). Species applied exactly one to a map, so Earth, Desert and Icecaps are whole-level themes and never regions inside a level. This design inherited that unchanged: a landscape definition is a seed, a size class, a tile list and a palette, singular, and `ContentValidator` enforces that the palette names one biome.
+
+**Why it blocks.** `m2-skirmish/T8` ships eight biomes and `C2` authors both `Biomes.json` and the landscapes that name them, so the shape of the answer decides their schemas. The fit is also worse for this game than it was for Species: the largest Species map is 2,002 world units across and a Frontier landscape is 65,536, thirty-three times, so one colour rule covers ground a heavy device takes most of an hour to cross. `GameDesign.md` §3 names distance as the point of the game and its biggest risk, and a landscape with no landmark and nowhere that looks different from anywhere else makes the dead-time failure more likely rather than less.
+
+**Which palettes exist is not part of this question.** Q5 already ruled that the Species-derived content other than models is used. Sampling the eight on 2026-09-18 found four that are general terrain types — Default, Desert, Earth, Icecaps — and four that are recolours of Default dressing one Species location each (`SpeciesLineage.md` §5). So four of M2's eight biomes come across and four are authored, whichever option below is taken.
+
+**The options.**
+
+1. **One palette per landscape, as now.** Regions never exist and variety is between maps rather than within one. Costs nothing and changes nothing. It is the honest baseline: Species shipped this way and looked good doing it, on maps a thirty-third the size.
+2. **A palette per tile, blended by the falloff the heights already merge by.** The definition is already a tile list, each tile with an origin, an extent and an edge falloff over which it is pulled to the plain. Give a tile a palette and blend two lookups per vertex with that same weight. Regions become authored rather than emergent, so a stamp library can place a desert pass deliberately.
+3. **A second low-frequency noise field over the map**, selecting among palettes with a blend. More organic and independent of the tile layout, but it is a new generator stage that must be integer-deterministic to the sample, and it gives no authored control over where a region lands.
+
+**Recommendation: option 2, with the tile's palette excluded from the state hash.** It reuses merge weights that already exist and costs nothing per frame, because vertex colour is computed when a chunk is built and baked into its buffer, so a second palette read and a lerp are build-time work. The cost that is not obvious: ADR-002's state hash covers every tile's field, so adding one regenerates every determinism fixture and golden hash. Excluding it is defensible, because a palette determines no simulation behaviour, but it is a deliberate exception that ADR-002 has to be amended to state rather than something to leave implied.
+
+**One limit to expect under options 2 and 3.** Water is a single plane at one level and its texture is per theme in Species, so regions are land only unless the water pass grows a blend of its own. Desert makes this visible: its sea-level colour is tan, with no blue anywhere in the palette, so a desert coast and a temperate coast want different water and would get the same.
 
 ## Adding a question
 
