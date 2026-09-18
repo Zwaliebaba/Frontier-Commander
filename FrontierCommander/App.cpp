@@ -112,6 +112,7 @@ constexpr float PI = 3.14159265358979323846f;
   settings.technologyTiers = 0;
   settings.victory = VictoryCondition::Annihilation;
   settings.survivalTicks = 0;
+  settings.deviceCapLevel = DeviceCapLevel::Medium; // 200 devices, the figure GameDesign.md §4 names
   for (SeatSettings& seat : settings.seats)
   {
     seat = {SeatKind::Empty, NO_ALLIANCE};

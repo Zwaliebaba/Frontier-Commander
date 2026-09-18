@@ -347,9 +347,17 @@ tasks:
       - Sim/Economy.h
       - Sim/Economy.cpp
       - Sim/Deposit.h
+      - Sim/Deposit.cpp
+      - Sim/MatchSettings.h
+      - Sim/OrderValidation.h
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.h
       - Sim/Sim.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - FrontierCommander/App.cpp
       - Tests/SimTests/EconomyTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
@@ -366,7 +374,38 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      The device cap had nowhere to come from: GameDesign.md 4 calls it a lobby setting and
+      MatchSettings had no field for it, so DeviceCapLevel and DEVICE_CAPS are added beside
+      PowerLevel and the snapshot is at version 7. The structure cap is STRUCTURE_CAP, one number
+      for every match, because the design gives one.
+      A deposit is NOT an object in World. Nothing ever refers to one - an extractor knows the cell
+      it stands on and that is the whole relationship - so an id would buy a sixth ObjectKind and a
+      sixth map for a record that never changes and is never pointed at. Sim/Deposit.h is the index
+      instead, rebuilt from the definition wherever a definition arrives, which is CreateLandscape
+      and Snapshot::Read; a test pins that a restored match still has its deposits and goes on
+      earning, because forgetting the second of those two would have been silent.
+      The service assignment is recomputed every tick rather than on completion and destruction as
+      the acceptance says. It satisfies the acceptance strictly (the answer is right after any such
+      event) and removes the class of bug where a system that changes a structure forgets to mark
+      the cache; the cost is bounded by the structure cap at around 20,000 squared-distance tests a
+      seat a tick, and a stale assignment two hosts agree on is a wrong economy rather than a
+      desync, which is the harder of the two to find. Caching wants a profile that asks for it.
+      The counts on the Seat are filled by one walk of the world in stage 2 rather than by running
+      totals. Seat.h says they are kept rather than counted "because the cap is tested on every
+      production tick"; the field stays and the test stays a subscript, but nothing has to remember
+      to decrement.
+      GameDesign.md 4's cap collides with its own lobby: PowerLevel::High starts a commander at
+      2,500 against a base cap of 1,000. The cap is on what ACCUMULATES - the section's own words
+      are "income accumulates into a stockpile capped at" and "any refund that would exceed the cap
+      is lost" - so a stockpile already over its cap is left alone and simply stops growing. The
+      alternative, clipping the balance, deletes three fifths of a lobby setting on the first tick.
+      Raised for the owner rather than settled here.
+      S2 left two checks deliberately loose for this task and both are exact now: a placement is
+      priced by its row's costHundredths rather than by "the stockpile is empty", and an extractor
+      is refused anywhere but a deposit. OrderContext gained the content tree and the deposit field
+      for them, both optional, so a suite that cares about ownership still needs neither.
 
   - id: S4
     title: Sim structures - placement, plans, construction by builders, flatten, modules, demolition, wrecks

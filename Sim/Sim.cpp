@@ -31,8 +31,13 @@ Sim::Sim(const MatchSettings& _settings, const ContentTree& _content)
     seat.kind = lobby.kind;
     seat.alliance = lobby.alliance;
     seat.powerHundredths = power;
-    // The stockpile and army caps are the economy's (S3); until it exists nothing produces, so a
-    // cap of zero stops nothing and is honest about not being set.
+    // The army caps are the lobby's and fixed for the match (GameDesign.md §4), so they are set
+    // once here; the stockpile cap follows the standing generators and so is stage 2's, recomputed
+    // every tick. It is set here too, rather than left at zero, because a seat is judged against
+    // it by order validation from the first tick and before stage 2 has ever run.
+    seat.deviceCap = DEVICE_CAPS[std::min<std::size_t>(static_cast<std::size_t>(_settings.deviceCapLevel), DEVICE_CAPS.size() - 1)];
+    seat.structureCap = STRUCTURE_CAP;
+    seat.stockpileCapHundredths = Economy::StockpileCapHundredths(0);
     seat.defeated = lobby.kind == SeatKind::Empty;
     m_seats.push_back(std::move(seat));
   }
@@ -50,6 +55,9 @@ bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
   {
     SizeFog(seat, m_landscape.Definition().cellsPerSide);
   }
+  // The deposits are the definition's, so the index is rebuilt wherever the definition arrives:
+  // here and in the snapshot's read. Nothing else sets a landscape.
+  m_economy.SetLandscape(m_landscape);
   return true;
 }
 
@@ -151,7 +159,7 @@ bool Sim::Apply(const Order& _order)
     return false;
   }
 
-  const OrderContext context{&m_world, m_seats, &m_landscape, m_tick};
+  const OrderContext context{&m_world, m_seats, &m_landscape, m_tick, m_content, &m_economy.Deposits()};
   const OrderCheck checked = ValidateOrder(_order, context);
   if (!checked.Accepted())
   {
@@ -263,7 +271,10 @@ bool Sim::Apply(const Order& _order)
 
 // ── Stages 2 to 7: the systems of M1 (m1-vertical-slice S3 onward) ─────────────────────────
 
-void Sim::AdvanceEconomy() {}
+void Sim::AdvanceEconomy()
+{
+  m_economy.Advance(m_world, m_seats, *m_content);
+}
 
 void Sim::AdvanceResearch() {}
 

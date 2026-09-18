@@ -25,6 +25,7 @@ void WriteSettings(Neuron::ByteWriter& _writer, const MatchSettings& _settings)
   _writer.Write(_settings.technologyTiers);
   _writer.Write(_settings.victory);
   _writer.Write(_settings.survivalTicks);
+  _writer.Write(_settings.deviceCapLevel);
   for (const SeatSettings& seat : _settings.seats)
   {
     _writer.Write(seat.kind);
@@ -48,7 +49,7 @@ template <class Enum> [[nodiscard]] bool ReadEnum(Neuron::ByteReader& _reader, E
   MatchSettings settings{};
   if (!_reader.Read(settings.seed) || !ReadEnum(_reader, settings.sizeClass, 4) || !_reader.Read(settings.seatCount) ||
       !ReadEnum(_reader, settings.baseLevel, 3) || !ReadEnum(_reader, settings.powerLevel, 3) || !_reader.Read(settings.technologyTiers) ||
-      !ReadEnum(_reader, settings.victory, 3) || !_reader.Read(settings.survivalTicks))
+      !ReadEnum(_reader, settings.victory, 3) || !_reader.Read(settings.survivalTicks) || !ReadEnum(_reader, settings.deviceCapLevel, 3))
   {
     return false;
   }
@@ -737,6 +738,10 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes, const Conte
   {
     return std::nullopt;
   }
+  // The deposit index is the definition's, and this is the second of the two places a definition
+  // arrives (Sim::CreateLandscape is the first). Without it a restored match would find no
+  // deposits and every extractor would stop producing on the tick after the load.
+  sim.m_economy.SetLandscape(sim.m_landscape);
   std::uint32_t nextArrival = 0;
   std::uint32_t pending = 0;
   if (!reader.Read(sim.m_lastRoll) || !reader.Read(sim.m_appliedOrders) || !reader.Read(sim.m_droppedOrders) ||

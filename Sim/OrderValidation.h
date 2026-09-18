@@ -1,9 +1,12 @@
 #pragma once
 
+#include "Deposit.h"
 #include "Landscape.h"
 #include "Order.h"
 #include "Seat.h"
 #include "World.h"
+
+#include "ContentTree.h"
 
 #include <cstdint>
 #include <span>
@@ -44,6 +47,13 @@ struct OrderContext
   std::span<const Seat> seats;
   const Landscape* landscape;
   std::uint32_t tick;
+  /// The tables the order is priced and typed against (OpenQuestions.md Q20). Null is allowed and
+  /// means "no tables": the checks that need a row are skipped rather than failing, so that a test
+  /// which cares about ownership need not build a content tree.
+  const ContentTree* content = nullptr;
+  /// The landscape's deposits, for the one placement rule that reads them (GameDesign.md §4). Null
+  /// is allowed and means the extractor rule cannot be checked, not that every cell is a deposit.
+  const DepositField* deposits = nullptr;
 };
 
 /// Validates one order, rewriting it where the design says to. The seat is assumed to be a live

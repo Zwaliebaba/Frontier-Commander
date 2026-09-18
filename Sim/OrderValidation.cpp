@@ -248,9 +248,23 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::AtCap);
     }
-    // CannotAfford is "the stockpile is empty" until S3 prices a row; a seat with nothing cannot
-    // buy anything, which is true now and stays true when S3 makes it exact.
-    if (seat.powerHundredths <= 0)
+    // The row the order names, when there are tables to name it in. Without them the price and the
+    // role are unknown, and the checks that need either are skipped rather than guessed at.
+    const StructureDesc* row = nullptr;
+    if (_context.content != nullptr)
+    {
+      const std::vector<StructureDesc>& rows = _context.content->structures.structures;
+      if (static_cast<std::size_t>(_order.operands[0]) >= rows.size())
+      {
+        return Reject(_order, RejectReason::Malformed);
+      }
+      row = &rows[static_cast<std::size_t>(_order.operands[0])];
+    }
+    // Exactly the row's cost now that S3 prices one; "the stockpile is empty" is what is left when
+    // there are no tables to price against. The draw itself is S4's, at the moment construction
+    // begins (GameDesign.md §4) - this is the check that the commander could pay if it did.
+    const std::int32_t cost = row != nullptr ? row->costHundredths : 1;
+    if (seat.powerHundredths < cost || seat.powerHundredths <= 0)
     {
       return Reject(_order, RejectReason::CannotAfford);
     }
@@ -261,7 +275,19 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     const std::uint32_t side = _context.landscape->Definition().cellsPerSide;
     const bool onMap = _order.operands[1] >= 0 && _order.operands[2] >= 0 && static_cast<std::uint32_t>(_order.operands[1]) < side &&
                        static_cast<std::uint32_t>(_order.operands[2]) < side;
-    return onMap ? Accept(_order) : Reject(_order, RejectReason::InvalidPlacement);
+    if (!onMap)
+    {
+      return Reject(_order, RejectReason::InvalidPlacement);
+    }
+    // An extractor stands on a deposit and nowhere else (GameDesign.md §4). The rule is here rather
+    // than in the economy because a placement the commander cannot make is a rejection they should
+    // be told about, not a structure that silently earns nothing.
+    if (row != nullptr && row->role == StructureRole::Extractor && _context.deposits != nullptr &&
+        !_context.deposits->Has(static_cast<std::uint32_t>(_order.operands[1]), static_cast<std::uint32_t>(_order.operands[2])))
+    {
+      return Reject(_order, RejectReason::InvalidPlacement);
+    }
+    return Accept(_order);
   }
 
   case OrderKind::SetProduction:

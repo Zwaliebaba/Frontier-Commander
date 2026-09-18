@@ -101,6 +101,8 @@
     <ClCompile Include="Sim.cpp" />
     <ClCompile Include="World.cpp" />
     <ClCompile Include="OrderValidation.cpp" />
+    <ClCompile Include="Economy.cpp" />
+    <ClCompile Include="Deposit.cpp" />
     <ClCompile Include="Seat.cpp" />
     <ClCompile Include="OrderQueue.cpp" />
     <ClCompile Include="StateHash.cpp" />
@@ -124,6 +126,8 @@
     <ClInclude Include="Wreck.h" />
     <ClInclude Include="World.h" />
     <ClInclude Include="OrderValidation.h" />
+    <ClInclude Include="Economy.h" />
+    <ClInclude Include="Deposit.h" />
     <ClInclude Include="Order.h" />
     <ClInclude Include="OrderQueue.h" />
     <ClInclude Include="StateHash.h" />

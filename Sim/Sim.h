@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Economy.h"
 #include "HeightDelta.h"
 #include "Landscape.h"
 #include "MatchSettings.h"
@@ -56,6 +57,15 @@ public:
   [[nodiscard]] const Landscape& Terrain() const noexcept
   {
     return m_landscape;
+  }
+
+  /// Stage 2's system (GameDesign.md §4): the deposit index, the service assignment the last tick
+  /// computed, and the transactions every system that spends power calls. It holds nothing the
+  /// hash or the snapshot needs, because everything in it is a function of the landscape's
+  /// definition and of the world.
+  [[nodiscard]] const Economy& Power() const noexcept
+  {
+    return m_economy;
   }
 
   /// Enqueues an order. One for a tick already advanced is moved to the next tick, so that a late
@@ -180,6 +190,7 @@ private:
   std::vector<Seat> m_seats;
   World m_world;
   Landscape m_landscape;
+  Economy m_economy;
   OrderQueue m_orders;
   std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
   std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.
