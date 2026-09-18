@@ -203,6 +203,10 @@ tasks:
       - Tools/ImportSounds.py
       - Tools/ImportTextures.py
       - Tools/MakePlaceholderModels.py
+      # Tools/MakeTerrainPalette.py and Content/Textures/LandscapeDefault.dds landed with C1's
+      # follow-up on 2026-09-18 (OpenQuestions.md Q18): the tool applies the shared-shore rule and
+      # the default palette is the first written to it. C4 writes the other biomes' palettes with
+      # the same tool, and the font and icon textures.
       - Content/Models/ChassisLight.json
       - Content/Models/ChassisMedium.json
       - Content/Models/ChassisHeavy.json
@@ -225,7 +229,6 @@ tasks:
       - Content/Models/Shell.json
       - Content/Models/Wreck.json
       - Content/Models/Deposit.json
-      - Content/Textures/LandscapeDefault.dds
       - Content/Textures/SpectrumFont.dds
       - Content/Textures/Icons.dds
       - Design/ADR/README.md
