@@ -57,7 +57,31 @@ bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
   // The deposits are the definition's, so the index is rebuilt wherever the definition arrives:
   // here and in the snapshot's read. Nothing else sets a landscape.
   m_economy.SetLandscape(m_landscape);
+  // The cluster graph is the landscape's shape, so it is cut here and its edges are built lazily,
+  // per drive class, as the planner asks for them.
+  m_clusters.Build(m_landscape, *m_content);
+  m_planner.SetGraph(&m_clusters);
   return true;
+}
+
+void Sim::SetObstruction(std::uint32_t _cellX, std::uint32_t _cellY, std::uint8_t _obstruction)
+{
+  if (!m_landscape.Created() || _cellX >= m_landscape.CellsPerSide() || _cellY >= m_landscape.CellsPerSide())
+  {
+    return;
+  }
+  if (m_landscape.CellAt(_cellX, _cellY).obstruction == _obstruction)
+  {
+    return;
+  }
+  m_landscape.SetObstruction(_cellX, _cellY, _obstruction);
+  // A component is a statement about which cells are passable, and that is exactly what changed,
+  // so every class's graph is dropped and rebuilt on its next use. Coarser than invalidating the
+  // one cluster: a wall across a cluster splits a component, and a split can change which
+  // components a neighbouring cluster's are joined to, so the blast radius is not local in the way
+  // an entrance's was. It costs one flood fill of 256 cells per cluster per class in use, on an
+  // event that happens when a structure is placed rather than every tick.
+  m_clusters.Invalidate();
 }
 
 bool Sim::FlattenTerrain(const HeightDelta& _delta)
@@ -71,6 +95,11 @@ bool Sim::FlattenTerrain(const HeightDelta& _delta)
   // So the whole fog is dropped and rebuilt: the budget refills it over the next few ticks, and a
   // flatten is a rare event that the construction system of S4 will do once per structure.
   m_visibility.Reset(m_seats, m_landscape);
+  // The slope of every cell the rectangle touched has changed, and slope is passability, so the
+  // graph is cut again. Rebuilding rather than invalidating: a delta can open or close an entrance,
+  // and an entrance is a node, which invalidation does not move.
+  m_clusters.Build(m_landscape, *m_content);
+  m_planner.SetGraph(&m_clusters);
   return true;
 }
 
@@ -290,7 +319,12 @@ void Sim::AdvanceProduction() {}
 
 void Sim::AdvanceConstruction() {}
 
-void Sim::AdvanceMovement() {}
+void Sim::AdvanceMovement()
+{
+  // Planning is amortised inside the movement stage, ahead of the steering S8 will add: a device
+  // that asked for a route this tick may have it next, and the budget is what bounds the wait.
+  m_planner.Advance();
+}
 
 void Sim::RefreshVisibility()
 {

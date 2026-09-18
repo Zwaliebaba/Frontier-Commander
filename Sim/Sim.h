@@ -1,11 +1,13 @@
 #pragma once
 
+#include "ClusterGraph.h"
 #include "Economy.h"
 #include "HeightDelta.h"
 #include "Landscape.h"
 #include "MatchSettings.h"
 #include "Order.h"
 #include "OrderQueue.h"
+#include "PathPlanner.h"
 #include "Seat.h"
 #include "Visibility.h"
 #include "World.h"
@@ -76,6 +78,28 @@ public:
   {
     return m_visibility;
   }
+
+  /// The abstraction the planner searches (TechnicalDesign.md §4.5): clusters, the entrances
+  /// between them, and the per-drive-class passability the two rest on.
+  [[nodiscard]] const ClusterGraph& Clusters() const noexcept
+  {
+    return m_clusters;
+  }
+
+  /// Stage 6's planner. Mutable for the same reason the world is: S8 is what will ask it for
+  /// routes, and until it exists the host and the tests are what put a request in.
+  [[nodiscard]] const PathPlanner& Planner() const noexcept
+  {
+    return m_planner;
+  }
+  [[nodiscard]] PathPlanner& Planner() noexcept
+  {
+    return m_planner;
+  }
+
+  /// Writes a cell's obstruction byte and tells the cluster graph, which is the one path by which
+  /// passability changes after a landscape is made. S4 is what will call it for every structure.
+  void SetObstruction(std::uint32_t _cellX, std::uint32_t _cellY, std::uint8_t _obstruction);
 
   /// Enqueues an order. One for a tick already advanced is moved to the next tick, so that a late
   /// order is applied rather than lost, and the queue keeps its arrival order.
@@ -201,6 +225,8 @@ private:
   Landscape m_landscape;
   Economy m_economy;
   Visibility m_visibility;
+  ClusterGraph m_clusters;
+  PathPlanner m_planner;
   OrderQueue m_orders;
   std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
   std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.

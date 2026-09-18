@@ -106,6 +106,8 @@
     <ClCompile Include="FogGrid.cpp" />
     <ClCompile Include="GhostStore.cpp" />
     <ClCompile Include="Visibility.cpp" />
+    <ClCompile Include="ClusterGraph.cpp" />
+    <ClCompile Include="PathPlanner.cpp" />
     <ClCompile Include="OrderQueue.cpp" />
     <ClCompile Include="StateHash.cpp" />
     <ClCompile Include="Snapshot.cpp" />
@@ -123,6 +125,9 @@
     <ClInclude Include="FogGrid.h" />
     <ClInclude Include="GhostStore.h" />
     <ClInclude Include="Visibility.h" />
+    <ClInclude Include="ClusterGraph.h" />
+    <ClInclude Include="PathPlanner.h" />
+    <ClInclude Include="Path.h" />
     <ClInclude Include="ObjectId.h" />
     <ClInclude Include="Device.h" />
     <ClInclude Include="Structure.h" />

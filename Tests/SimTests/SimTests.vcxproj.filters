@@ -32,6 +32,9 @@
     <ClCompile Include="VisibilityTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="PathingTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="OrderValidationTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

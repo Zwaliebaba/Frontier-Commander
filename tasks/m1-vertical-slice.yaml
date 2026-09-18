@@ -577,7 +577,42 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE ABSTRACTION IS COMPONENTS, NOT ENTRANCES, and the flood-fill test is why. The acceptance
+      asks for boundary crossings as nodes, which is the textbook hierarchical abstraction; it was
+      built that way twice and it is NOT EXACT, which the test caught both times. One node in the
+      middle of a run reports unreachable where a flood fill walks through, when a wall inside the
+      cluster separates the middle cell from the rest of the run (fixture seed 2, drive 0). Making
+      the whole run interchangeable fixes that and breaks the other way: a run that spans a wall
+      inside its own cluster then merges two places a drive cannot get between, and the graph
+      reports a route through the wall (fixture seed 9, drive 4; then a wall at x=20 routed
+      through at zero cost). A node is now a CONNECTED COMPONENT of a cluster's passable cells,
+      which cannot have either fault because a component is by definition what a flood fill
+      reaches. Reachability is exact by construction. Agreed with the flood fill on 4,785 requests
+      across the twenty fixtures and all six drive classes.
+      WHAT THAT GIVES UP is the abstract cost: a component is a region and has no one length, so
+      the search costs the octile distance between representative cells, an estimate. The
+      refinement is exact - a cell search inside each cluster - so a route is optimal in the small
+      and approximate in the large. TechnicalDesign.md 12 leaves hierarchical A* against flow
+      fields to be settled by measurement, and this is one of the numbers that weighs.
+      MEASURED on the session's Linux harness: 38 full Small-landscape requests in 5.1 ms, 17
+      components expanded a request over 64 components, 77 cell searches.
+      INVALIDATION IS THE WHOLE GRAPH, not the clusters a cell touches, which is coarser than the
+      acceptance asks. A wall across a cluster splits a component, and a split changes which
+      components a NEIGHBOURING cluster's are joined to, so the blast radius is not local the way
+      an entrance's was. It is one flood fill of 256 cells per cluster per class in use, on an
+      event that happens when a structure is placed rather than every tick, and the test pins that
+      a write leaving the grid as it was rebuilds nothing.
+      NOTHING HERE IS IN THE SNAPSHOT, and that leaves a question for S8. A path is a pure function
+      of the graph and the request, so a reloaded host that re-requested would compute the same
+      one. What it would not reproduce is the TICK the path arrives on, because the budget starts
+      again - and if a device's movement depends on when its path arrives, that is a divergence.
+      S8 decides: either the pending queue joins the snapshot, or a device re-requests on load and
+      the arrival tick is made not to matter. Written down rather than discovered there.
+      The budget is in NODES and not in milliseconds, because a budget in time makes the result of
+      a tick depend on how fast the machine is, which is a desynchronisation dressed as an
+      optimisation.
 
   - id: S8
     title: Sim movement and steering
