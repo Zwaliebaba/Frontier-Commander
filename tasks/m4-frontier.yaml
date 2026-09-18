@@ -23,7 +23,7 @@ tasks:
       - m3-multiplayer/T10
     acceptance:
       - The landscape tool's Frontier recipe passes the guarantees; the tick cost, visibility memory and terrain triangle count on Frontier are measured and recorded in the tick ADR's addendum; nothing regresses on Small
-      - "Every O(area) term is measured rather than extrapolated - resident heights, the cell grid, visibility, the terrain's coarse level and the cluster count - so that OpenQuestions.md Q19, a landscape ten times a Frontier one, is answered on numbers; the cost of generating a region's heights on demand against holding them is measured with it, because ADR-007 names a resident heightfield as the wall that target hits first"
+      - "Every O(area) term is measured rather than extrapolated - resident heights, the cell grid, visibility, the terrain's coarse level and the cluster count - so that the design target of OpenQuestions.md Q19 - a landscape ten times a Frontier one on the side, 655,360 world units - is costed on numbers rather than arithmetic; the cost of generating a region's heights on demand against holding them is measured with it, because ADR-007 names a resident heightfield as the wall that target hits first"
     status: todo
 
   - id: T2

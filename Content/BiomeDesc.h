@@ -24,9 +24,12 @@ struct BiomeLight
   [[nodiscard]] bool operator==(const BiomeLight&) const noexcept = default;
 };
 
-/// The far a fog range may reach, in world units: the extent of a Frontier landscape, the largest
-/// there is (1,024 cells of 64 units). A range beyond it could never be crossed.
-inline constexpr std::int32_t MAX_FOG_WORLD_UNITS = 65536;
+/// The far a fog range may reach, in world units. It is a sanity bound on authored content and
+/// deliberately names no size class: ADR-007 makes the range absolute, so 2,048 to 8,192 is the
+/// range on every landscape and a value anywhere near this ceiling would defeat the decision. The
+/// number is eighty times the authored end, which leaves room for a biome that wants a far longer
+/// draw without leaving room for a typo.
+inline constexpr std::int32_t MAX_FOG_WORLD_UNITS = 655360;
 
 /// How the far field fades. The names are ADR-005's, and the client's FogMode reads them.
 enum class FogMode : std::uint8_t
