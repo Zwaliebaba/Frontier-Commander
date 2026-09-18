@@ -201,7 +201,7 @@ public:
     // Nothing under Models defines a model at all, so every row that names one is a finding.
     Assert::IsFalse(Frontier::ValidateContent(loaded, tree.path, diagnostics));
     Assert::IsTrue(Mentions(diagnostics, "which no file under Models defines"));
-    Assert::IsTrue(Mentions(diagnostics, "the texture 'LandscapeDefault.dds' is not under Textures"));
+    Assert::IsTrue(Mentions(diagnostics, "the texture 'LandscapeDefault.dds' is not under Terrain"));
     Assert::IsTrue(Mentions(diagnostics, "the wave 'Cannon.wav' is not under Sounds"));
   }
 

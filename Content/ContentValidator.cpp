@@ -240,9 +240,9 @@ void CheckAssets(const ContentTree& _tree, const std::filesystem::path& _directo
     {
       return;
     }
-    if (!std::filesystem::is_regular_file(_directory / TEXTURES_DIRECTORY / _name, code))
+    if (!std::filesystem::is_regular_file(_directory / TERRAIN_DIRECTORY / _name, code))
     {
-      Report(_tree, _diagnostics, BIOMES_FILE, _id, "the texture '" + _name + "' is not under Textures");
+      Report(_tree, _diagnostics, BIOMES_FILE, _id, "the texture '" + _name + "' is not under Terrain");
     }
   };
   for (const BiomeDesc& row : _tree.biomes)

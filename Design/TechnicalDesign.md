@@ -331,10 +331,13 @@ GameData\
   Landscapes\*.json        a landscape definition: size class, seed, tiles, stamp placement (SpeciesTerrain.md §2 in JSON)
   Stamps\*.json            authored terrain patches
   Models\*.json            positions, colours, triangles, markers, fragments
-  Textures\*.dds           palettes, water, waves, sprites, icons, the font (DDS, §8 below)
+  Terrain\*.dds            the landscape palettes, the water and the wave textures (DDS, below)
+  Textures\*.dds           sprites, icons, the font (DDS, below)
   Sounds\*.wav             16-bit PCM, which XAudio2 plays as it is
 Mods\<name>\...            the same tree; a file here overrides the one at the same path under Content\
 ```
+
+**The terrain's own textures sit under `Terrain\`** (owner, 2026-09-18), apart from the sprites, icons and font of `Textures\`: a palette, a water pattern and a wave belong to the landscape, two of them read on the processor rather than only uploaded, and Species drew the same line in its own tree (`SpeciesLineage.md` §2). A biome names its three under `Terrain\` and the validator looks for them there.
 
 **Mods** are M3 work — there is nobody to disagree with in single-player — and are directories under `Mods\` beside the executable, enabled by name in the lobby; the loader reads `GameData\` and then each enabled mod in order, and a file in a mod replaces the file at the same path. Nothing else is needed for a mod that changes numbers, adds a component or a model, or replaces a sound.
 

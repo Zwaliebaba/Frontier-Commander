@@ -46,6 +46,9 @@ inline constexpr const char* SOUNDS_FILE = "Sounds.json";
 inline constexpr const char* LANDSCAPES_DIRECTORY = "Landscapes";
 inline constexpr const char* STAMPS_DIRECTORY = "Stamps";
 inline constexpr const char* MODELS_DIRECTORY = "Models";
+/// The landscape palettes, the water and the waves, which are the terrain's own textures and are
+/// kept apart from the sprites, icons and font of Textures (owner, 2026-09-18).
+inline constexpr const char* TERRAIN_DIRECTORY = "Terrain";
 inline constexpr const char* TEXTURES_DIRECTORY = "Textures";
 inline constexpr const char* SOUNDS_DIRECTORY = "Sounds";
 

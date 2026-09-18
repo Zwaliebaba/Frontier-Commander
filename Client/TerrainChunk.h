@@ -37,7 +37,7 @@ struct TerrainVertex
 
 /// The 64 by 64 palette the Species formula indexes (SpeciesTerrain.md §6): slope along x from flat
 /// to cliff, height along y from summit to sea level. Built in until Core's TextureFile reads one
-/// from Content\Textures in M1.
+/// from GameData\Terrain in M1.
 class TerrainPalette
 {
 public:

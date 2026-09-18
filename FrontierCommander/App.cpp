@@ -106,7 +106,7 @@ constexpr float PI = 3.14159265358979323846f;
   return {_landscape.Heights().data(), _landscape.SamplesPerSide(), SAMPLE_SPACING_WORLD_UNITS, 0, highest};
 }
 
-/// The landscape's palette, from GameData\Textures, falling back to the built-in gradient when the
+/// The landscape's palette, from GameData\Terrain, falling back to the built-in gradient when the
 /// game data is not beside the executable or the file is not a 64 by 64 texture. Nothing in the
 /// build puts it there (owner, 2026-09-18), so the fallback is the ordinary case until it does and
 /// the log says which was used: a frame coloured by the gradient and a frame coloured by the
@@ -116,7 +116,7 @@ constexpr float PI = 3.14159265358979323846f;
 /// default directly until the tables exist.
 [[nodiscard]] Neuron::TerrainPalette LoadTerrainPalette()
 {
-  const std::filesystem::path file = Neuron::Paths::GameDataDirectory() / "Textures" / "LandscapeDefault.dds";
+  const std::filesystem::path file = Neuron::Paths::GameDataDirectory() / "Terrain" / "LandscapeDefault.dds";
   std::ifstream stream(file, std::ios::binary);
   if (stream)
   {

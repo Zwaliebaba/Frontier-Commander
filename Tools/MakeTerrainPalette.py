@@ -5,7 +5,7 @@ A terrain palette is the 64x64 lookup the landscape is coloured by: the slope te
 flat ground at column 0 and a cliff at column 63, and the height term down y, the summit at row 0
 and sea level at row 63 (`Design/SpeciesTerrain.md` section 6; `Client/TerrainChunk.h`,
 `TerrainPalette::Lookup`). Species kept eight of them as bottom-up 24-bit BMPs under
-`GameData/Terrain`; this writes one as a top-down `B8G8R8A8_UNORM` DDS with no mip chain, which is
+its own `GameData/Terrain`, which is the name this tree keeps them under too; this writes one as a top-down `B8G8R8A8_UNORM` DDS with no mip chain, which is
 what `Core/TextureFile.h` reads and what the terrain's own lookup wants (`TechnicalDesign.md`
 section 8: palettes are read exactly, so they are never block compressed).
 
@@ -18,7 +18,7 @@ and did not need one, having one palette per map.
 Like every importer under Tools, this never ships and is run by hand; its output is committed.
 
   python3 Tools/MakeTerrainPalette.py --species ../Species/GameData/Terrain --source Earth \
-      --out GameData/Textures/LandscapeDefault.dds
+      --out GameData/Terrain/LandscapeDefault.dds
 """
 from __future__ import annotations
 
