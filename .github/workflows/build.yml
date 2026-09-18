@@ -220,12 +220,12 @@ jobs:
       # already here; the executable is guarded on separately, so a build that produced neither
       # skips this rather than failing on a missing file.
       - name: Validate the content
-        if: hashFiles('Content/Components.json') != '' && hashFiles('x64/Debug/FrontierHost.exe') != ''
+        if: hashFiles('GameData/Components.json') != '' && hashFiles('x64/Debug/FrontierHost.exe') != ''
         shell: pwsh
         run: |
           # A console subsystem executable, so PowerShell waits for it and its diagnostics land in
           # this log, which is where a failing table is read from.
-          & 'x64\Debug\FrontierHost.exe' --validate Content
+          & 'x64\Debug\FrontierHost.exe' --validate GameData
           if ($LASTEXITCODE -ne 0) { throw "FrontierHost --validate exited with $LASTEXITCODE." }
 
       # After the build, so that a compile error is reported as a compile error rather than as

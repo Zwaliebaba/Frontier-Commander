@@ -235,7 +235,7 @@ Negative gravity rises: fire and control flashes float up. The `Particle.bmp` te
 
 ## 11. What this means for Frontier Commander
 
-**Carry as data.** One entry per biome in `Content\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
+**Carry as data.** One entry per biome in `GameData\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
 
 **Carry as rules for the pixel shader.** Lambert only; no ambient; two directional lights whose colours may exceed 1.0, summed and clamped after the sum; one normal per triangle; one colour per triangle. That is a shader of a dozen lines, and it is the whole of the lighting.
 

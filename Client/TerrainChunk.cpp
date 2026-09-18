@@ -100,6 +100,28 @@ TerrainPalette TerrainPalette::BuiltIn()
   return palette;
 }
 
+bool TerrainPalette::FromTexture(const TextureFile& _texture, TerrainPalette& _out)
+{
+  if (_texture.Width() != SIDE || _texture.Height() != SIDE)
+  {
+    return false;
+  }
+  std::vector<std::uint8_t> rgba;
+  if (!_texture.DecodeRgba8(0, rgba) || rgba.size() != static_cast<std::size_t>(SIDE) * SIDE * 4)
+  {
+    return false;
+  }
+  TerrainPalette palette;
+  for (std::size_t pixel = 0; pixel < static_cast<std::size_t>(SIDE) * SIDE; ++pixel)
+  {
+    const std::size_t byte = pixel * 4;
+    palette.colors[pixel] = static_cast<std::uint32_t>(rgba[byte]) | (static_cast<std::uint32_t>(rgba[byte + 1]) << 8) |
+                            (static_cast<std::uint32_t>(rgba[byte + 2]) << 16) | (static_cast<std::uint32_t>(rgba[byte + 3]) << 24);
+  }
+  _out = palette;
+  return true;
+}
+
 std::uint32_t TerrainPalette::Lookup(float _u, float _v) const noexcept
 {
   const auto index = [](float _value)

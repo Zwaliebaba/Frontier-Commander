@@ -10,7 +10,7 @@ The Species look lights the world with two directional lights and no ambient (`S
 
 ## Decision
 
-**Lighting is the Species model, unchanged.** Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then clamped, one normal per triangle and one colour per triangle (`Client/Shaders/TerrainPS.hlsl`; `Client/Lighting.h`). The Garden's pair, a near-white key at 23 degrees and a horizontal orange sun at three and a half times white, is the built-in until `Content\Biomes.json` carries one per biome. A face neither light reaches is black; that is the look, and the owner kept it.
+**Lighting is the Species model, unchanged.** Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then clamped, one normal per triangle and one colour per triangle (`Client/Shaders/TerrainPS.hlsl`; `Client/Lighting.h`). The Garden's pair, a near-white key at 23 degrees and a horizontal orange sun at three and a half times white, is the built-in until `GameData\Biomes.json` carries one per biome. A face neither light reaches is black; that is the look, and the owner kept it.
 
 **A team-colour slot is neither lit nor fogged.** A vertex whose colour alpha is `VERTEX_ALPHA_UNLIT` (0) is written as it is. Lights of up to (5.0, 2.35, 0.77) would tint every team colour orange, which the owner refused; and a fog that greys or blacks the colour at distance is worse than a tint, because the commander's colour is the one thing pillar 3 wants to survive distance. Every other vertex carries `VERTEX_ALPHA_LIT` (1). The terrain shader honours the rule though the terrain never uses the slot, so that the geometry pass of `m1-vertical-slice/K1` has a reference to copy rather than a comment to interpret.
 

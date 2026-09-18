@@ -69,9 +69,9 @@ std::filesystem::path Paths::ExecutableDirectory()
   return module.parent_path();
 }
 
-std::filesystem::path Paths::ContentDirectory()
+std::filesystem::path Paths::GameDataDirectory()
 {
-  return ExecutableDirectory() / L"Content";
+  return ExecutableDirectory() / L"GameData";
 }
 
 std::filesystem::path Paths::ModsDirectory()

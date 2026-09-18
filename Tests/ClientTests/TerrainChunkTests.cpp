@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -32,6 +33,59 @@ Field Flat(std::int16_t _height)
   field.samples.assign(static_cast<std::size_t>(FIELD_SIDE) * FIELD_SIDE, _height);
   field.view = {field.samples.data(), FIELD_SIDE, 16, 0, std::max<std::int32_t>(_height, 1)};
   return field;
+}
+
+/// A 64 by 64 B8G8R8A8 DDS with the DX10 extension, laid out exactly as Tools/MakeTerrainPalette.py
+/// writes one, so that this test exercises the file the game will actually read.
+[[nodiscard]] std::vector<std::byte> PaletteDds(std::uint8_t _r, std::uint8_t _g, std::uint8_t _b, std::uint32_t _height = 0)
+{
+  const auto put = [](std::vector<std::byte>& _bytes, std::uint32_t _value)
+  {
+    for (int shift = 0; shift < 32; shift += 8)
+    {
+      _bytes.push_back(static_cast<std::byte>((_value >> shift) & 0xFFu));
+    }
+  };
+  const std::uint32_t side = Neuron::TerrainPalette::SIDE;
+  const std::uint32_t height = _height == 0 ? side : _height;
+  std::vector<std::byte> bytes;
+  put(bytes, 0x20534444u);                         // "DDS "
+  put(bytes, 124);                                 // header size
+  put(bytes, 0x1u | 0x2u | 0x4u | 0x1000u | 0x8u); // caps, height, width, pixel format, pitch
+  put(bytes, height);                              // rows
+  put(bytes, side);                                // columns
+  put(bytes, side * 4);                            // pitch
+  put(bytes, 0);                                   // depth
+  put(bytes, 1);                                   // mip count
+  for (int reserved = 0; reserved < 11; ++reserved)
+  {
+    put(bytes, 0);
+  }
+  put(bytes, 32);                            // pixel format size
+  put(bytes, 0x4u);                          // DDPF_FOURCC
+  put(bytes, 0x30315844u);                   // "DX10"
+  for (int unused = 0; unused < 5; ++unused) // bit count and the four masks
+  {
+    put(bytes, 0);
+  }
+  put(bytes, 0x1000u); // DDSCAPS_TEXTURE
+  for (int caps = 0; caps < 4; ++caps)
+  {
+    put(bytes, 0);
+  }
+  put(bytes, 87); // DXGI_FORMAT_B8G8R8A8_UNORM
+  put(bytes, 3);  // TEXTURE2D
+  put(bytes, 0);
+  put(bytes, 1); // array size
+  put(bytes, 0);
+  for (std::uint32_t pixel = 0; pixel < side * height; ++pixel)
+  {
+    bytes.push_back(static_cast<std::byte>(_b));
+    bytes.push_back(static_cast<std::byte>(_g));
+    bytes.push_back(static_cast<std::byte>(_r));
+    bytes.push_back(static_cast<std::byte>(255));
+  }
+  return bytes;
 }
 
 } // namespace
@@ -132,6 +186,38 @@ public:
     Assert::IsTrue(((shore >> 16) & 0xFF) > (shore & 0xFF), L"blue lowlands");
     Assert::IsTrue((cliff & 0xFF) > ((cliff >> 16) & 0xFF), L"brown cliffs");
     Assert::AreEqual(palette.Lookup(-5.0f, 9.0f), palette.Lookup(0.0f, 1.0f), L"clamped");
+  }
+
+  TEST_METHOD(APaletteFromATextureKeepsItsChannelsInOrder)
+  {
+    // The one thing that silently ruins a landscape: a palette read blue for red. The file stores
+    // B, G, R, A and the vertex colour packs R in the low byte, so this pins the swizzle across
+    // both conversions with a colour whose channels are all different.
+    const std::vector<std::byte> bytes = PaletteDds(10, 120, 240);
+    Neuron::TextureFile texture;
+    std::string error;
+    Assert::IsTrue(Neuron::TextureFile::Read(bytes, texture, error), L"the fixture is a DDS the reader accepts");
+    Neuron::TerrainPalette palette;
+    Assert::IsTrue(Neuron::TerrainPalette::FromTexture(texture, palette));
+    const std::uint32_t color = palette.Lookup(0.5f, 0.5f);
+    Assert::AreEqual(std::uint32_t{10}, color & 0xFFu, L"red is the low byte");
+    Assert::AreEqual(std::uint32_t{120}, (color >> 8) & 0xFFu);
+    Assert::AreEqual(std::uint32_t{240}, (color >> 16) & 0xFFu);
+    Assert::AreEqual(std::uint32_t{255}, (color >> 24) & 0xFFu);
+  }
+
+  TEST_METHOD(APaletteOfTheWrongSizeIsRefusedAndLeavesTheFallbackAlone)
+  {
+    // A whole, valid 64 by 32 texture: the reader accepts it and the palette refuses it for its
+    // shape rather than for its bytes.
+    const std::vector<std::byte> bytes = PaletteDds(1, 2, 3, 32);
+    Neuron::TextureFile texture;
+    std::string error;
+    Assert::IsTrue(Neuron::TextureFile::Read(bytes, texture, error), L"a 64 by 32 texture is a valid file");
+    Neuron::TerrainPalette palette = Neuron::TerrainPalette::BuiltIn();
+    const std::uint32_t before = palette.Lookup(0.0f, 0.0f);
+    Assert::IsFalse(Neuron::TerrainPalette::FromTexture(texture, palette), L"but not a palette");
+    Assert::AreEqual(before, palette.Lookup(0.0f, 0.0f), L"and the caller's palette is untouched");
   }
 };
 

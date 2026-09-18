@@ -13,7 +13,7 @@ Four `AGENTS.md` rules shape everything below, and this document does not re-arg
 - **R16** — the simulation is deterministic and holds no floats: integers and fixed point, a pinned PRNG, the tick as the only clock. Floats live in the renderer and in the client's replica.
 - **§2** — flat project directories, one-way edges, project files as source.
 
-**R13 was removed by the owner on 2026-09-17** (its number is not reused; `AGENTS.md` §5 says R18 and up are reserved without renumbering). The executable no longer ships alone: game data lives in files under `Content\` beside it and mods override them (§8), and what the game writes goes under the user's profile (§9). Two things the old rule also said hold here as design: shaders are compiled at build time, never at runtime (`AGENTS.md` §2 still says so), and a path resolves from the executable's directory or the user's profile, never from the working directory (§8, §9).
+**R13 was removed by the owner on 2026-09-17** (its number is not reused; `AGENTS.md` §5 says R18 and up are reserved without renumbering). The executable no longer ships alone: game data lives in files under `GameData\` beside it and mods override them (§8), and what the game writes goes under the user's profile (§9). Two things the old rule also said hold here as design: shaders are compiled at build time, never at runtime (`AGENTS.md` §2 still says so), and a path resolves from the executable's directory or the user's profile, never from the working directory (§8, §9).
 
 What the rules leave open, and this document decides: the projects, the simulation's representation, the network model, the renderer's shape, the content layout, and where files live.
 
@@ -148,7 +148,7 @@ The client generates the same landscape from the definition the host sends at jo
 
 **Storage.** Heights are sampled every 16 world units — four samples per cell edge, close to the Species spacing of 10.66 — and stored as `std::int16_t` whole units, which covers the height range of any Species landscape many times over. A Large landscape is 2,049 × 2,049 samples, 8.4 MB; a Frontier one 4,097 × 4,097, 33.6 MB. Derived grids are per cell, not per sample: slope class, water and obstruction at a byte or a bit each, and per-commander visibility at one byte of viewer count (§4.6) plus two bits of state. Eight commanders on a Frontier landscape is 8 × 1.05 million cells × 1.25 bytes = 10.5 MB of visibility. Arithmetic, not measurement.
 
-**Stamps** are authored patches: a rectangle of relative heights and a list of features, applied after generation at a position the generator chooses. Their format is the same as a snapshot's landscape section, so the tool that authors one is the game with an editor window, and a stamp is a JSON file under `Content\Stamps` (§8). **Terrain deltas at runtime** — flatten under a structure, and nothing else through M3 (owner, 2026-09-17) — are recorded as a list of rectangular height edits applied over the generated base, so a snapshot carries the seed plus the deltas rather than the heights, and terraforming can come later without a new snapshot format.
+**Stamps** are authored patches: a rectangle of relative heights and a list of features, applied after generation at a position the generator chooses. Their format is the same as a snapshot's landscape section, so the tool that authors one is the game with an editor window, and a stamp is a JSON file under `GameData\Stamps` (§8). **Terrain deltas at runtime** — flatten under a structure, and nothing else through M3 (owner, 2026-09-17) — are recorded as a list of rectangular height edits applied over the generated base, so a snapshot carries the seed plus the deltas rather than the heights, and terraforming can come later without a new snapshot format.
 
 ### 4.5 Pathing
 
@@ -296,17 +296,17 @@ The executable builds, each frame, a plain list of what to draw from the replica
 
 The values are in the three reference documents: [`SpeciesLook.md`](SpeciesLook.md) for lights, materials, fog, sky, camera, particles and the pixel effect; [`SpeciesTerrain.md`](SpeciesTerrain.md) for the generator, the palette lookup, the overlay and the water; [`SpeciesCanvas.md`](SpeciesCanvas.md) for the window toolkit's rules, the chrome palette and the fonts. This section says how each becomes a pass.
 
-- **Models** are new (owner, 2026-09-17) and are JSON files under `Content\Models` (§8) holding what the Species `.shp` record holds: positions, one colour per vertex, triangles, named markers, a fragment tree. Loaded once into vertex and index buffers: positions as `float`, one colour per vertex, no normals — the face normal is derived in the pixel shader from the screen-space derivatives of the world position, or the loader splits vertices and bakes one per triangle; the ADR that lands the first model decides. Markers — attachment points for turrets, muzzles and build effects — come across as they are.
+- **Models** are new (owner, 2026-09-17) and are JSON files under `GameData\Models` (§8) holding what the Species `.shp` record holds: positions, one colour per vertex, triangles, named markers, a fragment tree. Loaded once into vertex and index buffers: positions as `float`, one colour per vertex, no normals — the face normal is derived in the pixel shader from the screen-space derivatives of the world position, or the loader splits vertices and bakes one per triangle; the ADR that lands the first model decides. Markers — attachment points for turrets, muzzles and build effects — come across as they are.
 - **Lighting** is the Species model: Lambert only, no ambient, two directional lights whose colours may exceed 1.0, summed and clamped after the sum, one normal and one colour per triangle — with the one exception pillar 3 demands (owner, 2026-09-17): a vertex flagged as a team-colour slot is written unlit, so no sun tints a commander's colour. A shader of a dozen lines and one flag bit.
 - **Terrain colour** is the Species formula, computed on the CPU when a chunk is built: `u = (1 − slope)^0.4`, `v = 1 − height / highest`, plus noise, indexed into a 64×64 palette. Floats, because it never reaches the simulation.
-- **Text** is a bitmap font atlas drawn as quads at 1:1 at the authored resolution: the Species Spectrum font (owner, 2026-09-17), loaded from `Content\Textures`, in the 16-by-14-cell atlas format `SpeciesCanvas.md` §4 describes.
+- **Text** is a bitmap font atlas drawn as quads at 1:1 at the authored resolution: the Species Spectrum font (owner, 2026-09-17), loaded from `GameData\Textures`, in the 16-by-14-cell atlas format `SpeciesCanvas.md` §4 describes.
 - **The UI toolkit** is a window-and-widget system in the Eclipse shape, with the rules `SpeciesCanvas.md` §2 writes down and the chrome its §3 tabulates: windows own widgets, the input router offers events to the topmost window first, a widget that acts on an event consumes it, and nothing in it polls.
 
 ### 6.5 Input and audio
 
 **Input** takes the Species `input-native-events` design as its specification, because it is the best-documented piece of engineering in that tree and every rule in it was learned the hard way: one message pump per frame; the window procedure enqueues events and does nothing else; a pure per-frame derivation with one edge per control per frame; Raw Input for camera aim with `WM_MOUSEMOVE` as the fallback, guarded on *a relative packet actually arrived*; text as `WM_CHAR` characters to the focused widget; a router that offers events UI-first and masks a consumed key until release; subscriptions that are move-only handles. And the rule that matters most here: **the simulation never subscribes to input.** Input becomes orders through `Net`, nowhere else.
 
-**Audio** is XAudio2 with X3DAudio positioning, ported from the Species `SoundLibraryXAudio2` backend, with the Species `Sounds.txt` event model — an event per (object kind, event) naming a sample group, a position type, a loop type and parameter curves for volume and pitch — carried across as `Content\Sounds.json`, and the samples as WAV files under `Content\Sounds`. Device loss is handled as Species does: park silent, rebuild every few seconds until a device comes back.
+**Audio** is XAudio2 with X3DAudio positioning, ported from the Species `SoundLibraryXAudio2` backend, with the Species `Sounds.txt` event model — an event per (object kind, event) naming a sample group, a position type, a loop type and parameter curves for volume and pitch — carried across as `GameData\Sounds.json`, and the samples as WAV files under `GameData\Sounds`. Device loss is handled as Species does: park silent, rebuild every few seconds until a device comes back.
 
 ---
 
@@ -318,10 +318,10 @@ In `Sim`, on the host, deterministic, one planner and a table of personalities (
 
 ## 8. Content
 
-**Game data is files** (owner, 2026-09-17: R13 withdrawn), **in JSON** (owner, 2026-09-17), under a `Content\` directory beside the executable, resolved from the executable's own path and never from the working directory. R14 still holds, so the JSON reader is written into `Core`: a strict parser of the standard grammar, about three hundred lines, with the file, line and column in every error. The layout:
+**Game data is files** (owner, 2026-09-17: R13 withdrawn), **in JSON** (owner, 2026-09-17), under a `GameData\` directory beside the executable, resolved from the executable's own path and never from the working directory. It was `Content\` until 2026-09-18, when the owner separated it from the `Content` project: that library is the loaders, this tree is what they load, and one name for both had put textures and tables inside a source directory. In the repository it is `GameData/` at the root, and the two executables copy it to `$(OutDir)GameData\` after they build. R14 still holds, so the JSON reader is written into `Core`: a strict parser of the standard grammar, about three hundred lines, with the file, line and column in every error. The layout:
 
 ```
-Content\
+GameData\
   Components.json          chassis, drives and modules (GameDesign.md §6), with the derivation formulas
   Research.json            the research tree (GameDesign.md §7)
   Structures.json          the structure catalogue and modules (GameDesign.md §5)
@@ -336,9 +336,9 @@ Content\
 Mods\<name>\...            the same tree; a file here overrides the one at the same path under Content\
 ```
 
-**Mods** are M3 work — there is nobody to disagree with in single-player — and are directories under `Mods\` beside the executable, enabled by name in the lobby; the loader reads `Content\` and then each enabled mod in order, and a file in a mod replaces the file at the same path. Nothing else is needed for a mod that changes numbers, adds a component or a model, or replaces a sound.
+**Mods** are M3 work — there is nobody to disagree with in single-player — and are directories under `Mods\` beside the executable, enabled by name in the lobby; the loader reads `GameData\` and then each enabled mod in order, and a file in a mod replaces the file at the same path. Nothing else is needed for a mod that changes numbers, adds a component or a model, or replaces a sound.
 
-**Validation happens at load and in CI with one implementation.** At load, `Content` checks that every research prerequisite names an existing item and the tree has no cycle; that every component's unlock names an item; that every model, texture and sound a table names exists; that no id is duplicated; that every number is in its range — and refuses to start on a failure, naming the file and line. In CI, `FrontierHost --validate` loads `Content\` with that same code and exits non-zero on any failure, so a table edit that would break the game breaks the build first, without a second implementation of the rules to keep in step.
+**Validation happens at load and in CI with one implementation.** At load, `Content` checks that every research prerequisite names an existing item and the tree has no cycle; that every component's unlock names an item; that every model, texture and sound a table names exists; that no id is duplicated; that every number is in its range — and refuses to start on a failure, naming the file and line. In CI, `FrontierHost --validate` loads `GameData\` with that same code and exits non-zero on any failure, so a table edit that would break the game breaks the build first, without a second implementation of the rules to keep in step.
 
 **The content hash**, also M3, is a 64-bit digest over the bytes of every file loaded, in load order, mods included, computed at start and sent at join (§5.4). Two players with different files are refused each other's matches before the first tick.
 

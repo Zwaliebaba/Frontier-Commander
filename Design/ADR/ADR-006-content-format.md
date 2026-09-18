@@ -2,11 +2,11 @@
 
 **Status:** Accepted
 **Date:** 2026-09-17
-**Owner:** the author, on `Design/TechnicalDesign.md` §8 and the owner's ruling of 2026-09-17 (JSON under `Content\`, textures DDS)
+**Owner:** the author, on `Design/TechnicalDesign.md` §8 and the owner's ruling of 2026-09-17 (JSON under `GameData\`, textures DDS)
 
 ## Context
 
-`TechnicalDesign.md` §8 fixes that game data is JSON files under `Content\` beside the executable, lists the files, and requires that validation happen at load and in CI **with one implementation**. It leaves to the first loader (`m1-vertical-slice/C1`) what the schemas actually are: what each row holds, in what unit, inside what range, and what a version field means when a reader meets a file it does not know. Every simulation task of M1 reads these tables, so the answer has to exist before `S1`.
+`TechnicalDesign.md` §8 fixes that game data is JSON files under `GameData\` beside the executable, lists the files, and requires that validation happen at load and in CI **with one implementation**. It leaves to the first loader (`m1-vertical-slice/C1`) what the schemas actually are: what each row holds, in what unit, inside what range, and what a version field means when a reader meets a file it does not know. Every simulation task of M1 reads these tables, so the answer has to exist before `S1`.
 
 ## Decision
 
@@ -24,13 +24,13 @@
 
 **Every file carries a `version`, and a reader refuses a version it does not know by name** rather than reading it as best it can. The table files are at version 1 together; the landscape, stamp and model documents carry their own, declared beside their row, because a tool writes them one at a time.
 
-**Loading is fail-fast and validation is exhaustive.** `LoadContent` reads the files in a fixed order — components, structures, research, damage, biomes, sounds, then the `Landscapes`, `Stamps` and `Models` directories sorted by name — and stops at the **first** file that fails, with one diagnostic naming the file, line and column; a tree that fails leaves the caller's `ContentTree` untouched, so there is never a half-read table. `ValidateContent` then reports **every** fault it finds, because a table edit usually breaks several rows and one pass should show them all.
+**Loading is fail-fast and validation is exhaustive.** `LoadContent` reads the files of a game-data directory (`GameData\` beside the executable, `GameData/` at the repository root, which the executables copy after they build) in a fixed order — components, structures, research, damage, biomes, sounds, then the `Landscapes`, `Stamps` and `Models` directories sorted by name — and stops at the **first** file that fails, with one diagnostic naming the file, line and column; a tree that fails leaves the caller's `ContentTree` untouched, so there is never a half-read table. `ValidateContent` then reports **every** fault it finds, because a table edit usually breaks several rows and one pass should show them all.
 
 **Every diagnostic names a line**, including the ones that span files. `Neuron::JsonValue` gained a line and column, set by the parser, so a fault in what a value *means* — a number out of range, an unknown enumeration name — points at the value rather than at the document. For a fault that spans files, `ContentTree::origins` records the file and line of every row as it is read, and the validator reports a missing prerequisite or a duplicate id at the line of the row that is wrong. Rows themselves carry no line: a row is compared, hashed and replicated, and a line is none of those things.
 
 **The validator's rules**, in one place, are: no id is used twice across every table; every research prerequisite exists and is not the item itself; the research tree has no cycle; every unlock names a chassis, drive, module, structure or structure module; every `unlockedBy` names a research item; a structure's modules exist and fit its slots, and its weapon is a module; a weapon's long range is not under its short range and an indirect weapon's minimum range is under its long range; every landscape's palette names a biome and it has at least one start; and, when a directory is given, every model, texture and wave a row names is on disk.
 
-**`FrontierHost --validate [directory]`** runs both with that same code and exits 0 or non-zero, printing every diagnostic in `file(line,column): message`, the form the build tools print. It defaults to `Paths::ContentDirectory()`. CI runs it as a step guarded on `Content\Components.json` existing, so that a table edit that would break the game breaks the build first, without a second implementation of the rules to keep in step.
+**`FrontierHost --validate [directory]`** runs both with that same code and exits 0 or non-zero, printing every diagnostic in `file(line,column): message`, the form the build tools print. It defaults to `Paths::GameDataDirectory()`. CI runs it as a step guarded on `GameData\Components.json` existing, so that a table edit that would break the game breaks the build first, without a second implementation of the rules to keep in step.
 
 **`DesignStats` is the one implementation of the derivation formulas** of `GameDesign.md` §6. The design screen shows what the factory will build because both call it. It is integer throughout, with one rounding — half up — at the end of each statistic's chain, which is what makes a light on wheels with a machine gun 104 world units a second rather than 103, and a heavy on tracks with a cannon 29 rather than 28. Research upgrades are passed in as class percentages rather than read from a seat, because `Content` knows nothing of seats.
 
@@ -42,7 +42,7 @@
 - The ranges live in the loader rather than in the schema files. A range that is wrong is a code change, not a data change. The alternative, a schema language, is a second thing to keep in step with the rows and was refused.
 - `JsonValue` grew two integers. A content tree is tens of kilobytes, so the cost is nothing; a program parsing megabytes of JSON with this reader would notice, and none does.
 - Rows keep the order their files declare, so a listing is a loop and the content hash of M3 has a stable order to digest. A lookup by id is a linear search, which is right for tables of tens of rows and wrong for thousands; if a table ever reaches thousands, this is the decision to revisit.
-- Nothing yet loads `Content\Interface.json`, the chrome palette `Design/Interface.md` §3 specifies. It is a table like any other and `C2` adds it with its row aggregate.
+- Nothing yet loads `GameData\Interface.json`, the chrome palette `Design/Interface.md` §3 specifies. It is a table like any other and `C2` adds it with its row aggregate.
 - A structure module names a model like everything else, and the placeholder set of `C4` had none, which `C2` would have met as a validation failure. `C4`'s file list now carries one per M1 structure module.
 - A landscape definition is validated against **this build's** constants — samples a side, sample spacing, the outside height — rather than reading them, so a definition written by a tool of another shape is refused rather than silently regenerated differently.
 

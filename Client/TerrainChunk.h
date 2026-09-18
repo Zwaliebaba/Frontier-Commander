@@ -1,6 +1,7 @@
 #pragma once
 
 #include "HeightView.h"
+#include "TextureFile.h"
 
 #include <array>
 #include <cstddef>
@@ -43,6 +44,12 @@ public:
   static constexpr std::uint32_t SIDE = 64;
 
   [[nodiscard]] static TerrainPalette BuiltIn();
+
+  /// Fills a palette from a decoded texture, which must be SIDE by SIDE. False, with _out
+  /// untouched, for anything else, so that a bad or missing file falls back to BuiltIn rather than
+  /// colouring the landscape with whatever it found. Row 0 is the summit and row 63 sea level, as
+  /// Lookup indexes it and as Tools/MakeTerrainPalette.py writes it.
+  [[nodiscard]] static bool FromTexture(const TextureFile& _texture, TerrainPalette& _out);
 
   /// _u the slope term and _v the height term, both 0 to 1, clamped.
   [[nodiscard]] std::uint32_t Lookup(float _u, float _v) const noexcept;

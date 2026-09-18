@@ -62,7 +62,7 @@ constexpr int EXIT_BAD_COMMAND_LINE = 2;
     if (std::strcmp(_arguments[index], "--validate") == 0)
     {
       const bool given = index + 1 < _argumentCount && _arguments[index + 1][0] != '-';
-      const std::filesystem::path directory = given ? std::filesystem::path(_arguments[index + 1]) : Neuron::Paths::ContentDirectory();
+      const std::filesystem::path directory = given ? std::filesystem::path(_arguments[index + 1]) : Neuron::Paths::GameDataDirectory();
       return Validate(directory);
     }
   }

@@ -60,7 +60,7 @@ The M1 interface, as fixed panels at the authored resolution. It exists because 
 
 ## 3. The chrome
 
-One palette table, `Content\Interface.json`, loaded by `Content` alongside the other tables, so that the look of a panel is data (`SpeciesCanvas.md` §7). Every colour below is that file's starting value, in 8-bit RGBA.
+One palette table, `GameData\Interface.json`, loaded by `Content` alongside the other tables, so that the look of a panel is data (`SpeciesCanvas.md` §7). Every colour below is that file's starting value, in 8-bit RGBA.
 
 | Role | Colour | Where |
 |---|---|---|
@@ -88,7 +88,7 @@ One palette table, `Content\Interface.json`, loaded by `Content` alongside the o
 
 **A bar** is a filled `barEmpty` rectangle with a one-pixel `panelBorder`, 12 pixels high, filled from the left in its value's colour. A bar never animates toward its value; it is drawn at the value the frame has.
 
-**An icon** is 32×32 authored pixels from `Content\Textures\Icons.dds`, drawn as one quad in `bodyText` where it is available and `dimText` where it is not, on the panel fill. Monochrome with one accent (`GameDesign.md` §11.4): an icon is a single-channel mask tinted at draw time, never a coloured bitmap, so that the accent is the palette's and a mod recolours nothing by accident.
+**An icon** is 32×32 authored pixels from `GameData\Textures\Icons.dds`, drawn as one quad in `bodyText` where it is available and `dimText` where it is not, on the panel fill. Monochrome with one accent (`GameDesign.md` §11.4): an icon is a single-channel mask tinted at draw time, never a coloured bitmap, so that the accent is the palette's and a mod recolours nothing by accident.
 
 ### Text
 
@@ -349,7 +349,7 @@ Each of these is a real gap found while writing this document, with the task tha
 | 1 | `AuthoredFromClient`, the inverse of `FitAuthored`, with its round-trip test | `K3` |
 | 2 | `Core/RenderView.h` must carry a selection flag, construction progress, a commander colour index rather than a packed colour, the fog grid, and a wreck-or-projectile distinction | `R2` — **blocks K4** |
 | 3 | A wire record carrying the per-seat order rejections `S2` already records, so §6 can show them | `N1` — **blocks K4** |
-| 4 | `Content\Interface.json`, the chrome palette of §3, and its loader row | `C1` and `C2` — **blocks K4** |
+| 4 | `GameData\Interface.json`, the chrome palette of §3, and its loader row | `C1` and `C2` — **blocks K4** |
 | 5 | The eight commander colours, as a content table. §3 names none, because the only palette written down is Species's and this game's has never been chosen | `C2`, and a ruling in `GameDesign.md` §11 |
 | 6 | The eight ranks' names, badges and percentages. `GameDesign.md` §6 says "a small percentage" and nothing more, and `S5` defers to a design that proposes none | `GameDesign.md` §6, then `C2` |
 | 7 | The icon list: six cursors and one icon per structure, module, order and stance, with `Icons.dds` laid out as a grid of 32×32 cells | `C4` — **blocks K4** |

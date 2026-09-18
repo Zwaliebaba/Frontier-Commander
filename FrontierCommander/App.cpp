@@ -33,8 +33,13 @@
 #include <cstdio>
 #include <cwchar>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
+#include <span>
 #include <string>
 #include <system_error>
+#include <vector>
 
 namespace Frontier
 {
@@ -57,10 +62,12 @@ constexpr float PI = 3.14159265358979323846f;
   definition.cellsPerSide = SIZE_CLASS_CELLS[static_cast<std::size_t>(SizeClass::Small)];
   definition.seed = 1;
   definition.palette = "Default";
+  // The last member of each is the tile's own palette, empty for the landscape's (Q18).
   definition.tiles = {
-    {0, 0, 512, 170, 90, 100, 48, 70, 1, 32},   {58, -24, 256, 190, 90, 60, 0, 80, 0, 16},  {311, 61, 256, 190, 90, 90, 0, 80, 0, 16},
-    {36, 209, 256, 210, 90, 75, 0, 80, 0, 16},  {269, 220, 256, 230, 90, 90, 0, 80, 0, 16}, {113, 189, 128, 290, 90, 130, 0, 87, 1, 16},
-    {-23, 34, 128, 270, 90, 130, 0, 87, 1, 16}, {65, 246, 128, 270, 90, 130, 0, 87, 1, 16},
+    {0, 0, 512, 170, 90, 100, 48, 70, 1, 32, ""},   {58, -24, 256, 190, 90, 60, 0, 80, 0, 16, ""},
+    {311, 61, 256, 190, 90, 90, 0, 80, 0, 16, ""},  {36, 209, 256, 210, 90, 75, 0, 80, 0, 16, ""},
+    {269, 220, 256, 230, 90, 90, 0, 80, 0, 16, ""}, {113, 189, 128, 290, 90, 130, 0, 87, 1, 16, ""},
+    {-23, 34, 128, 270, 90, 130, 0, 87, 1, 16, ""}, {65, 246, 128, 270, 90, 130, 0, 87, 1, 16, ""},
   };
   definition.starts = {{36, 92}, {108, 20}};
   return definition;
@@ -97,6 +104,45 @@ constexpr float PI = 3.14159265358979323846f;
     highest = std::max<std::int32_t>(highest, sample);
   }
   return {_landscape.Heights().data(), _landscape.SamplesPerSide(), SAMPLE_SPACING_WORLD_UNITS, 0, highest};
+}
+
+/// The landscape's palette, from GameData\Textures, falling back to the built-in gradient when the
+/// content directory is not beside the executable or the file is not a 64 by 64 texture. The log
+/// says which was used, because a frame coloured by the gradient and a frame coloured by the
+/// authored palette are different pictures and nobody should have to guess which they are reading.
+///
+/// The biome names its palette (GameData\Biomes.json, m1-vertical-slice/C2) and this reads the
+/// default directly until the tables exist.
+[[nodiscard]] Neuron::TerrainPalette LoadTerrainPalette()
+{
+  const std::filesystem::path file = Neuron::Paths::GameDataDirectory() / "Textures" / "LandscapeDefault.dds";
+  std::ifstream stream(file, std::ios::binary);
+  if (stream)
+  {
+    const std::vector<char> bytes((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+    Neuron::TextureFile texture;
+    std::string error;
+    Neuron::TerrainPalette palette;
+    if (!Neuron::TextureFile::Read(std::as_bytes(std::span<const char>(bytes.data(), bytes.size())), texture, error))
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Warning, "palette: " + file.string() + " was refused: " + error);
+    }
+    else if (!Neuron::TerrainPalette::FromTexture(texture, palette))
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Warning, "palette: " + file.string() + " is not a 64 by 64 palette");
+    }
+    else
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Info, "palette: " + file.string());
+      return palette;
+    }
+  }
+  else
+  {
+    Neuron::Log::Write(Neuron::LogLevel::Info, "palette: no " + file.string());
+  }
+  Neuron::Log::Write(Neuron::LogLevel::Info, "palette: the built-in gradient");
+  return Neuron::TerrainPalette::BuiltIn();
 }
 
 [[nodiscard]] Neuron::TerrainPass::Frame FrameOf(const Neuron::TerrainPass& _terrain, Neuron::FogMode _fog) noexcept
@@ -220,7 +266,7 @@ int App::RunWindowed()
     return EXIT_FAILED;
   }
   const Neuron::HeightView heights = ViewOf(sim.Terrain());
-  Neuron::TerrainPass terrain(device, heights, Neuron::TerrainPalette::BuiltIn(), scene.SampleCount());
+  Neuron::TerrainPass terrain(device, heights, LoadTerrainPalette(), scene.SampleCount());
   Neuron::WaterPass water(device, heights, scene.SampleCount());
   Neuron::Camera camera;
   camera.SetFarPlane(terrain.ExtentWorldUnits() * Neuron::FAR_PLANE_EXTENT_FACTOR);
@@ -297,7 +343,7 @@ int App::RunCapture()
   const Neuron::HeightView heights = ViewOf(sim.Terrain());
   Neuron::Log::Write(Neuron::LogLevel::Info, "landscape: " + std::to_string(heights.samplesPerSide) + " samples a side, highest " +
                                                std::to_string(heights.highest));
-  Neuron::TerrainPass terrain(device, heights, Neuron::TerrainPalette::BuiltIn(), scene.SampleCount());
+  Neuron::TerrainPass terrain(device, heights, LoadTerrainPalette(), scene.SampleCount());
   Neuron::WaterPass water(device, heights, scene.SampleCount());
   Neuron::Camera camera;
   camera.SetFarPlane(terrain.ExtentWorldUnits() * Neuron::FAR_PLANE_EXTENT_FACTOR);

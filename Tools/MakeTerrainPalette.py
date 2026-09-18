@@ -18,7 +18,7 @@ and did not need one, having one palette per map.
 Like every importer under Tools, this never ships and is run by hand; its output is committed.
 
   python3 Tools/MakeTerrainPalette.py --species ../Species/GameData/Terrain --source Earth \
-      --out Content/Textures/LandscapeDefault.dds
+      --out GameData/Textures/LandscapeDefault.dds
 """
 from __future__ import annotations
 

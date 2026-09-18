@@ -112,7 +112,7 @@ plus a **selection arrow** (`SelectionArrow.bmp` with its shadow) over the selec
 
 **Carry the model and the rules whole.** Windows that own buttons, identity by name, front-of-list is front-of-screen, left press focuses and raises, right button is the game's, release-on-button-under-cursor, the 4-pixel resize margin and the 60 × 40 minimum, the 1,000 ms tooltip, `Char` returning whether it consumed, keyboard navigation through a button order with activate and close, auto-size on registration. `TechnicalDesign.md` §6.4 already asks for a toolkit "in the Eclipse shape"; §2 above is that shape written down.
 
-**Carry the chrome as a palette table.** Every RGBA value in §3, the two-pass yellow with shadow, the gradient title bar, the red gradient panel, the 2-pixel border and 1-pixel outer loop, the 16-pixel title height — one JSON file under `Content\`, and the look of a window is data.
+**Carry the chrome as a palette table.** Every RGBA value in §3, the two-pass yellow with shadow, the gradient title bar, the red gradient panel, the 2-pixel border and 1-pixel outer loop, the 16-pixel title height — one JSON file under `GameData\`, and the look of a window is data.
 
 **Carry the two-font split**, a title face and a caption face, at 12 and 13 pixels, drawn 1:1. The atlas format (16 × 14 cells from ASCII 32, 0.6 width ratio) is simple enough to keep as the font file's format; the glyphs are the Spectrum font's (owner, 2026-09-17).
 
