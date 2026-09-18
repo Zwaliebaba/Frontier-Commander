@@ -158,7 +158,7 @@ tasks:
       - "Landscapes/Slice.json: a Small landscape whose seed the landscape tool reports as passing all four guarantees, with two starts and twelve deposits placed per GameDesign.md §3 (a modest cluster at each start, the largest midway)"
       - FrontierHost --validate passes over the tree, and the CI step runs it
       - The DesignStats test now reads the tables and reproduces the worked examples from them
-      - "The terrain draws from the biome's palette rather than the built-in gradient: the loading landed early, on 2026-09-18, so this task points the Default biome at GameData/Textures/LandscapeDefault.dds and checks the capture's frames are coloured by it. The capture log names which palette was used, and the gradient stays only as the fallback for a run with no game data beside the executable"
+      - "The terrain draws from the biome's palette rather than the built-in gradient: the loading and the four Species palettes landed early, on 2026-09-18, so this task points the Default biome at GameData/Textures/LandscapeDefault.dds and checks the capture's frames are coloured by it. Getting GameData beside the executable is the owner's step and no build target does it, so until that is in place the capture logs the gradient and this line is not yet checkable"
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Tools/LandscapeTool.py --report Small --seeds 100
@@ -204,10 +204,12 @@ tasks:
       - Tools/ImportSounds.py
       - Tools/ImportTextures.py
       - Tools/MakePlaceholderModels.py
-      # Tools/MakeTerrainPalette.py and GameData/Textures/LandscapeDefault.dds landed with C1's
-      # follow-up on 2026-09-18 (OpenQuestions.md Q18): the tool applies the shared-shore rule and
-      # the default palette is the first written to it. C4 writes the other biomes' palettes with
-      # the same tool, and the font and icon textures.
+      # Tools/MakeTerrainPalette.py and the four general Species palettes landed with C1's
+      # follow-up on 2026-09-18 (OpenQuestions.md Q18): GameData/Textures/Landscape{Default,
+      # Desert,Earth,Icecaps}.dds, each with its bottom six rows ramped into the water colour so
+      # that any two blend at the shore. C4 brings the font, the icons, the water and wave
+      # textures and the cloud noise; M2 authors the four biomes the Species set does not cover,
+      # its other four palettes being recolours of Default for one location each.
       - GameData/Models/ChassisLight.json
       - GameData/Models/ChassisMedium.json
       - GameData/Models/ChassisHeavy.json

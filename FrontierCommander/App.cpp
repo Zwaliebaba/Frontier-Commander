@@ -107,8 +107,9 @@ constexpr float PI = 3.14159265358979323846f;
 }
 
 /// The landscape's palette, from GameData\Textures, falling back to the built-in gradient when the
-/// content directory is not beside the executable or the file is not a 64 by 64 texture. The log
-/// says which was used, because a frame coloured by the gradient and a frame coloured by the
+/// game data is not beside the executable or the file is not a 64 by 64 texture. Nothing in the
+/// build puts it there (owner, 2026-09-18), so the fallback is the ordinary case until it does and
+/// the log says which was used: a frame coloured by the gradient and a frame coloured by the
 /// authored palette are different pictures and nobody should have to guess which they are reading.
 ///
 /// The biome names its palette (GameData\Biomes.json, m1-vertical-slice/C2) and this reads the

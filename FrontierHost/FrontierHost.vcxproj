@@ -122,15 +122,6 @@
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
-  <Target Name="CopyGameData" AfterTargets="Build">
-    <!-- The game reads its data from GameData\ beside the executable (TechnicalDesign.md §8), so the
-         build puts it there. Only the data extensions are copied, never a source file, and
-         SkipUnchangedFiles keeps an incremental build incremental. -->
-    <ItemGroup>
-      <GameDataFiles Include="$(SolutionDir)GameData\**\*.json;$(SolutionDir)GameData\**\*.dds;$(SolutionDir)GameData\**\*.wav" />
-    </ItemGroup>
-    <Copy SourceFiles="@(GameDataFiles)" DestinationFiles="@(GameDataFiles->'$(OutDir)GameData\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
-  </Target>
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>
