@@ -45,7 +45,15 @@ struct BiomeDesc
   std::int32_t fogStartExtentHundredths;
   std::int32_t fogEndExtentHundredths;
   std::array<std::int32_t, 3> fogColorHundredths;
+  /// Species has no sky colour at all: the sky is the clear colour, black, with additive layers
+  /// over it (SpeciesLook.md §6), and zero here reproduces that exactly. The field exists so that
+  /// a biome which is not the Garden can lift its background without a schema change.
   std::array<std::int32_t, 3> skyColorHundredths;
+
+  // The cloud layers themselves are not here yet. They are camera-relative with their noise in
+  // world space (OpenQuestions.md Q17, owner 2026-09-18), and m2-skirmish/T8 adds a row per layer
+  // — height, world-space repeat period, colour — plus the drift, with the numbers it measures.
+  // That is a version bump of this file, which ADR-006 already provides for.
 
   [[nodiscard]] bool operator==(const BiomeDesc&) const noexcept = default;
 };
