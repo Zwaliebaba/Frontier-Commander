@@ -146,14 +146,17 @@ constexpr float PI = 3.14159265358979323846f;
   return Neuron::TerrainPalette::BuiltIn();
 }
 
-[[nodiscard]] Neuron::TerrainPass::Frame FrameOf(const Neuron::TerrainPass& _terrain, Neuron::FogMode _fog) noexcept
+/// The fog range is the landscape's no longer (ADR-007): it is absolute, so a Frontier landscape's
+/// horizon reads exactly as a Small one's.
+[[nodiscard]] Neuron::TerrainPass::Frame FrameOf(Neuron::FogMode _fog) noexcept
 {
   Neuron::TerrainPass::Frame frame{};
   frame.aspect = static_cast<float>(Neuron::AUTHORED_WIDTH_PIXELS) / static_cast<float>(Neuron::AUTHORED_HEIGHT_PIXELS);
   frame.lighting = Neuron::GARDEN_LIGHTING;
   frame.fogMode = _fog;
-  frame.fogStart = _terrain.ExtentWorldUnits() * Neuron::FOG_START_FRACTION;
-  frame.fogEnd = _terrain.ExtentWorldUnits() * Neuron::FOG_END_FRACTION;
+  frame.fogStart = Neuron::FOG_START_WORLD_UNITS;
+  frame.fogEnd = Neuron::FOG_FULL_WORLD_UNITS;
+  frame.fogMaxDesaturation = Neuron::FOG_MAX_DESATURATION;
   frame.fogColor = {0.0f, 0.0f, 0.0f};
   return frame;
 }
@@ -301,7 +304,7 @@ int App::RunWindowed()
     }
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);
-    terrain.Draw(list, camera, FrameOf(terrain, fog));
+    terrain.Draw(list, camera, FrameOf(fog));
     water.Draw(list, terrain.ConstantsAddress());
     scene.Resolve(list);
     present.Draw(
@@ -354,7 +357,7 @@ int App::RunCapture()
     camera.ClampHeight(heights);
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);
-    terrain.Draw(list, camera, FrameOf(terrain, fog));
+    terrain.Draw(list, camera, FrameOf(fog));
     water.Draw(list, terrain.ConstantsAddress());
     scene.Resolve(list);
     const bool captured = frame % CAPTURE_EVERY_FRAMES == 0;

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 
 namespace Neuron
 {
@@ -47,9 +48,22 @@ enum class FogMode : std::uint32_t
 /// ADR-005's choice, until the owner confirms or overrides it (m0-foundation/T22).
 inline constexpr FogMode DEFAULT_FOG_MODE = FogMode::Desaturation;
 
-/// The Species fog range as a fraction of the landscape's extent: 1,000 to 4,000 units on maps
-/// about 5,400 across.
-inline constexpr float FOG_START_FRACTION = 0.185f;
-inline constexpr float FOG_END_FRACTION = 0.74f;
+/// THE FOG RANGE IS ABSOLUTE (ADR-007): one chunk width to four of them, in world units, and not a
+/// fraction of the landscape's extent. ADR-005 scaled it with the landscape and the owner's frame
+/// showed why that cannot work: the camera's distance scales with the landscape too, because an RTS
+/// player's zoom is set by how much map they want on screen, so the two never separate and framing a
+/// landscape puts all of it past the far end. 63.9% of that frame's landscape measured exactly gray.
+inline constexpr float FOG_START_WORLD_UNITS = 2048.0f;
+inline constexpr float FOG_FULL_WORLD_UNITS = 8192.0f;
+static_assert(FOG_START_WORLD_UNITS < FOG_FULL_WORLD_UNITS);
+
+/// The most of its own saturation a pixel may lose to distance, and the terminus the desaturation
+/// does not otherwise have (ADR-007). Fading to the background is self-limiting: at full strength
+/// the surface is the background and is never seen. Desaturation at full strength leaves the terrain
+/// in full detail with its colour gone, which deletes the saturated rim the horizontal sun of
+/// SpeciesLook.md §2 exists to paint. FogMode::LinearToColor takes no ceiling and still reaches one,
+/// because reaching the background is what it is for and the capture's comparison rests on it.
+inline constexpr float FOG_MAX_DESATURATION = 0.35f;
+static_assert(FOG_MAX_DESATURATION > 0.0f && FOG_MAX_DESATURATION <= 1.0f);
 
 } // namespace Neuron

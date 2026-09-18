@@ -42,6 +42,7 @@ public:
     FogMode fogMode;
     float fogStart;
     float fogEnd;
+    float fogMaxDesaturation; ///< The ceiling of ADR-007; the linear mode ignores it
     std::array<float, 3> fogColor;
   };
 
@@ -61,7 +62,8 @@ public:
   {
     return m_lastChunks;
   }
-  /// The landscape's extent in world units, which the fog range scales with.
+  /// The landscape's extent in world units. The fog no longer scales with it (ADR-007); the far
+  /// plane still does (ADR-005).
   [[nodiscard]] float ExtentWorldUnits() const noexcept
   {
     return m_extent;

@@ -1,6 +1,6 @@
 # ADR-006 — The content format
 
-**Status:** Accepted
+**Status:** Accepted; the biome row's fog range is superseded by [`ADR-007`](ADR-007-view-budget.md) (2026-09-18), which made it world units rather than hundredths of the landscape's extent and added the desaturation's ceiling. Nothing else here moves.
 **Date:** 2026-09-17
 **Owner:** the author, on `Design/TechnicalDesign.md` §8 and the owner's ruling of 2026-09-17 (JSON under `GameData\`, textures DDS)
 

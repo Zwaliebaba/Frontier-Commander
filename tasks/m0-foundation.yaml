@@ -1231,7 +1231,7 @@ tasks:
     acceptance:
       - The owner builds Debug and Release from the solution and runs FrontierCommander on hardware
       - A Small landscape is on screen, the camera flies, and the frame time at 1920x1080 is recorded in this task's notes
-      - The fog choice of T20's ADR is confirmed or overridden, and an override is a superseding ADR
+      - "The fog choice of T20's ADR is confirmed or overridden, and an override is a superseding ADR; the ruling is made on a frame drawn with ADR-007's absolute range and its ceiling on the desaturation, not on the frame of 2026-09-18, whose range left 63.9% of the landscape exactly gray"
       - Every M0 line of GameDesign.md §12 is true, and this plan is moved to tasks/Archive/
     status: todo
     notes: >

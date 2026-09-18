@@ -217,7 +217,8 @@ void TerrainPass::Draw(ID3D12GraphicsCommandList* _list, const Camera& _camera, 
   constants.lightColor0 = {_frame.lighting.key.color[0], _frame.lighting.key.color[1], _frame.lighting.key.color[2], 0.0f};
   constants.lightDirection1 = normalized(_frame.lighting.sun.direction);
   constants.lightColor1 = {_frame.lighting.sun.color[0], _frame.lighting.sun.color[1], _frame.lighting.sun.color[2], 0.0f};
-  constants.fog = {_frame.fogStart, _frame.fogEnd, static_cast<float>(static_cast<std::uint32_t>(_frame.fogMode)), 0.0f};
+  constants.fog = {_frame.fogStart, _frame.fogEnd, static_cast<float>(static_cast<std::uint32_t>(_frame.fogMode)),
+                   _frame.fogMaxDesaturation};
   constants.fogColor = {_frame.fogColor[0], _frame.fogColor[1], _frame.fogColor[2], 1.0f};
   const std::size_t slot = m_device->FrameIndex();
   std::memcpy(m_constantsMapped + slot * SCENE_CONSTANTS_STRIDE, &constants, sizeof constants);

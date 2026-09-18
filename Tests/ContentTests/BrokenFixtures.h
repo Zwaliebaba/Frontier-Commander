@@ -139,7 +139,7 @@ inline constexpr std::string_view GOOD_BIOMES = R"({
       "key": { "directionHundredths": [4, 39, -92], "colorHundredths": [106, 96, 72] },
       "sun": { "directionHundredths": [57, 0, -82], "colorHundredths": [358, 79, 14] },
       "fogMode": "Desaturation",
-      "fogStartExtentHundredths": 19, "fogEndExtentHundredths": 74,
+      "fogStartWorldUnits": 2048, "fogEndWorldUnits": 8192, "fogMaxDesaturationHundredths": 35,
       "fogColorHundredths": [0, 0, 0], "skyColorHundredths": [0, 0, 0]
     }
   ]

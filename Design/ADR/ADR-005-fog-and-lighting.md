@@ -1,6 +1,6 @@
 # ADR-005 — Fog and lighting
 
-**Status:** Accepted
+**Status:** Accepted; the fog *range* is superseded by [`ADR-007`](ADR-007-view-budget.md) (2026-09-18), which made it absolute and gave the desaturation a ceiling on the owner's frame. Everything else here stands: the lighting, the unlit team-colour slot, the far plane, the reversed depth, and the desaturation as the mode.
 **Date:** 2026-09-17
 **Owner:** the author, on the owner's ruling of 2026-09-17 (`Design/OpenQuestions.md` R4); the fog choice is confirmed or overridden by the owner at `m0-foundation/T22`, and an override is a superseding ADR
 

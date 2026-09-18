@@ -22,7 +22,7 @@ constexpr std::int32_t MAX_POWER_HUNDREDTHS = 1000000; ///< 10,000 power: above 
 constexpr std::int32_t MAX_HIT_POINTS = 100000;
 constexpr std::int32_t MAX_ARMOR = 1000;
 constexpr std::int32_t MAX_SPEED_SUBUNITS_PER_TICK = 100000;
-constexpr std::int32_t MAX_DISTANCE_SUBUNITS = 100000000; ///< Far beyond a Frontier landscape's diagonal
+constexpr std::int32_t MAX_DISTANCE_SUBUNITS = 100000000; ///< 390,625 world units, or 6,104 cells: no sight or weapon range approaches it
 constexpr std::uint32_t MAX_TICKS = 1000000;              ///< Fourteen hours
 constexpr std::int32_t MAX_PERCENT = 10000;
 constexpr std::int32_t MAX_FACTOR_HUNDREDTHS = 100000;
@@ -738,16 +738,17 @@ constexpr std::uint32_t TABLE_VERSION = 1;
         !_reader.String(row, "paletteTexture", biome.paletteTexture) || !_reader.OptionalString(row, "waterTexture", biome.waterTexture) ||
         !_reader.OptionalString(row, "waveTexture", biome.waveTexture) || !ReadLight(_reader, row, "key", biome.key) ||
         !ReadLight(_reader, row, "sun", biome.sun) || !_reader.Enumerated<FogMode>(row, "fogMode", FOG_MODE_NAMES, biome.fogMode) ||
-        !_reader.Int32(row, "fogStartExtentHundredths", 0, 100, biome.fogStartExtentHundredths) ||
-        !_reader.Int32(row, "fogEndExtentHundredths", 0, 100, biome.fogEndExtentHundredths) ||
+        !_reader.Int32(row, "fogStartWorldUnits", 0, MAX_FOG_WORLD_UNITS, biome.fogStartWorldUnits) ||
+        !_reader.Int32(row, "fogEndWorldUnits", 0, MAX_FOG_WORLD_UNITS, biome.fogEndWorldUnits) ||
+        !_reader.Int32(row, "fogMaxDesaturationHundredths", 0, 100, biome.fogMaxDesaturationHundredths) ||
         !_reader.IntegerArray(row, "fogColorHundredths", 3, 0, 100, biome.fogColorHundredths) ||
         !_reader.IntegerArray(row, "skyColorHundredths", 3, 0, 100, biome.skyColorHundredths))
     {
       return false;
     }
-    if (biome.fogEndExtentHundredths <= biome.fogStartExtentHundredths)
+    if (biome.fogEndWorldUnits <= biome.fogStartWorldUnits)
     {
-      return _reader.Fail(row, "'fogEndExtentHundredths' is beyond 'fogStartExtentHundredths'");
+      return _reader.Fail(row, "'fogEndWorldUnits' is beyond 'fogStartWorldUnits'");
     }
     _reader.Record(row, biome.id);
     _out.push_back(std::move(biome));
