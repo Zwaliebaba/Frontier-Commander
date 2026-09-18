@@ -31,6 +31,7 @@ Why, on the frames: from the same vantage on the Small landscape, the Species fo
 - The world does not fade to nothing. A biome's fog colour in `Biomes.json` (`SpeciesLook.md` §11) is carried for the linear mode and unused by the default; the desaturation has no colour to carry.
 - A world pass that forgets the reversed depth tests `LESS` against a buffer cleared to 0 and draws nothing, which a capture shows at once; a pass that forgets the clear value draws everything over everything. The rule sits in `SceneTarget.h` beside the format.
 - The far plane moves with the landscape, so a frustum-culling figure or a depth figure measured on Small does not carry to Large.
+- **The two frames were drawn with no sky.** Nothing draws one yet: the sky is the black clear colour, as Species's is, and its three additive layers are `m2-skirmish/T8`. The evidence above is the horizon band, which is exactly the part of the frame those layers occupy, so the comparison is re-made with the sky drawn before it is final. `OpenQuestions.md` Q17 carries that, together with the sky's scaling, which this ADR did not settle.
 - The owner has not seen the frames on a real display: this ADR is written on the statistics of two frames drawn by WARP. If the owner overrides at T22, the superseding ADR flips `DEFAULT_FOG_MODE` and nothing else moves: the far plane and the reversed depth are right under either fog.
 - The unlit-and-unfogged slot puts a branch in every world pixel shader. It is one comparison on an interpolated constant.
 

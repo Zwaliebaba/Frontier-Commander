@@ -118,7 +118,7 @@ tasks:
     title: The look completed - eight biomes, sky and clouds, water with waves, the sprite pass, the pixel post pass decision
     intent: >
       The five points of GameDesign.md §11 are all on screen: every biome's palette and light pair,
-      the Species sky and cloud layers at the scale the fog ADR chose, the water plane with the
+      the Species sky and cloud layers at the scale OpenQuestions.md Q17 settles (the fog ADR chose nothing about the sky), the water plane with the
       wave texture and the shore band, sprites for the population and particles, and a decision
       on the pixel post pass with a frame to look at.
     project: Client

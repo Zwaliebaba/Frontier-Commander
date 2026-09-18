@@ -1,6 +1,6 @@
-# Open questions — answered
+# Open questions
 
-**Status: ANSWERED (2026-09-17), the six questions the external review raised included.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: one open (Q17, raised 2026-09-18); the twenty-two answered on 2026-09-17, the six the external review raised included.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is open below as Q17; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -38,6 +38,24 @@ An external review of the eight documents, read without `AGENTS.md`, found the g
 | R6 | R14 forbids `d3dx12.h`, a single MIT-licensed header, and applies to tools and tests that never ship. Reconsider? | **`d3dx12.h` is admitted as the one exception to R14**: vendored under `Client/` as a single pinned file with its licence beside it, named in R14 and in the renderer ADR; nothing else | **No** — keeping R14 as written was recommended | `AGENTS.md` R14 and §2; `TechnicalDesign.md` §6.1, §11, §12 |
 
 Three answers went against the recommendation. Replication in the vertical slice (R2) puts `Net` and `Replica` on M1's critical path, which is the cost the recommendation wanted to defer; the owner preferred to meet replication's bugs where they are cheap. Distribution under the accepted risk (R5) is the owner's to carry, and the provenance ADR will say in terms that it covers M3 and mods. The helper header (R6) is the first exception to a rule that had none, and R14 now names it so that it stays the only one.
+
+## Open
+
+### Q17 — Does the sky scale with the landscape, or follow the camera? (raised 2026-09-18)
+
+The Species sky is the black clear colour with three additive layers over it: a grid plane at height 1,200 over a square 14,000 units on a side, and blobby and flat cloud layers over a square of 17,000 (`SpeciesLook.md` §6). Those sizes are absolute and were chosen for maps up to 5,400 units across. A Frontier landscape is 8,192 units at Small and 65,536 at Frontier class, so on anything but the smallest map the layers end inside the view and the sky has a visible edge. §6 says as much and leaves the answer open: the layers scale with the map, or they become camera-relative.
+
+**Why it blocks.** `m2-skirmish/T8` completes the look and cannot draw the sky without it; its acceptance currently says the layers land "at the scale the fog ADR chose", and no ADR chose one. ADR-005 settled the fog's form, the far plane and the depth mapping, and says nothing about the sky. The question also reaches backwards: ADR-005 chose distance desaturation over the Species fog on two captured frames whose evidence was the horizon band, 99.4% near-black against 89.7%. Both frames had a black sky and nothing drawn in it, because nothing draws a sky yet. Three additive layers over that black, each setting its own fog to black while the biome's fog is a desaturation, change exactly the part of the frame that decision rested on.
+
+**The options.**
+
+1. **Scale with the landscape**, as the fog does: the grid and cloud squares become fractions of the extent. The Species geometry is kept whole and the sky is a bounded ceiling over the map. On a Frontier landscape the cloud square is about 170,000 units, twelve times Species's, and with the texture repeat counts unchanged every cloud feature is twelve times larger; keeping the feature size means scaling the repeats with the square, which is the same arithmetic in a different place.
+2. **Camera-relative**: the layers follow the camera at a fixed size, so cloud features keep their authored scale on any landscape and the sky has no edge at all. The cost is the fixed relationship between the clouds and the ground: clouds no longer drift over a fixed point of the map, and a shadow or a reflection could not be derived from them later.
+3. **Camera-relative extent, world-locked texture coordinates**: the layer always covers the view, and the noise is sampled in world space so the pattern stays pinned to the landscape. Cloud features keep their authored size, the sky never runs out, and the clouds still sit over a place.
+
+**Recommendation: option 3.** Species already animates the clouds by adding to the texture offset each tick, so sampling in world space rather than in layer space is a small change to the same mechanism. It is the only option that is independent of landscape size, which is the actual problem; the other two trade one of authored cloud scale or a fixed relationship with the ground to get there.
+
+**Whichever is chosen, ADR-005's comparison is re-made with the sky drawn**, and the fog ruling is confirmed or superseded on those frames rather than on the black-sky ones. That is cheap: the capture already draws frames 100 and 200 from one vantage under the two fog modes, and it would draw them again with the sky in place.
 
 ## Adding a question
 

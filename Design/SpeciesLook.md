@@ -151,7 +151,7 @@ A `CheckOpenGLState` that asserted all of this exists and is disabled; the comme
 
 **Drift**: `Clouds::Advance` adds (0.03, 0, −0.01) to the texture offset per 0.1-second server tick, which is 0.3 repeats per second on the first layer — about 570 world units per second across the 17,000-unit square, by arithmetic. Each quad is split 4×4 to keep per-vertex fog from banding.
 
-**Sizes are absolute, not map-relative.** 14,000 and 17,000 units were chosen for maps up to 5,400 across. A *Frontier Commander* landscape of 65,536 units needs these to scale with the map, or to become a camera-relative sky.
+**Sizes are absolute, not map-relative.** 14,000 and 17,000 units were chosen for maps up to 5,400 across. A *Frontier Commander* landscape of 65,536 units needs these to scale with the map, or to become a camera-relative sky. Which one is `OpenQuestions.md` Q17, raised 2026-09-18 and open; ADR-005 settled the fog's scaling and left the sky's, and `m2-skirmish/T8` cannot draw these layers until it is answered.
 
 ---
 
