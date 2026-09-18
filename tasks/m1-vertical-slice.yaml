@@ -800,7 +800,58 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Sim/Movement.h and .cpp walk the routes, Sim/Steering.h and .cpp keep devices apart, and
+      stage 6 is planning then the walk then the separation, in that order.
+      WHAT SLOPE COSTS was a hole in the design and not a number to look up: GameDesign.md 2 says
+      slope costs movement and 6 says a drive "sets speed as a function of terrain", and the drive
+      table has a speed factor, a max slope, a water flag and a hit-point factor and no terrain
+      column at all. Put to the owner as OpenQuestions.md Q23 and answered 2026-09-18: full speed
+      on the flat falling LINEARLY to half at the drive's OWN maximum, impassable beyond. Scaling
+      to the drive's own limit is the point of the answer - tracks keep 75 percent of their speed
+      on a 20 percent slope where wheels keep 60 - so the max slope column buys handling on ground
+      both can cross and not only reach on ground one cannot. GameDesign.md 6 records it.
+      MEASURED, and it is the number the design is sized by: a light on wheels with a machine gun
+      crosses a flat Small landscape, 8,128 world units between the middles of the end cells, in
+      1,563 ticks against the 1,563 its 1,331 subunits a tick allow. It cost two things to get
+      there. The first is that a tick's distance is spent ACROSS legs: stopping short at a cell's
+      middle and losing the remainder costs a twentieth of the speed on cell-sized legs, which is a
+      crossing time that no longer matches what the design screen printed. The second is the row
+      the test crosses on - a cluster's own first row, where the graph's doorways sit; half a
+      cluster higher the same drive takes 1,804 ticks, all of it two diagonals to the doorway and
+      back, which is S7's abstraction and is S7's suite to measure.
+      SEPARATION IS AWAY-PLUS-A-QUARTER-TURN, not away. A purely radial push between two devices
+      meeting head-on is exactly a brake, and they grind to a halt facing each other; turning the
+      push a quarter turn - always the same way round - is antisymmetric in a second sense, so each
+      takes the side the other does not and they pass. Measured: they close to 1,278 subunits and
+      pass 357 subunits either side of the line they met on. The id tie-break is needed for exactly
+      one case, two devices at the same point, where there is no direction to push along.
+      Bucketed by cell rather than pair by pair: the radius is a quarter of a cell, and the
+      eight-seat device cap is 2,400, which pair by pair is 2.9 million tests a tick.
+      THE SNAPSHOT QUESTION S7 LEFT is answered the first way: the planning queue joins the
+      snapshot, carrying each request and the route it has reached but never the search's working.
+      A request still being searched is replayed for the nodes it had already spent, which
+      Path::nodesExpanded already records, so a Frontier-sized open set never goes on the wire and
+      the tick a route lands on is the tick it would have landed on. Version 12, with a device's
+      patrol anchor, how far along its route it has walked and how long it has been stuck.
+      TWO BUGS THIS TASK EXPOSED RATHER THAN CAUSED, both of which crash or silently break a
+      reloaded match the moment a device moves. The snapshot never rebuilt the obstruction grid or
+      the cluster graph, so a reloaded match's buildings were walked straight through - obstruction
+      is derived from the standing structures and is in neither the landscape's definition nor its
+      deltas, so Construction gained MarkStandingObstructions and the read calls it. And a Sim was
+      not safely copyable at all: the cluster graph holds a pointer to the landscape and the
+      planner a pointer to the graph, so the Sim that Snapshot::Read hands back planned against the
+      landscape of the Sim it was moved out of. It segfaulted on the first tick after a reload.
+      Sim's members are now a private base and its copy and move re-aim the two pointers; a
+      hand-written member list would have put the next member added in the wrong place in silence.
+      ALSO ADDED: Neuron::AngleOf, the inverse of Sin and Cos, found by bisecting the SAME table
+      those two read rather than by a polynomial - a device turns to what it says and then drives
+      along Sin and Cos of it, and an inverse that disagreed by a unit is a device that turns back
+      and forth for ever. Measured round trip: exact, zero units, over the whole turn.
+      NOT DONE, and it is S10's: a destroyed device must have its request cancelled. Nothing
+      removes a device yet; PathPlanner::Cancel is what S10 calls when something does, and
+      Sim/Movement.h says so where the next reader will look.
 
   - id: S9
     title: Sim visibility - fog grids with viewer counts, the budgeted refresh, height-extended sight, occlusion, the ghost store

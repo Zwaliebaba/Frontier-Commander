@@ -86,6 +86,29 @@ void MarkFootprint(Sim& _sim, const Footprint& _footprint, std::uint8_t _obstruc
 
 } // namespace
 
+void MarkStandingObstructions(Sim& _sim)
+{
+  // Ascending by id, which is the order everything else walks the world in, so that two hosts
+  // write the same cells in the same order and the graph is cut the same way.
+  std::vector<ObjectId> standing;
+  _sim.Objects().ForEachStructure(
+    [&standing](ObjectId _id, const Structure& _structure)
+    {
+      if (Occupies(_structure.state))
+      {
+        standing.push_back(_id);
+      }
+    });
+  for (const ObjectId id : standing)
+  {
+    const Structure* structure = _sim.Objects().FindStructure(id);
+    if (structure != nullptr)
+    {
+      MarkFootprint(_sim, FootprintOf(*structure, &_sim.Content()), OBSTRUCTION_STRUCTURE);
+    }
+  }
+}
+
 std::int32_t ProgressHundredths(std::int32_t _effortHundredths, std::uint32_t _buildTimeTicks) noexcept
 {
   const std::int32_t required = RequiredEffortHundredths(_buildTimeTicks);

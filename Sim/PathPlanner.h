@@ -29,13 +29,15 @@
 // route that exists; what the abstraction gives up is the exact COST, since a component is a
 // region and has no one length. The cells are exact, because refining a leg is a cell search.
 //
-// WHAT IS NOT IN THE SNAPSHOT, AND THE QUESTION THAT LEAVES FOR S8. A path is a pure function of
-// the graph and the request, so nothing here is state that determines the simulation: a host that
-// reloaded and re-requested would compute the same path. What it would NOT reproduce is the TICK
-// the path arrives on, because the budget would start again - and if a device's movement depends
-// on when its path arrives, that is a divergence. S8 is what makes paths matter, and it decides
-// then: either the pending queue joins the snapshot, or a device re-requests on load and the
-// arrival tick is made not to matter. Written down here rather than discovered there.
+// WHAT IS IN THE SNAPSHOT, AND WHY (m1-vertical-slice/S8's answer to the question this header used
+// to leave open). A path is a pure function of the graph and the request, so a host that reloaded
+// and re-requested would compute the same path; what it would NOT reproduce is the TICK the path
+// arrives on, because the budget would start again, and a device that starts walking a tick late
+// has diverged. So the queue joins the snapshot - but only the REQUEST and the route so far, never
+// the search's working. A request still being searched is put back by running the same search over
+// the same graph for the number of nodes it had already spent, which Path::nodesExpanded records:
+// the open set, the costs and the came-from are reproduced rather than carried, and a Frontier-
+// sized open set never goes on the wire. PathRequest is that record and Restore is that replay.
 
 namespace Frontier
 {
@@ -48,10 +50,35 @@ inline constexpr std::uint32_t PLAN_BUDGET_NODES = 2000;
 /// search's cost all over again.
 inline constexpr std::uint32_t REFINE_CLUSTERS = 2;
 
+/// One request as a snapshot carries it: the request itself, how far the refinement has walked,
+/// and the route as far as it has got. The search's own working is absent by design - see above.
+struct PathRequest
+{
+  ObjectId device;
+  std::uint32_t fromX;
+  std::uint32_t fromY;
+  std::uint32_t toX;
+  std::uint32_t toY;
+  DriveClass drive;
+  std::uint32_t atX; ///< Where the refinement has walked to; meaningless while the state is Planning
+  std::uint32_t atY;
+  Path path;
+
+  [[nodiscard]] bool operator==(const PathRequest&) const noexcept = default;
+};
+
 class PathPlanner
 {
 public:
   void SetGraph(const ClusterGraph* _graph) noexcept;
+
+  /// Aims the planner at the same graph at a new address, keeping the queue: what a Sim calls on
+  /// itself after being copied or moved (Sim/Sim.h). SetGraph is the other thing - a different
+  /// graph means every route it found is about a landscape that is gone, so it clears the queue.
+  void Rebind(const ClusterGraph* _graph) noexcept
+  {
+    m_graph = _graph;
+  }
 
   /// Asks for a route. A second request for the same device replaces the first, because a
   /// commander who gives a new order has withdrawn the old one.
@@ -69,6 +96,14 @@ public:
   /// Refines the next clusters of a device's route into cells, as it advances along the ones it
   /// has. False when there is nothing left to refine or no usable path.
   bool RefineFurther(ObjectId _device);
+
+  /// Every request, in the order the budget serves them: what a snapshot writes.
+  [[nodiscard]] std::vector<PathRequest> Requests() const;
+
+  /// Puts one request back, in arrival order, after Clear: what a snapshot reads. A request that
+  /// was still being searched is replayed node for node rather than restarted, so the tick its
+  /// path lands on is the tick it would have landed on had the match never been reloaded.
+  void Restore(const PathRequest& _request);
 
   [[nodiscard]] std::uint32_t PendingRequests() const noexcept;
   [[nodiscard]] std::uint32_t LastNodesExpanded() const noexcept

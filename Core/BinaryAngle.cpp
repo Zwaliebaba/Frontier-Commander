@@ -32,4 +32,57 @@ std::int32_t Cos(BinaryAngle _angle) noexcept
   return Sin(static_cast<BinaryAngle>(_angle + QUARTER_TURN));
 }
 
+BinaryAngle AngleOf(std::int32_t _x, std::int32_t _y) noexcept
+{
+  if (_x == 0 && _y == 0)
+  {
+    return 0;
+  }
+  // Angle 0 points along +y and a quarter turn points along +x (the direction of a facing is
+  // (Sin, Cos)), so the two signs name the quarter the answer lies in. Inside it the answer is
+  // never more than a quarter turn away, which is what makes the cross product below monotone.
+  std::uint32_t low = 0;
+  if (_x >= 0 && _y >= 0)
+  {
+    low = 0;
+  }
+  else if (_x >= 0)
+  {
+    low = QUARTER_TURN;
+  }
+  else if (_y < 0)
+  {
+    low = HALF_TURN;
+  }
+  else
+  {
+    low = HALF_TURN + QUARTER_TURN;
+  }
+
+  const auto cross = [_x, _y](std::uint32_t _angle) noexcept
+  {
+    const auto angle = static_cast<BinaryAngle>(_angle);
+    return static_cast<std::int64_t>(Sin(angle)) * _y - static_cast<std::int64_t>(Cos(angle)) * _x;
+  };
+
+  std::uint32_t high = low + QUARTER_TURN;
+  while (high - low > 1)
+  {
+    const std::uint32_t middle = low + (high - low) / 2;
+    if (cross(middle) < 0)
+    {
+      low = middle;
+    }
+    else
+    {
+      high = middle;
+    }
+  }
+  // The two straddle the answer; the nearer is the one whose cross product is the smaller, and a
+  // tie goes to the lower so that two hosts cannot part company on it.
+  const std::int64_t below = cross(low) < 0 ? -cross(low) : cross(low);
+  const std::int64_t above = cross(high) < 0 ? -cross(high) : cross(high);
+  return static_cast<BinaryAngle>(above < below ? high : low);
+}
+
 } // namespace Neuron

@@ -106,6 +106,14 @@ inline constexpr std::uint32_t WRECK_DECAY_TICKS = 30 * static_cast<std::uint32_
 /// appear the moment it was ordered, which no reduction the design allows should ever do.
 [[nodiscard]] std::uint32_t ShortenedTicks(std::uint32_t _ticks, std::int32_t _reductionPercent) noexcept;
 
+/// Re-marks the obstruction grid from every structure that occupies its footprint. Obstruction is
+/// DERIVED from the world - a structure marks its own cells when construction begins - so it is
+/// rebuilt wherever a world arrives without having been built up a structure at a time, which is
+/// the snapshot's read (TechnicalDesign.md §4.9). Without it a reloaded match's buildings are
+/// walked straight through, because the landscape carries its definition and its height deltas and
+/// the obstruction byte is in neither.
+void MarkStandingObstructions(Sim& _sim);
+
 /// Stage 5: begin the plans a builder has reached, advance the sites and the modules.
 void AdvanceConstruction(Sim& _sim);
 

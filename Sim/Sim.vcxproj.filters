@@ -35,6 +35,12 @@
     <ClCompile Include="Research.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Movement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Steering.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Deposit.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -146,6 +152,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Research.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Movement.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Steering.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Deposit.h">

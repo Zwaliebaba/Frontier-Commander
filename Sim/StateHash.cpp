@@ -96,6 +96,10 @@ void StateHash::AddDevice(ObjectId _id, const Device& _device) noexcept
   AddObjectId(_device.target);
   Add(_device.destinationX);
   Add(_device.destinationZ);
+  Add(_device.anchorX);
+  Add(_device.anchorZ);
+  Add(_device.pathIndex);
+  Add(_device.stalledTicks);
   Add(_device.fire);
   Add(_device.range);
   Add(_device.retreat);

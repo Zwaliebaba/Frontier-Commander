@@ -3,9 +3,11 @@
 #include "BinaryAngle.h"
 #include "SinTable.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <string>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
@@ -71,6 +73,37 @@ public:
     Assert::AreEqual(1000, static_cast<int>(Neuron::TurnToward(0, Neuron::HALF_TURN, 1000)));
     Assert::AreEqual(64536, static_cast<int>(Neuron::TurnToward(0, 60000, 1000)));
     Assert::AreEqual(60000, static_cast<int>(Neuron::TurnToward(59990, 60000, 1000)));
+  }
+
+  TEST_METHOD(TheAngleOfADirectionIsTheInverseOfSinAndCos)
+  {
+    // Angle nought points along +y and a quarter turn along +x, which is the convention a device's
+    // facing is read by (its forward is (Sin, Cos)). The four of them are exact.
+    Assert::AreEqual(0, static_cast<int>(Neuron::AngleOf(0, 1000)));
+    Assert::AreEqual(static_cast<int>(Neuron::QUARTER_TURN), static_cast<int>(Neuron::AngleOf(1000, 0)));
+    Assert::AreEqual(static_cast<int>(Neuron::HALF_TURN), static_cast<int>(Neuron::AngleOf(0, -1000)));
+    Assert::AreEqual(static_cast<int>(Neuron::HALF_TURN + Neuron::QUARTER_TURN), static_cast<int>(Neuron::AngleOf(-1000, 0)));
+    // A direction with no direction in it.
+    Assert::AreEqual(0, static_cast<int>(Neuron::AngleOf(0, 0)));
+
+    // And everywhere: the angle it gives back for a direction taken from the table is the angle
+    // that direction was made from. Exactly, not nearly, because a device turns to what this says
+    // and then drives along Sin and Cos of it, and a unit of disagreement is a device that turns
+    // back and forth for ever.
+    int worst = 0;
+    for (std::uint32_t angle = 0; angle < Neuron::FULL_TURN; angle += 7)
+    {
+      const auto turn = static_cast<Neuron::BinaryAngle>(angle);
+      const std::int32_t found = Neuron::AngleOf(Neuron::Sin(turn), Neuron::Cos(turn));
+      const int strayed = std::abs(static_cast<int>(Neuron::TurnBetween(turn, static_cast<Neuron::BinaryAngle>(found))));
+      worst = std::max(worst, strayed);
+    }
+    Logger::WriteMessage((L"measured: the worst round trip through AngleOf is " + std::to_wstring(worst) + L" units").c_str());
+    Assert::IsTrue(worst <= 1, L"the angle of a direction from the table is the angle it came from");
+
+    // The scale of the direction does not change its angle, which is what lets a caller pass a
+    // subunit difference of any size.
+    Assert::AreEqual(static_cast<int>(Neuron::AngleOf(3, 7)), static_cast<int>(Neuron::AngleOf(3000000, 7000000)));
   }
 };
 

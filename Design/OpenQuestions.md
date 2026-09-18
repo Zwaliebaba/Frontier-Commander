@@ -1,6 +1,6 @@
 # Open questions — answered
 
-**Status: none open. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q22 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: none open. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q23 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -51,6 +51,8 @@ Three answers went against the recommendation. Replication in the vertical slice
 | Q20 | S3 cannot be built: nothing wires the content tables into Sim, and no task owns it. How does the simulation read content, and what binds a snapshot to the tables it was taken against? | **A `const ContentTree&` at construction, with the digest of the tables in the snapshot and a refusal on mismatch** | Yes | ADR-009; `Content/ContentHash.h`; `Sim/Sim.h`; `Sim/Snapshot.h` at version 6 |
 
 | Q21 | The built-in light pair is the Garden's, whose sun lies on the horizon and reaches no surface facing up; the owner's frame of 2026-09-18 had a median value of 39/255. Which pair is the built-in? | **Species' Sandbox pair**, asked for after reading how Species itself does it: two elevated near-white lights from opposite azimuths, the pair Species put on its own level 1. The Garden stays as a biome | Yes | `Client/Lighting.h`; `GameData/Biomes.json`; `SpeciesLook.md` §2 and §11; `m0-foundation/T22` rules on the fog against a frame drawn under it |
+| Q22 | `GameDesign.md` §8 gives ranks a count and the word "small" and no numbers, and `m1-vertical-slice/S5` asks for "the per-rank accuracy and damage percentages the design proposes". What does a rank add? | **The modest curve**: thresholds doubling to 160 weighted kills, accuracy and damage reaching +24%. Re-open it in M2 against a measured match | Yes | `GameDesign.md` §8; `Sim/Design.h` |
+| Q23 | `GameDesign.md` §2 says slope costs movement and §6 says a drive sets speed as a function of terrain, and the drive table has no terrain column. What does a slope cost a drive? | **Half speed at the drive's own limit**: full on the flat, falling linearly to half at the steepest slope that drive can climb, impassable beyond, each curve scaled to that drive's own maximum | Yes | `GameDesign.md` §6; `Sim/Movement.h` |
 
 The question as it was put, kept for the reasoning it weighed.
 
@@ -197,6 +199,23 @@ The shape is the argument. The thresholds double, so a rank costs about as much 
 **Answer (owner, 2026-09-18): option 1, the modest curve.** The table `m1-vertical-slice/S5` shipped is the table: `Sim/Design.h` carries it as the decision rather than as a proposal, and `GameDesign.md` §8 records the numbers the design had left as a word. It is still measured against nothing, which is what M2 is for: `m2-skirmish` ships ranks (§12) and has AI-versus-AI matches to measure the spread on, and the table is in one header with one reader, so changing it then is an edit and not a migration.
 
 **Recommendation: option 1, and re-open it in M2 against a measured match rather than against an argument.** A rank is the one number in the game that compounds with itself — a device that wins fights gets better at winning fights — so the safe direction is the modest one until `m2-skirmish` has AI-versus-AI matches to measure the spread on. The table is in one header with one reader, so changing it is an edit and not a migration.
+
+### Q23 — What does a slope cost a drive, beyond the one it cannot climb? (raised 2026-09-18, answered 2026-09-18)
+
+`GameDesign.md` §2 puts it among the pillars — "height gives sight and range, **slope costs movement**, water blocks all but hover" — and §6 says a drive "sets speed as a function of terrain". The drive table then gives a flat speed factor, a maximum slope, a water flag and a hit-point factor, and no terrain column at all. `m1-vertical-slice/S8`'s acceptance asks for a device to advance "scaled by **the terrain factor of its drive** on the cell it is on", and there is no such number to read.
+
+**Why it blocks.** S8 cannot be written without one: either every drive moves at full speed on every slope it can climb, which makes "slope costs movement" false and the max slope column a pure reachability rule, or there is a curve and it has to be stated. It also decides what the max slope column is *for*. If slope costs nothing until the limit, tracks buy reach alone; if the curve is scaled to the drive's own limit, tracks also buy handling on ground wheels can cross, which is a different trade at the design screen and a different answer to "why would I pay 70 for tracks on a scout".
+
+**The options.**
+
+1. **Half speed at the drive's own limit**: full speed on the flat, falling linearly to 50% at that drive's maximum, impassable beyond. Tracks at a 20% slope keep 75% where wheels keep 60%, so the max slope column buys handling as well as reach.
+2. **Half speed at a fixed slope**, the same curve for every drive — say full on the flat to 50% at 40% slope. Simpler to state, and the max slope column then buys reach only: on ground both can cross, both are equally slowed.
+3. **No cost below the limit**: a drive moves at its full speed on anything it can stand on. The cheapest to implement and the one that makes a pillar of the design not true.
+
+**Answer (owner, 2026-09-18): option 1.** `Sim/Movement.h`'s `TerrainFactorPercent` is that curve and `TERRAIN_FACTOR_AT_LIMIT_PERCENT` is the 50; `GameDesign.md` §6 records it under the drive table. Measured against nothing, like the rank curve of Q22, and re-opened by the same thing: `m2-skirmish` has AI-versus-AI matches to measure a hillside fight on, and the rule is one function with one constant.
+
+**Recommendation: option 1.** It is the only one of the three that makes the max slope column buy two things, and a column that buys two things is a column worth paying for. It costs nothing over option 2 — the same arithmetic with a different denominator — and option 3 costs a pillar.
+
 
 ## Adding a question
 

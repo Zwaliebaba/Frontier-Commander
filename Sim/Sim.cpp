@@ -2,6 +2,7 @@
 
 #include "Sim.h"
 #include "Construction.h"
+#include "Movement.h"
 #include "OrderValidation.h"
 #include "Production.h"
 #include "Research.h"
@@ -15,10 +16,12 @@ namespace Frontier
 {
 
 Sim::Sim(const MatchSettings& _settings, const ContentTree& _content)
-  : m_settings(_settings),
-    m_content(&_content),
-    m_random(_settings.seed)
 {
+  // Assigned rather than initialised in a list, because the members are a private base's
+  // (Sim/Sim.h says why) and a mem-initialiser list cannot name one of those.
+  m_settings = _settings;
+  m_content = &_content;
+  m_random = Neuron::Random(_settings.seed);
   FRONTIER_ASSERT(_settings.seatCount >= MIN_SEATS && _settings.seatCount <= MAX_SEATS);
   const std::uint8_t seatCount = std::clamp(_settings.seatCount, MIN_SEATS, MAX_SEATS);
   m_settings.seatCount = seatCount;
@@ -65,6 +68,48 @@ bool Sim::CreateLandscape(const LandscapeDefinition& _definition)
   m_clusters.Build(m_landscape, *m_content);
   m_planner.SetGraph(&m_clusters);
   return true;
+}
+
+Sim::Sim(const Sim& _other)
+  : SimState(_other)
+{
+  Rebind();
+}
+
+Sim::Sim(Sim&& _other) noexcept
+  : SimState(std::move(_other))
+{
+  Rebind();
+}
+
+Sim& Sim::operator=(const Sim& _other)
+{
+  if (this != &_other)
+  {
+    SimState::operator=(_other);
+    Rebind();
+  }
+  return *this;
+}
+
+Sim& Sim::operator=(Sim&& _other) noexcept
+{
+  if (this != &_other)
+  {
+    SimState::operator=(std::move(_other));
+    Rebind();
+  }
+  return *this;
+}
+
+void Sim::Rebind() noexcept
+{
+  // The two pointers that aim into this object, and nothing else: the graph holds the landscape
+  // and the planner holds the graph. Neither is rebuilt - the landscape and the graph are the same
+  // data at a new address - so the routes in flight survive the copy, which is what makes a Sim
+  // handed back by Snapshot::Read go on planning where the one it was read into left off.
+  m_clusters.Rebind(&m_landscape);
+  m_planner.Rebind(&m_clusters);
 }
 
 void Sim::SetObstruction(std::uint32_t _cellX, std::uint32_t _cellY, std::uint8_t _obstruction)
@@ -246,6 +291,56 @@ bool Sim::Apply(const Order& _order)
     target->destinationX = order.operands[1];
     target->destinationZ = order.operands[2];
     target->target = NO_OBJECT;
+    // A new destination withdraws the old route. Stage 6 asks for another on the next tick, from
+    // where the device actually is rather than from where the withdrawn route began.
+    m_planner.Cancel(ObjectId{static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device});
+    target->pathIndex = NO_PATH_INDEX;
+    target->stalledTicks = 0;
+    return true;
+  }
+
+  case OrderKind::Patrol:
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    // The far end is the order's, and the near end is where the device stood when it was given:
+    // a patrol is between two points and an order names one (Sim/Order.h's table).
+    target->primaryOrder = PrimaryOrder::Patrol;
+    target->destinationX = order.operands[1];
+    target->destinationZ = order.operands[2];
+    target->anchorX = target->x;
+    target->anchorZ = target->z;
+    target->target = NO_OBJECT;
+    m_planner.Cancel(ObjectId{static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device});
+    target->pathIndex = NO_PATH_INDEX;
+    target->stalledTicks = 0;
+    return true;
+  }
+
+  case OrderKind::Guard:
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    // Operand 3 names a device to guard, or nought to guard the position in operands 1 and 2. The
+    // post is the anchor either way, so that stage 6 has somewhere to return to; following the
+    // guarded device about is S10's, which is the task that knows what it is guarding against.
+    target->primaryOrder = PrimaryOrder::Guard;
+    const Device* guarded =
+      order.operands[3] > 0 ? m_world.FindDevice({static_cast<std::uint32_t>(order.operands[3]), ObjectKind::Device}) : nullptr;
+    target->anchorX = guarded != nullptr ? guarded->x : order.operands[1];
+    target->anchorZ = guarded != nullptr ? guarded->z : order.operands[2];
+    target->destinationX = target->anchorX;
+    target->destinationZ = target->anchorZ;
+    target->target = guarded != nullptr ? ObjectId{static_cast<std::uint32_t>(order.operands[3]), ObjectKind::Device} : NO_OBJECT;
+    m_planner.Cancel(ObjectId{static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device});
+    target->pathIndex = NO_PATH_INDEX;
+    target->stalledTicks = 0;
     return true;
   }
 
@@ -260,6 +355,9 @@ bool Sim::Apply(const Order& _order)
     target->destinationX = target->x;
     target->destinationZ = target->z;
     target->target = NO_OBJECT;
+    m_planner.Cancel(ObjectId{static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device});
+    target->pathIndex = NO_PATH_INDEX;
+    target->stalledTicks = 0;
     return true;
   }
 
@@ -331,8 +429,6 @@ bool Sim::Apply(const Order& _order)
     return CancelResearch(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure});
 
   case OrderKind::Attack:
-  case OrderKind::Patrol:
-  case OrderKind::Guard:
   case OrderKind::ReturnToRepair:
     // Validated here and applied by the task that owns the system (m1-vertical-slice/S2): the
     // order passed every check this task can make, and there is nothing yet to apply it to. It
@@ -366,9 +462,7 @@ void Sim::AdvanceConstruction()
 
 void Sim::AdvanceMovement()
 {
-  // Planning is amortised inside the movement stage, ahead of the steering S8 will add: a device
-  // that asked for a route this tick may have it next, and the budget is what bounds the wait.
-  m_planner.Advance();
+  Frontier::AdvanceMovement(*this);
 }
 
 void Sim::RefreshVisibility()

@@ -32,7 +32,47 @@ namespace Frontier
 
 class Snapshot;
 
-class Sim
+namespace Detail
+{
+
+/// Everything a Sim holds, as a base rather than as Sim's own members, and that is not a matter of
+/// taste. Two of these systems hold a pointer INTO this object - the cluster graph holds the
+/// landscape and the planner holds the graph - so a copy or a move has to re-aim both afterwards,
+/// and a copy constructor that runs a line after copying is a copy constructor that lists every
+/// member by hand. Listing twenty members is exactly the fault Sim's own constructor guards
+/// against, where a positional list "would put the next one in the wrong place in silence". A base
+/// gets the compiler's member-by-member copy and Sim's own copy then runs the one line that must
+/// follow it.
+class SimState
+{
+protected:
+  // Protected rather than public: Sim reaches them as a derived class does, and Snapshot reaches
+  // them as Sim's friend. Nothing else can, which is what they were when they were Sim's own.
+  MatchSettings m_settings{};
+  const ContentTree* m_content = nullptr;
+  std::uint32_t m_tick = 0;
+  Neuron::Random m_random{0}; ///< The seed the constructor gives it replaces this on the first line
+  std::vector<Seat> m_seats;
+  World m_world;
+  Landscape m_landscape;
+  Economy m_economy;
+  Visibility m_visibility;
+  ClusterGraph m_clusters;
+  PathPlanner m_planner;
+  OrderQueue m_orders;
+  std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
+  std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.
+  std::uint32_t m_appliedOrders = 0;
+  std::uint32_t m_droppedOrders = 0;
+  bool m_finished = false;
+  std::uint8_t m_winningAlliance = NO_ALLIANCE;
+  bool m_publishDue = false;
+  std::uint64_t m_hash = 0;
+};
+
+} // namespace Detail
+
+class Sim : private Detail::SimState
 {
 public:
   /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed,
@@ -42,6 +82,16 @@ public:
   /// which is why binding a temporary is deleted rather than left to be discovered at runtime.
   Sim(const MatchSettings& _settings, const ContentTree& _content);
   Sim(const MatchSettings& _settings, ContentTree&& _content) = delete;
+
+  /// A Sim is a value: Snapshot::Read hands one back and the tests pass them about. Copying or
+  /// moving one re-aims the two systems that hold a pointer into it, because the compiler's own
+  /// copy would carry a pointer to the Sim that was copied FROM - and a reloaded match then plans
+  /// against a landscape that has been destroyed, which is a crash rather than a wrong answer.
+  Sim(const Sim& _other);
+  Sim(Sim&& _other) noexcept;
+  Sim& operator=(const Sim& _other);
+  Sim& operator=(Sim&& _other) noexcept;
+  ~Sim() = default;
 
   /// The tables this match is played by. Never null.
   [[nodiscard]] const ContentTree& Content() const noexcept
@@ -216,26 +266,10 @@ private:
   /// Validates and applies one order; false when it is dropped.
   [[nodiscard]] bool Apply(const Order& _order);
 
-  MatchSettings m_settings;
-  const ContentTree* m_content;
-  std::uint32_t m_tick = 0;
-  Neuron::Random m_random;
-  std::vector<Seat> m_seats;
-  World m_world;
-  Landscape m_landscape;
-  Economy m_economy;
-  Visibility m_visibility;
-  ClusterGraph m_clusters;
-  PathPlanner m_planner;
-  OrderQueue m_orders;
-  std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
-  std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.
-  std::uint32_t m_appliedOrders = 0;
-  std::uint32_t m_droppedOrders = 0;
-  bool m_finished = false;
-  std::uint8_t m_winningAlliance = NO_ALLIANCE;
-  bool m_publishDue = false;
-  std::uint64_t m_hash = 0;
+  /// Aims the cluster graph at THIS Sim's landscape and the planner at THIS Sim's graph. Called
+  /// after every copy and every move, and nowhere else: the two pointers are set for the first
+  /// time when a landscape is created.
+  void Rebind() noexcept;
 };
 
 } // namespace Frontier

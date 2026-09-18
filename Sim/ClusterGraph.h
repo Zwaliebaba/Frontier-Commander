@@ -106,6 +106,15 @@ public:
 
   [[nodiscard]] std::uint32_t ComponentCount(DriveClass _drive) const;
 
+  /// Aims the graph at a landscape it has already been built against, without rebuilding it: what
+  /// a Sim calls on itself after being copied or moved, because the landscape it holds is the same
+  /// landscape at a new address (Sim/Sim.h). Never used to point it at a DIFFERENT landscape -
+  /// Build is what does that, and it re-derives everything.
+  void Rebind(const Landscape* _landscape) noexcept
+  {
+    m_landscape = _landscape;
+  }
+
   /// Drops every class's graph. Called when the obstruction grid changes, because a component is a
   /// statement about which cells are passable and that is exactly what changed.
   void Invalidate() noexcept;

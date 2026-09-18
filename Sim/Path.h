@@ -36,6 +36,8 @@ enum class PathState : std::uint8_t
   Refused      ///< The request itself was impossible: off the landscape, or no landscape at all
 };
 
+inline constexpr std::uint8_t PATH_STATE_COUNT = 5;
+
 struct Path
 {
   PathState state = PathState::Planning;

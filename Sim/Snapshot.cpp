@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "Snapshot.h"
+#include "Construction.h"
 
 #include "ContentHash.h"
 
@@ -442,6 +443,10 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
       WriteObjectId(_writer, _device.target);
       _writer.Write(_device.destinationX);
       _writer.Write(_device.destinationZ);
+      _writer.Write(_device.anchorX);
+      _writer.Write(_device.anchorZ);
+      _writer.Write(_device.pathIndex);
+      _writer.Write(_device.stalledTicks);
       _writer.Write(_device.fire);
       _writer.Write(_device.range);
       _writer.Write(_device.retreat);
@@ -540,9 +545,10 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
         !_reader.Read(device.y) || !_reader.Read(device.z) || !_reader.Read(device.facing) || !_reader.Read(device.hitPoints) ||
         !_reader.Read(device.experience) || !ReadEnum(_reader, device.primaryOrder, PRIMARY_ORDER_COUNT) ||
         !ReadObjectId(_reader, device.target) || !_reader.Read(device.destinationX) || !_reader.Read(device.destinationZ) ||
-        !ReadEnum(_reader, device.fire, STANCE_VALUE_COUNTS[0]) || !ReadEnum(_reader, device.range, STANCE_VALUE_COUNTS[1]) ||
-        !ReadEnum(_reader, device.retreat, STANCE_VALUE_COUNTS[2]) || !ReadEnum(_reader, device.movement, STANCE_VALUE_COUNTS[3]) ||
-        !_reader.Read(device.group) || device.group > MAX_CONTROL_GROUP)
+        !_reader.Read(device.anchorX) || !_reader.Read(device.anchorZ) || !_reader.Read(device.pathIndex) ||
+        !_reader.Read(device.stalledTicks) || !ReadEnum(_reader, device.fire, STANCE_VALUE_COUNTS[0]) ||
+        !ReadEnum(_reader, device.range, STANCE_VALUE_COUNTS[1]) || !ReadEnum(_reader, device.retreat, STANCE_VALUE_COUNTS[2]) ||
+        !ReadEnum(_reader, device.movement, STANCE_VALUE_COUNTS[3]) || !_reader.Read(device.group) || device.group > MAX_CONTROL_GROUP)
     {
       return false;
     }
@@ -758,6 +764,36 @@ void Snapshot::Write(const Sim& _sim, Neuron::ByteWriter& _writer)
     _writer.Write(stamp.radiusCells);
     _writer.Write(stamp.refreshedTick);
   }
+  // The planning queue: the requests in the order the budget serves them, each with the route it
+  // has reached and the nodes it has spent, but never the search's own working (Sim/PathPlanner.h).
+  // A device that is walking a route must go on walking the same one, and one whose search is
+  // half done must finish it on the tick it would have finished on.
+  const std::vector<PathRequest> requests = _sim.m_planner.Requests();
+  _writer.Write(static_cast<std::uint32_t>(requests.size()));
+  for (const PathRequest& request : requests)
+  {
+    WriteObjectId(_writer, request.device);
+    _writer.Write(request.fromX);
+    _writer.Write(request.fromY);
+    _writer.Write(request.toX);
+    _writer.Write(request.toY);
+    _writer.Write(static_cast<std::uint8_t>(request.drive));
+    _writer.Write(request.atX);
+    _writer.Write(request.atY);
+    _writer.Write(static_cast<std::uint8_t>(request.path.state));
+    _writer.Write(request.path.nodesExpanded);
+    _writer.Write(static_cast<std::uint32_t>(request.path.cells.size()));
+    for (const PathCell& cell : request.path.cells)
+    {
+      _writer.Write(cell.x);
+      _writer.Write(cell.y);
+    }
+    _writer.Write(static_cast<std::uint32_t>(request.path.nodes.size()));
+    for (const std::uint32_t node : request.path.nodes)
+    {
+      _writer.Write(node);
+    }
+  }
   _writer.Write(_sim.m_lastRoll);
   _writer.Write(_sim.m_appliedOrders);
   _writer.Write(_sim.m_droppedOrders);
@@ -836,6 +872,12 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes, const Conte
   // arrives (Sim::CreateLandscape is the first). Without it a restored match would find no
   // deposits and every extractor would stop producing on the tick after the load.
   sim.m_economy.SetLandscape(sim.m_landscape);
+  // Obstruction is derived from the standing structures and the cluster graph is cut on
+  // obstruction, so both are rebuilt here for the same reason the deposit index is: a landscape
+  // carries its definition and its height deltas, and neither of those is a building.
+  MarkStandingObstructions(sim);
+  sim.m_clusters.Build(sim.m_landscape, _content);
+  sim.m_planner.SetGraph(&sim.m_clusters);
   std::uint32_t stampCount = 0;
   if (!reader.Read(stampCount) || stampCount > Snapshot::MAX_STAMPS)
   {
@@ -854,6 +896,47 @@ std::optional<Sim> Snapshot::Read(std::span<const std::byte> _bytes, const Conte
   if (!sim.m_visibility.Restore(std::move(stamps)))
   {
     return std::nullopt;
+  }
+  std::uint32_t requestCount = 0;
+  if (!reader.Read(requestCount) || requestCount > Snapshot::MAX_REQUESTS)
+  {
+    return std::nullopt;
+  }
+  for (std::uint32_t index = 0; index < requestCount; ++index)
+  {
+    PathRequest request{};
+    std::uint8_t drive = 0;
+    std::uint32_t cellCount = 0;
+    if (!ReadObjectId(reader, request.device) || !reader.Read(request.fromX) || !reader.Read(request.fromY) || !reader.Read(request.toX) ||
+        !reader.Read(request.toY) || !reader.Read(drive) || drive >= DRIVE_CLASS_COUNT || !reader.Read(request.atX) ||
+        !reader.Read(request.atY) || !ReadEnum(reader, request.path.state, PATH_STATE_COUNT) || !reader.Read(request.path.nodesExpanded) ||
+        !reader.Read(cellCount) || cellCount > Snapshot::MAX_PATH_CELLS)
+    {
+      return std::nullopt;
+    }
+    request.drive = static_cast<DriveClass>(drive);
+    request.path.cells.resize(cellCount);
+    for (PathCell& cell : request.path.cells)
+    {
+      if (!reader.Read(cell.x) || !reader.Read(cell.y))
+      {
+        return std::nullopt;
+      }
+    }
+    std::uint32_t nodeCount = 0;
+    if (!reader.Read(nodeCount) || nodeCount > Snapshot::MAX_PATH_NODES)
+    {
+      return std::nullopt;
+    }
+    request.path.nodes.resize(nodeCount);
+    for (std::uint32_t& node : request.path.nodes)
+    {
+      if (!reader.Read(node))
+      {
+        return std::nullopt;
+      }
+    }
+    sim.m_planner.Restore(request);
   }
   std::uint32_t nextArrival = 0;
   std::uint32_t pending = 0;

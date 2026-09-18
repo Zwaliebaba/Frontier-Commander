@@ -57,6 +57,51 @@ const Path* PathPlanner::Result(ObjectId _device) const noexcept
   return job == nullptr ? nullptr : &job->path;
 }
 
+std::vector<PathRequest> PathPlanner::Requests() const
+{
+  std::vector<PathRequest> requests;
+  requests.reserve(m_requests.size());
+  for (const Job& job : m_requests)
+  {
+    requests.push_back({job.device, job.fromX, job.fromY, job.toX, job.toY, job.drive, job.atX, job.atY, job.path});
+  }
+  return requests;
+}
+
+void PathPlanner::Restore(const PathRequest& _request)
+{
+  Job job;
+  job.device = _request.device;
+  job.fromX = _request.fromX;
+  job.fromY = _request.fromY;
+  job.toX = _request.toX;
+  job.toY = _request.toY;
+  job.drive = _request.drive;
+  if (_request.path.state != PathState::Planning)
+  {
+    // Searched and answered: the route, what is left to refine and where the refinement stands are
+    // all in the record, and there is nothing to replay.
+    job.path = _request.path;
+    job.atX = _request.atX;
+    job.atY = _request.atY;
+    job.searching = false;
+    m_requests.push_back(std::move(job));
+    return;
+  }
+  m_requests.push_back(std::move(job));
+  Job& placed = m_requests.back();
+  Begin(placed);
+  if (placed.path.state == PathState::Planning)
+  {
+    // The same search over the same graph, expanded for the nodes it had already spent: the open
+    // set it rebuilds is the open set it had. Step stops of its own accord if the search would
+    // have finished within those nodes, which it cannot have done, because then the state written
+    // would not have been Planning.
+    (void)Step(placed, _request.path.nodesExpanded);
+  }
+  placed.path.nodesExpanded = _request.path.nodesExpanded;
+}
+
 std::uint32_t PathPlanner::PendingRequests() const noexcept
 {
   return static_cast<std::uint32_t>(
