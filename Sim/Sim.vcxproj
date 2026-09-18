@@ -100,6 +100,7 @@
   <ItemGroup>
     <ClCompile Include="Sim.cpp" />
     <ClCompile Include="World.cpp" />
+    <ClCompile Include="OrderValidation.cpp" />
     <ClCompile Include="Seat.cpp" />
     <ClCompile Include="OrderQueue.cpp" />
     <ClCompile Include="StateHash.cpp" />
@@ -122,6 +123,7 @@
     <ClInclude Include="Feature.h" />
     <ClInclude Include="Wreck.h" />
     <ClInclude Include="World.h" />
+    <ClInclude Include="OrderValidation.h" />
     <ClInclude Include="Order.h" />
     <ClInclude Include="OrderQueue.h" />
     <ClInclude Include="StateHash.h" />

@@ -30,9 +30,10 @@ Frontier::Device Unit(std::uint8_t _seat, std::int32_t _x)
   device.facing = 0x4000;
   device.hitPoints = 250;
   device.experience = 7;
+  device.primaryOrder = Frontier::PrimaryOrder::Move;
   device.destinationX = _x + 1024;
   device.destinationZ = 512;
-  device.moving = true;
+  device.group = 3;
   device.reloadTicks = {3, 0, 0, 0, 0, 0, 0, 0};
   return device;
 }

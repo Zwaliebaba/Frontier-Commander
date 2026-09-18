@@ -329,7 +329,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
 
   - id: S3
     title: Sim economy - deposits, extractors served within 48 cells, the stockpile and its cap, cost and refund, the army caps

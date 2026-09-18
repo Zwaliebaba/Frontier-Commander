@@ -16,9 +16,10 @@ namespace Frontier
 
 /// "FCSP", little-endian, at the head of every snapshot.
 inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
-/// 4 since 2026-09-18: the world's five object maps and the seat's economy, research, designs,
-/// caps, fog grid and ghost store (m1-vertical-slice/S1).
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 4;
+/// 5 since 2026-09-18: 4 brought the world's five object maps and the seat's economy, research,
+/// designs, caps, fog grid and ghost store (m1-vertical-slice/S1); 5 brings a device's primary
+/// order and stances and a seat's dropped orders (S2).
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 5;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,
@@ -45,9 +46,11 @@ public:
   /// count is 1,048,576, and no match approaches a million objects of one kind.
   static constexpr std::uint32_t MAX_OBJECTS = 1u << 20;
   static constexpr std::uint32_t MAX_FOG_CELLS = 1u << 20;
-  static constexpr std::uint32_t MAX_DESIGNS = 256;
+  static constexpr std::uint32_t MAX_DESIGNS = MAX_SAVED_DESIGNS;
   static constexpr std::uint32_t MAX_RESEARCH = 4096;
   static constexpr std::uint32_t MAX_GHOSTS = 1u << 20;
+  /// A tick cannot refuse more orders than a hostile client can send in one.
+  static constexpr std::uint32_t MAX_REJECTIONS = 1u << 16;
 };
 
 } // namespace Frontier

@@ -42,6 +42,12 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
     Add(ghost.cellY);
     Add(ghost.seenTick);
   }
+  Add(static_cast<std::uint32_t>(_seat.rejections.size()));
+  for (const OrderRejection& rejection : _seat.rejections)
+  {
+    Add(rejection.kind);
+    Add(rejection.reason);
+  }
   AddBool(_seat.defeated);
   AddBool(_seat.surrendered);
 }
@@ -71,10 +77,15 @@ void StateHash::AddDevice(ObjectId _id, const Device& _device) noexcept
   Add(_device.facing);
   Add(_device.hitPoints);
   Add(_device.experience);
+  Add(_device.primaryOrder);
   AddObjectId(_device.target);
   Add(_device.destinationX);
   Add(_device.destinationZ);
-  AddBool(_device.moving);
+  Add(_device.fire);
+  Add(_device.range);
+  Add(_device.retreat);
+  Add(_device.movement);
+  Add(_device.group);
   AddSpan(std::span<const std::uint32_t>(_device.reloadTicks));
 }
 

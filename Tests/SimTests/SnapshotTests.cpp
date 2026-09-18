@@ -100,14 +100,17 @@ void Populate(Frontier::Sim& _sim)
   device.facing = 0x8000;
   device.hitPoints = 240;
   device.experience = 12;
+  device.primaryOrder = Frontier::PrimaryOrder::AttackMove;
   device.destinationX = 8192;
   device.destinationZ = 1024;
-  device.moving = true;
+  device.fire = Frontier::FireStance::HoldFire;
+  device.retreat = Frontier::RetreatStance::AtQuarter;
+  device.group = 5;
   device.reloadTicks = {5, 2, 0, 0, 0, 0, 0, 0};
   const Frontier::ObjectId shooter = _sim.Objects().Create(device);
   device.seat = 1;
   device.x = -4096;
-  device.moving = false;
+  device.primaryOrder = Frontier::PrimaryOrder::Stop;
   const Frontier::ObjectId other = _sim.Objects().Create(device);
 
   Frontier::Structure structure{};

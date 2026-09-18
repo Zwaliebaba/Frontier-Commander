@@ -2,6 +2,7 @@
 
 #include "Device.h"
 #include "MatchSettings.h"
+#include "Order.h"
 #include "ObjectId.h"
 
 #include <cstdint>
@@ -73,6 +74,11 @@ struct Seat
   std::vector<FogState> fogState;
 
   std::vector<Ghost> ghosts; ///< Ascending by structure id, so two runs hash alike
+
+  /// This tick's dropped orders, in the order stage 1 judged them, for Net to report. Cleared at
+  /// the start of every stage 1, so it is what the tick refused rather than a running tally; it is
+  /// in the hash, because two hosts that refuse different orders have diverged.
+  std::vector<OrderRejection> rejections;
 
   bool defeated;    ///< Surrendered or annihilated; a defeated seat's orders are dropped.
   bool surrendered; ///< Which of the two it was, which the victory condition of S11 reads

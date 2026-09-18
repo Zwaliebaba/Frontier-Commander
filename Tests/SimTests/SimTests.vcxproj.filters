@@ -26,6 +26,9 @@
     <ClCompile Include="WorldTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="OrderValidationTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="LandscapeTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

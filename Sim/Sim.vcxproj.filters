@@ -17,6 +17,9 @@
     <ClCompile Include="World.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="OrderValidation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Seat.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -71,6 +74,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="World.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OrderValidation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Order.h">

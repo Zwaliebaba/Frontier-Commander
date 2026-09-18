@@ -233,6 +233,12 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
     _writer.Write(ghost.cellY);
     _writer.Write(ghost.seenTick);
   }
+  _writer.Write(static_cast<std::uint32_t>(_seat.rejections.size()));
+  for (const OrderRejection& rejection : _seat.rejections)
+  {
+    _writer.Write(rejection.kind);
+    _writer.Write(rejection.reason);
+  }
   _writer.WriteBool(_seat.defeated);
   _writer.WriteBool(_seat.surrendered);
 }
@@ -314,6 +320,18 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
       return false;
     }
   }
+  if (!_reader.Read(count) || count > Snapshot::MAX_REJECTIONS)
+  {
+    return false;
+  }
+  seat.rejections.resize(count);
+  for (OrderRejection& rejection : seat.rejections)
+  {
+    if (!ReadEnum(_reader, rejection.kind, ORDER_KIND_COUNT) || !ReadEnum(_reader, rejection.reason, REJECT_REASON_COUNT))
+    {
+      return false;
+    }
+  }
   if (!_reader.ReadBool(seat.defeated) || !_reader.ReadBool(seat.surrendered))
   {
     return false;
@@ -339,10 +357,15 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
       _writer.Write(_device.facing);
       _writer.Write(_device.hitPoints);
       _writer.Write(_device.experience);
+      _writer.Write(_device.primaryOrder);
       WriteObjectId(_writer, _device.target);
       _writer.Write(_device.destinationX);
       _writer.Write(_device.destinationZ);
-      _writer.WriteBool(_device.moving);
+      _writer.Write(_device.fire);
+      _writer.Write(_device.range);
+      _writer.Write(_device.retreat);
+      _writer.Write(_device.movement);
+      _writer.Write(_device.group);
       for (const std::uint32_t reload : _device.reloadTicks)
       {
         _writer.Write(reload);
@@ -432,8 +455,11 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
     Device device{};
     if (!_reader.Read(id.value) || !_reader.Read(device.seat) || !_reader.Read(device.design) || !_reader.Read(device.x) ||
         !_reader.Read(device.y) || !_reader.Read(device.z) || !_reader.Read(device.facing) || !_reader.Read(device.hitPoints) ||
-        !_reader.Read(device.experience) || !ReadObjectId(_reader, device.target) || !_reader.Read(device.destinationX) ||
-        !_reader.Read(device.destinationZ) || !_reader.ReadBool(device.moving))
+        !_reader.Read(device.experience) || !ReadEnum(_reader, device.primaryOrder, PRIMARY_ORDER_COUNT) ||
+        !ReadObjectId(_reader, device.target) || !_reader.Read(device.destinationX) || !_reader.Read(device.destinationZ) ||
+        !ReadEnum(_reader, device.fire, STANCE_VALUE_COUNTS[0]) || !ReadEnum(_reader, device.range, STANCE_VALUE_COUNTS[1]) ||
+        !ReadEnum(_reader, device.retreat, STANCE_VALUE_COUNTS[2]) || !ReadEnum(_reader, device.movement, STANCE_VALUE_COUNTS[3]) ||
+        !_reader.Read(device.group) || device.group > MAX_CONTROL_GROUP)
     {
       return false;
     }

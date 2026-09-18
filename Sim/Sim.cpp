@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "Sim.h"
+#include "OrderValidation.h"
 #include "StateHash.h"
 
 #include <algorithm>
@@ -111,7 +112,15 @@ std::uint64_t Sim::ComputeHash() const noexcept
 
 void Sim::ApplyOrders()
 {
+  // Every seat's rejections are this tick's, so the list starts empty and what is in it at stage
+  // 13 is what this tick refused.
+  for (Seat& seat : m_seats)
+  {
+    seat.rejections.clear();
+  }
   m_thisTick.clear();
+  // The queue hands orders out in seat order then arrival order, which is the order they are
+  // judged and applied in (TechnicalDesign.md §4.8, stage 1).
   m_orders.Drain(m_tick, m_thisTick);
   for (const Order& order : m_thisTick)
   {
@@ -129,6 +138,8 @@ void Sim::ApplyOrders()
 
 bool Sim::Apply(const Order& _order)
 {
+  // A seat outside the match, an empty seat or a defeated one is not a seat whose orders are
+  // judged: the fault is in who sent it, so there is no rejection to report to anyone.
   if (_order.seat >= m_seats.size())
   {
     return false;
@@ -138,21 +149,100 @@ bool Sim::Apply(const Order& _order)
   {
     return false;
   }
-  switch (_order.kind)
+
+  const OrderContext context{&m_world, m_seats, &m_landscape, m_tick};
+  const OrderCheck checked = ValidateOrder(_order, context);
+  if (!checked.Accepted())
+  {
+    seat.rejections.push_back({_order.kind, checked.reason});
+    return false;
+  }
+  // The validated order, not the submitted one: an Attack the seat cannot see has become an
+  // AttackMove to where it last saw the target (GameDesign.md §8).
+  const Order& order = checked.order;
+
+  // Validation resolved this a moment ago and nothing has run since, so it cannot be null; the
+  // check is here because a later stage calling Apply would not have that guarantee.
+  Device* device =
+    order.operands[0] > 0 ? m_world.FindDevice({static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device}) : nullptr;
+
+  switch (order.kind)
   {
   case OrderKind::Surrender:
     seat.defeated = true;
+    seat.surrendered = true;
     return true;
+
   case OrderKind::Chat:
     return true; // Carried to the other commanders by Net; nothing in the state changes.
+
   case OrderKind::Move:
   case OrderKind::AttackMove:
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    target->primaryOrder = order.kind == OrderKind::Move ? PrimaryOrder::Move : PrimaryOrder::AttackMove;
+    target->destinationX = order.operands[1];
+    target->destinationZ = order.operands[2];
+    target->target = NO_OBJECT;
+    return true;
+  }
+
+  case OrderKind::Stop:
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    target->primaryOrder = PrimaryOrder::Stop;
+    target->destinationX = target->x;
+    target->destinationZ = target->z;
+    target->target = NO_OBJECT;
+    return true;
+  }
+
+  case OrderKind::SetStance:
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    const auto value = static_cast<std::uint8_t>(order.operands[2]);
+    switch (static_cast<StanceAxis>(order.operands[1]))
+    {
+    case StanceAxis::Fire:
+      target->fire = static_cast<FireStance>(value);
+      return true;
+    case StanceAxis::Range:
+      target->range = static_cast<RangeStance>(value);
+      return true;
+    case StanceAxis::Retreat:
+      target->retreat = static_cast<RetreatStance>(value);
+      return true;
+    case StanceAxis::Movement:
+      target->movement = static_cast<MovementStance>(value);
+      return true;
+    }
+    return false;
+  }
+
+  case OrderKind::Group:
+    if (device == nullptr)
+    {
+      return false;
+    }
+    device->group = static_cast<std::uint8_t>(order.operands[1]);
+    return true;
+
   case OrderKind::Attack:
   case OrderKind::Patrol:
   case OrderKind::Guard:
-  case OrderKind::Stop:
   case OrderKind::ReturnToRepair:
-  case OrderKind::SetStance:
   case OrderKind::PlaceStructure:
   case OrderKind::CancelStructure:
   case OrderKind::Demolish:
@@ -162,10 +252,10 @@ bool Sim::Apply(const Order& _order)
   case OrderKind::SetResearch:
   case OrderKind::CancelResearch:
   case OrderKind::SaveDesign:
-  case OrderKind::Group:
-    // Every one of these names something the seat must own, and no system owns anything yet:
-    // validation fails, as it would for an id the seat does not own (TechnicalDesign.md §4.7).
-    return false;
+    // Validated here and applied by the task that owns the system (m1-vertical-slice/S2): the
+    // order passed every check this task can make, and there is nothing yet to apply it to. It
+    // counts as applied rather than dropped, because nothing was wrong with it.
+    return true;
   }
   return false;
 }
