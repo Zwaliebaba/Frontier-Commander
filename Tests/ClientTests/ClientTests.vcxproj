@@ -82,6 +82,13 @@
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
+      <!--
+        The same libraries FrontierCommander links, and for the same reason: a test that names
+        anything in a Client translation unit that touches Direct3D drags that object in whole, so
+        the suite needs runtimeobject.lib for winrt::check_hresult's originate and d3d12.lib for
+        D3D12SerializeRootSignature even though no test creates a device.
+      -->
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;runtimeobject.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">

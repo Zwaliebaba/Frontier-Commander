@@ -1103,6 +1103,13 @@ tasks:
       one's. The acceptance's "one instance buffer per model per frame" is implemented as one buffer
       per frame holding a contiguous run per model, one draw per run - the same batching with one
       allocation instead of a resource per model per frame.
+      CI run 76 was red on a link error this task caused and the session's Linux harness cannot see:
+      ModelBuffers.obj is the first Client object a ClientTests test names that touches Direct3D, and
+      a named symbol drags its whole object in, so the suite suddenly needed the libraries the
+      executable links and linked none of them - unresolved WINRT_IMPL_RoOriginateLanguageException,
+      which is winrt::check_hresult's originate. ClientTests.vcxproj now carries the same
+      d3d12.lib;dxgi.lib;runtimeobject.lib FrontierCommander does. K2 would have hit it again for
+      D3D12SerializeRootSignature.
 
   - id: K2
     title: Client fog pass
