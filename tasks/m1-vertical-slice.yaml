@@ -140,6 +140,10 @@ tasks:
       that every simulation task reads content rather than literals and rebalancing is an edit.
     project: Content
     depends_on: [C1]
+    # The placeholder models C4 generates are a prerequisite in fact: ContentValidator refuses a
+    # row naming a model no file defines, and CI runs FrontierHost --validate the moment
+    # GameData/Components.json exists. C2 therefore landed Tools/MakePlaceholderModels.py and its
+    # output with the tables (2026-09-18); C4 keeps the importers and the provenance ADR.
     files:
       - GameData/Components.json
       - GameData/Structures.json
@@ -165,7 +169,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
 
   - id: C3
     title: Write Tools/CheckBalance.py, the cost-efficiency script

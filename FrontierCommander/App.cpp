@@ -16,6 +16,7 @@
 #include "Lighting.h"
 #include "Log.h"
 #include "MatchSettings.h"
+#include "ContentLoader.h"
 #include "Paths.h"
 #include "PresentPass.h"
 #include "ScaleMode.h"
@@ -73,16 +74,33 @@ constexpr float PI = 3.14159265358979323846f;
   return definition;
 }
 
-/// A two-seat lobby, the least a match needs.
-/// The tables a match is played by (OpenQuestions.md Q20). Empty until m1-vertical-slice/C2
-/// authors them and the loader is wired to GameData: no row is read by the stages that exist, and
-/// an empty tree is honest about that where a tree loaded from nothing would not be.
+/// The tables a match is played by (OpenQuestions.md Q20), read once from the game-data directory
+/// beside the executable. A tree that does not load leaves the match on an empty one and says so,
+/// rather than refusing to start: getting GameData beside the executable is the owner's step (C2),
+/// and until it is taken every stage that reads a row is one that does not exist yet.
 [[nodiscard]] const Frontier::ContentTree& MatchContent()
 {
-  static const Frontier::ContentTree TREE{};
+  static const Frontier::ContentTree TREE = []
+  {
+    Frontier::ContentTree tree{};
+    const std::filesystem::path directory = Neuron::Paths::GameDataDirectory();
+    std::vector<Frontier::ContentDiagnostic> diagnostics;
+    if (Frontier::LoadContent(directory, tree, diagnostics))
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Info, "content: " + std::to_string(tree.components.chassis.size()) + " chassis, " +
+                                                   std::to_string(tree.structures.structures.size()) + " structures, " +
+                                                   std::to_string(tree.research.size()) + " research items from " + directory.string());
+      return tree;
+    }
+    const std::string reason = diagnostics.empty() ? std::string("no diagnostic") : diagnostics.front().message;
+    Neuron::Log::Write(Neuron::LogLevel::Warning,
+                       "content: no tables at " + directory.string() + " (" + reason + "); the match runs on none");
+    return Frontier::ContentTree{};
+  }();
   return TREE;
 }
 
+/// A two-seat lobby, the least a match needs.
 [[nodiscard]] MatchSettings Lobby()
 {
   MatchSettings settings{};

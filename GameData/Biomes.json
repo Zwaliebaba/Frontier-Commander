@@ -1,0 +1,14 @@
+{
+  "_comment": "The Default biome, which is the Garden's (SpeciesLook.md 2 and 11). The light pair and the palette are Species's own, measured from its level files; the fog is ADR-005's mode with ADR-007's absolute range and ceiling, which is why the range names world units and no fraction of the landscape. The sky is black, as Species's is, with its layers over it (SpeciesLook.md 6); m2-skirmish/T8 adds the other seven biomes and the cloud rows. OpenQuestions.md Q21 asks whether this pair stays the built-in now that the camera looks down rather than along the ground.",
+  "version": 1,
+  "biomes": [
+    {
+      "id": "Default", "name": "The Garden", "paletteTexture": "LandscapeDefault.dds",
+      "key": { "directionHundredths": [4, 39, -92], "colorHundredths": [106, 96, 72] },
+      "sun": { "directionHundredths": [57, 0, -82], "colorHundredths": [358, 79, 14] },
+      "fogMode": "Desaturation",
+      "fogStartWorldUnits": 2048, "fogEndWorldUnits": 8192, "fogMaxDesaturationHundredths": 35,
+      "fogColorHundredths": [0, 0, 0], "skyColorHundredths": [0, 0, 0]
+    }
+  ]
+}

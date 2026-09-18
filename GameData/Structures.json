@@ -1,0 +1,70 @@
+{
+  "_comment": "The structure catalogue of GameDesign.md 5, with the costs and build times of 4. Footprints are cells, costs hundredths of power, build times ticks at 20 a second, sight subunits (16,384 to a cell). A served extractor yields 5 power a second, which is 25 hundredths a tick, and a command post 1, which is 5. A generator serves four extractors within 48 cells, which is 786,432 subunits. M1 ships six of these; the repair bay, sensor tower, wall, hardpoint and bunker are M2's (GameDesign.md 12).",
+  "version": 1,
+  "structures": [
+    {
+      "id": "CommandPost", "name": "Command post", "role": "CommandPost", "strength": "Hard", "model": "StructureCommandPost",
+      "footprintCellsX": 3, "footprintCellsY": 3, "hitPoints": 1500,
+      "kineticArmor": 20, "thermalArmor": 18, "costHundredths": 50000,
+      "buildTimeTicks": 1200, "sightSubunits": 196608, "moduleSlots": 0,
+      "powerHundredthsPerTick": 5
+    },
+    {
+      "id": "Extractor", "name": "Extractor", "role": "Extractor", "strength": "Soft", "model": "StructureExtractor",
+      "footprintCellsX": 1, "footprintCellsY": 1, "hitPoints": 200,
+      "kineticArmor": 2, "thermalArmor": 2, "costHundredths": 5000,
+      "buildTimeTicks": 300, "sightSubunits": 196608, "moduleSlots": 0,
+      "powerHundredthsPerTick": 25
+    },
+    {
+      "id": "Generator", "name": "Generator", "role": "Generator", "strength": "Medium", "model": "StructureGenerator",
+      "footprintCellsX": 2, "footprintCellsY": 2, "hitPoints": 600,
+      "kineticArmor": 8, "thermalArmor": 8, "costHundredths": 25000,
+      "buildTimeTicks": 800, "sightSubunits": 196608, "moduleSlots": 1,
+      "modules": ["GeneratorModule"],
+      "servesExtractors": 4, "serviceRangeSubunits": 786432
+    },
+    {
+      "id": "Factory", "name": "Factory", "role": "Factory", "strength": "Medium", "model": "StructureFactory",
+      "footprintCellsX": 3, "footprintCellsY": 3, "hitPoints": 800,
+      "kineticArmor": 10, "thermalArmor": 10, "costHundredths": 40000,
+      "buildTimeTicks": 1200, "sightSubunits": 196608, "moduleSlots": 2,
+      "modules": ["FactoryModule"]
+    },
+    {
+      "id": "ResearchLab", "name": "Research lab", "role": "ResearchLab", "strength": "Medium", "model": "StructureResearchLab",
+      "footprintCellsX": 2, "footprintCellsY": 2, "hitPoints": 600,
+      "kineticArmor": 8, "thermalArmor": 8, "costHundredths": 30000,
+      "buildTimeTicks": 900, "sightSubunits": 196608, "moduleSlots": 1,
+      "modules": ["LabModule"]
+    },
+    {
+      "id": "Tower", "name": "Tower", "role": "Tower", "strength": "Medium", "model": "StructureTower",
+      "unlockedBy": "Fortification",
+      "footprintCellsX": 1, "footprintCellsY": 1, "hitPoints": 400,
+      "kineticArmor": 10, "thermalArmor": 8, "costHundredths": 20000,
+      "buildTimeTicks": 600, "sightSubunits": 327680, "moduleSlots": 0,
+      "weapon": "MachineGun"
+    }
+  ],
+  "modules": [
+    {
+      "id": "FactoryModule", "name": "Factory module", "model": "StructureModuleFactory",
+      "unlockedBy": "Fabrication",
+      "costHundredths": 15000, "buildTimeTicks": 400,
+      "effect": "ShortenBuildTime", "amount": 25
+    },
+    {
+      "id": "LabModule", "name": "Laboratory module", "model": "StructureModuleLab",
+      "unlockedBy": "Laboratories",
+      "costHundredths": 15000, "buildTimeTicks": 400,
+      "effect": "ShortenResearchTime", "amount": 25
+    },
+    {
+      "id": "GeneratorModule", "name": "Generator module", "model": "StructureModuleGenerator",
+      "unlockedBy": "PowerNetworks",
+      "costHundredths": 12000, "buildTimeTicks": 350,
+      "effect": "ServeMoreExtractors", "amount": 2
+    }
+  ]
+}

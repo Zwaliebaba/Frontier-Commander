@@ -1,0 +1,5 @@
+{
+  "_comment": "Audio is m2-skirmish/T9's: XAudio2, X3DAudio and the event table arrive together, and Tools/ImportSounds.py (C4) copies the waves the events name. The file exists now, empty, because the loader reads the game-data directory in a fixed order and a missing file is a diagnostic rather than an absence. An event naming a wave that is not under Sounds is refused by ContentValidator, so the list stays empty until the waves are imported.",
+  "version": 1,
+  "events": []
+}

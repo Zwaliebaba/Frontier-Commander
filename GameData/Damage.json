@@ -1,0 +1,16 @@
+{
+  "_comment": "The version-1 damage matrix of GameDesign.md 8, verbatim. One row per weapon class and ten target columns - the six drive classes then the four strength classes, in the order of Content/DamageTable.h - as integer percentages applied to the weapon's damage. armorFactorPercent is how much of the target's armour counts: 100 for the kinetic weapons and flame, 50 for energy, 0 for artillery, which is how artillery is indifferent to armour. armorKind is which armour value it meets. This is the whole of the rock-paper-scissors, and Tools/CheckBalance.py (C3) checks no design dominates its tier.",
+  "version": 1,
+  "weapons": [
+    { "class": "AntiLight", "armorFactorPercent": 100, "armorKind": "Kinetic",
+      "modifierPercent": [120, 100, 50, 110, 130, 100, 120, 60, 30, 20] },
+    { "class": "AntiTank", "armorFactorPercent": 100, "armorKind": "Kinetic",
+      "modifierPercent": [90, 100, 120, 90, 70, 60, 80, 100, 110, 60] },
+    { "class": "Flame", "armorFactorPercent": 100, "armorKind": "Thermal",
+      "modifierPercent": [130, 110, 70, 120, 140, 40, 150, 80, 40, 10] },
+    { "class": "Artillery", "armorFactorPercent": 0, "armorKind": "Kinetic",
+      "modifierPercent": [100, 100, 100, 100, 100, 20, 130, 120, 100, 60] },
+    { "class": "Energy", "armorFactorPercent": 50, "armorKind": "Kinetic",
+      "modifierPercent": [100, 100, 100, 100, 100, 100, 100, 100, 100, 80] }
+  ]
+}

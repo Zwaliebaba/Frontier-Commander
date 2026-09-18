@@ -1,0 +1,374 @@
+{
+  "_comment": "Thirty items (GameDesign.md 7). The tree reaches every M1 component and structure once: the light chassis on wheels with a machine gun or a builder, and the command post, extractor, generator, factory and lab, are available from the first tick and unlocked by nothing; everything else hangs off these ten Unlock items. The other twenty are class upgrades, which apply retroactively to what is already in the field (GameDesign.md 6): a percentage on the class, never on the instance. Costs are 4's 50 to 2,000 power in hundredths and times its 30 to 600 seconds in ticks at 20 a second. targetClass is the ChassisClass for the chassis upgrades and the WeaponClass for the weapon ones.",
+  "version": 1,
+  "items": [
+    {
+      "id": "Fabrication",
+      "name": "Fabrication",
+      "description": "Tooling that shortens what a factory builds",
+      "prerequisites": [],
+      "costHundredths": 6000,
+      "timeTicks": 600,
+      "effect": "Unlock",
+      "unlocks": "FactoryModule"
+    },
+    {
+      "id": "Laboratories",
+      "name": "Laboratories",
+      "description": "Bench space that shortens what a lab studies",
+      "prerequisites": [],
+      "costHundredths": 6000,
+      "timeTicks": 600,
+      "effect": "Unlock",
+      "unlocks": "LabModule"
+    },
+    {
+      "id": "PowerNetworks",
+      "name": "Power Networks",
+      "description": "A second feeder loop, so a generator serves two more extractors",
+      "prerequisites": [],
+      "costHundredths": 8000,
+      "timeTicks": 700,
+      "effect": "Unlock",
+      "unlocks": "GeneratorModule"
+    },
+    {
+      "id": "Ballistics",
+      "name": "Ballistics",
+      "description": "A rifled barrel heavy enough to trouble armour",
+      "prerequisites": [],
+      "costHundredths": 10000,
+      "timeTicks": 900,
+      "effect": "Unlock",
+      "unlocks": "Cannon"
+    },
+    {
+      "id": "HalfTracks",
+      "name": "Half Tracks",
+      "description": "Rubber over bogies: slower than wheels, steadier on a slope",
+      "prerequisites": [
+        "Fabrication"
+      ],
+      "costHundredths": 9000,
+      "timeTicks": 800,
+      "effect": "Unlock",
+      "unlocks": "HalfTrack"
+    },
+    {
+      "id": "MediumChassis",
+      "name": "Medium Chassis",
+      "description": "The line hull, and the first that carries its own weight in armour",
+      "prerequisites": [
+        "Fabrication"
+      ],
+      "costHundredths": 15000,
+      "timeTicks": 1200,
+      "effect": "Unlock",
+      "unlocks": "MediumI"
+    },
+    {
+      "id": "Fortification",
+      "name": "Fortification",
+      "description": "A weapon on a mount tall enough to see over the ground it covers",
+      "prerequisites": [
+        "Ballistics"
+      ],
+      "costHundredths": 12000,
+      "timeTicks": 1000,
+      "effect": "Unlock",
+      "unlocks": "Tower"
+    },
+    {
+      "id": "IndirectFire",
+      "name": "Indirect Fire",
+      "description": "Lobbed fire, which needs someone forward to spot for it",
+      "prerequisites": [
+        "Ballistics"
+      ],
+      "costHundredths": 18000,
+      "timeTicks": 1400,
+      "effect": "Unlock",
+      "unlocks": "Mortar"
+    },
+    {
+      "id": "TrackedDrives",
+      "name": "Tracked Drives",
+      "description": "Full tracks: the slowest drive and the one that climbs",
+      "prerequisites": [
+        "HalfTracks"
+      ],
+      "costHundredths": 16000,
+      "timeTicks": 1300,
+      "effect": "Unlock",
+      "unlocks": "Tracks"
+    },
+    {
+      "id": "HeavyChassis",
+      "name": "Heavy Chassis",
+      "description": "The hull the late game is fought in",
+      "prerequisites": [
+        "MediumChassis",
+        "TrackedDrives"
+      ],
+      "costHundredths": 30000,
+      "timeTicks": 2000,
+      "effect": "Unlock",
+      "unlocks": "HeavyI"
+    },
+    {
+      "id": "LightArmourI",
+      "name": "Light Armour I",
+      "description": "Tougher plate on the light hull",
+      "prerequisites": [
+        "Fabrication"
+      ],
+      "costHundredths": 12000,
+      "timeTicks": 900,
+      "effect": "ChassisArmor",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "LightArmourII",
+      "name": "Light Armour II",
+      "description": "Tougher plate again",
+      "prerequisites": [
+        "LightArmourI"
+      ],
+      "costHundredths": 24000,
+      "timeTicks": 1500,
+      "effect": "ChassisArmor",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "MediumArmourI",
+      "name": "Medium Armour I",
+      "description": "Tougher plate on the line hull",
+      "prerequisites": [
+        "MediumChassis"
+      ],
+      "costHundredths": 18000,
+      "timeTicks": 1200,
+      "effect": "ChassisArmor",
+      "targetClass": 1,
+      "upgradePercent": 15
+    },
+    {
+      "id": "HeavyArmourI",
+      "name": "Heavy Armour I",
+      "description": "Tougher plate on the heavy hull",
+      "prerequisites": [
+        "HeavyChassis"
+      ],
+      "costHundredths": 35000,
+      "timeTicks": 2200,
+      "effect": "ChassisArmor",
+      "targetClass": 2,
+      "upgradePercent": 15
+    },
+    {
+      "id": "LightFramesI",
+      "name": "Light Frames I",
+      "description": "A stiffer frame under the light hull",
+      "prerequisites": [
+        "Fabrication"
+      ],
+      "costHundredths": 11000,
+      "timeTicks": 850,
+      "effect": "ChassisHitPoints",
+      "targetClass": 0,
+      "upgradePercent": 20
+    },
+    {
+      "id": "MediumFramesI",
+      "name": "Medium Frames I",
+      "description": "A stiffer frame under the line hull",
+      "prerequisites": [
+        "MediumChassis"
+      ],
+      "costHundredths": 17000,
+      "timeTicks": 1150,
+      "effect": "ChassisHitPoints",
+      "targetClass": 1,
+      "upgradePercent": 20
+    },
+    {
+      "id": "HeavyFramesI",
+      "name": "Heavy Frames I",
+      "description": "A stiffer frame under the heavy hull",
+      "prerequisites": [
+        "HeavyChassis"
+      ],
+      "costHundredths": 34000,
+      "timeTicks": 2100,
+      "effect": "ChassisHitPoints",
+      "targetClass": 2,
+      "upgradePercent": 20
+    },
+    {
+      "id": "AntiLightRoundsI",
+      "name": "Anti Light Rounds I",
+      "description": "Harder cores for the machine gun",
+      "prerequisites": [],
+      "costHundredths": 9000,
+      "timeTicks": 750,
+      "effect": "WeaponDamage",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "AntiLightRoundsII",
+      "name": "Anti Light Rounds II",
+      "description": "Harder cores again",
+      "prerequisites": [
+        "AntiLightRoundsI"
+      ],
+      "costHundredths": 20000,
+      "timeTicks": 1400,
+      "effect": "WeaponDamage",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "AntiTankRoundsI",
+      "name": "Anti Tank Rounds I",
+      "description": "A denser penetrator for the cannon",
+      "prerequisites": [
+        "Ballistics"
+      ],
+      "costHundredths": 16000,
+      "timeTicks": 1200,
+      "effect": "WeaponDamage",
+      "targetClass": 1,
+      "upgradePercent": 15
+    },
+    {
+      "id": "ArtilleryShellsI",
+      "name": "Artillery Shells I",
+      "description": "A heavier bursting charge",
+      "prerequisites": [
+        "IndirectFire"
+      ],
+      "costHundredths": 22000,
+      "timeTicks": 1600,
+      "effect": "WeaponDamage",
+      "targetClass": 3,
+      "upgradePercent": 15
+    },
+    {
+      "id": "AutoloaderI",
+      "name": "Autoloader I",
+      "description": "A belt feed that keeps the machine gun talking",
+      "prerequisites": [
+        "AntiLightRoundsI"
+      ],
+      "costHundredths": 14000,
+      "timeTicks": 1000,
+      "effect": "WeaponRate",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "BreechworkI",
+      "name": "Breechwork I",
+      "description": "A faster breech for the cannon",
+      "prerequisites": [
+        "AntiTankRoundsI"
+      ],
+      "costHundredths": 21000,
+      "timeTicks": 1500,
+      "effect": "WeaponRate",
+      "targetClass": 1,
+      "upgradePercent": 15
+    },
+    {
+      "id": "SightsI",
+      "name": "Sights I",
+      "description": "Better sights on the light weapons",
+      "prerequisites": [],
+      "costHundredths": 8000,
+      "timeTicks": 700,
+      "effect": "WeaponAccuracy",
+      "targetClass": 0,
+      "upgradePercent": 10
+    },
+    {
+      "id": "RangefindersI",
+      "name": "Rangefinders I",
+      "description": "A rangefinder for the cannon",
+      "prerequisites": [
+        "Ballistics"
+      ],
+      "costHundredths": 15000,
+      "timeTicks": 1100,
+      "effect": "WeaponAccuracy",
+      "targetClass": 1,
+      "upgradePercent": 10
+    },
+    {
+      "id": "ExtractionI",
+      "name": "Extraction I",
+      "description": "A deeper bore",
+      "prerequisites": [],
+      "costHundredths": 7000,
+      "timeTicks": 650,
+      "effect": "ExtractorRate",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "ExtractionII",
+      "name": "Extraction II",
+      "description": "A deeper bore again",
+      "prerequisites": [
+        "ExtractionI"
+      ],
+      "costHundredths": 16000,
+      "timeTicks": 1200,
+      "effect": "ExtractorRate",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "ExtractionIII",
+      "name": "Extraction III",
+      "description": "A deeper bore again, and a better pump",
+      "prerequisites": [
+        "ExtractionII",
+        "PowerNetworks"
+      ],
+      "costHundredths": 30000,
+      "timeTicks": 1900,
+      "effect": "ExtractorRate",
+      "targetClass": 0,
+      "upgradePercent": 15
+    },
+    {
+      "id": "MasonryI",
+      "name": "Masonry I",
+      "description": "Poured footings under every structure",
+      "prerequisites": [
+        "Fabrication"
+      ],
+      "costHundredths": 13000,
+      "timeTicks": 950,
+      "effect": "StructureHitPoints",
+      "targetClass": 0,
+      "upgradePercent": 20
+    },
+    {
+      "id": "MasonryII",
+      "name": "Masonry II",
+      "description": "Poured footings and a reinforced shell",
+      "prerequisites": [
+        "MasonryI"
+      ],
+      "costHundredths": 26000,
+      "timeTicks": 1700,
+      "effect": "StructureHitPoints",
+      "targetClass": 0,
+      "upgradePercent": 20
+    }
+  ]
+}
