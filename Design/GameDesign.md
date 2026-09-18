@@ -187,7 +187,14 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 
 **"Moddable" means the data files.** Every chassis, drive and module above is a row in a JSON file under `GameData\` beside the executable (owner, 2026-09-17: R13 withdrawn, JSON chosen), with an id, a class, its numbers, the research item that unlocks it and the model that draws it; the derivation formulas and the damage matrix (§8) are files too. Adding a component is adding a row and a model; rebalancing is editing numbers. A mod is a directory under `Mods\` whose files override the game's at the same path, enabled by name in the lobby; the host hashes what it loaded, mods included, and refuses a client whose content differs. The loader validates every file — every prerequisite exists, the research tree has no cycle, every model referenced is present — and names the file and line that is wrong; the same rules run in CI. `TechnicalDesign.md` §8 has the layout.
 
-**Experience.** A device that destroys things gains experience through eight ranks, each adding a small percentage to accuracy and damage. Ranks are visible on the unit, and they are what make a veteran worth retreating and repairing.
+**Experience.** A device that destroys things gains experience through eight ranks, each adding a small percentage to accuracy and damage. Ranks are visible on the unit, and they are what make a veteran worth retreating and repairing. The curve is the owner's, taken on 2026-09-18 against three the question put (`OpenQuestions.md` Q22), and it lives in `Sim/Design.h`:
+
+| Rank | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Experience at | 0 | 2 | 5 | 10 | 20 | 40 | 80 | 160 |
+| Accuracy and damage | +0% | +2% | +4% | +7% | +10% | +14% | +18% | +24% |
+
+The thresholds double, so a rank costs about as much as every rank before it put together and the eighth is a device that survived a match rather than one that had a good minute; +24% is worth the retreat-and-repair loop above and sits well under the 60% a class upgrade reaches, so a veteran light is still a light. It is measured against nothing yet: M2 ships ranks (§12) and its AI-versus-AI matches are where the spread is measured.
 
 ---
 

@@ -53,12 +53,14 @@ inline constexpr std::uint32_t MAX_PRODUCTION_REPEAT = 100;
 // ── Ranks (GameDesign.md §8) ──────────────────────────────────────────────────────────────────
 //
 // "A device that destroys things gains experience through eight ranks, each adding a small
-// percentage to accuracy and damage." The design says eight and says "small" and gives no numbers,
-// so THE NUMBERS BELOW ARE THIS TASK'S PROPOSAL and OpenQuestions.md carries them for the owner.
-// The shape is the argument: the thresholds double, so a rank costs as much as every rank before
-// it put together and the eighth is a thing a commander protects rather than a thing that happens;
-// the percentages grow to 24, which is worth retreating and repairing for (GameDesign.md §8) and
-// is well under the 60 a class upgrade can reach, so a veteran is an edge and not a second tier.
+// percentage to accuracy and damage." The design said eight and said "small" and gave no numbers;
+// the numbers below are the owner's answer to OpenQuestions.md Q22 (2026-09-18), taken from the
+// three curves that question put. The shape is the argument: the thresholds double, so a rank costs
+// as much as every rank before it put together and the eighth is a thing a commander protects
+// rather than a thing that happens; the percentages grow to 24, which is worth retreating and
+// repairing for (GameDesign.md §8) and is well under the 60 a class upgrade can reach, so a veteran
+// is an edge and not a second tier. Measured against nothing, which is what m2-skirmish is for: it
+// ships ranks, and its AI-versus-AI matches are where the spread is measured.
 
 inline constexpr std::uint8_t RANK_COUNT = 8;
 
