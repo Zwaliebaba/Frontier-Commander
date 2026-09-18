@@ -14,6 +14,10 @@ struct LaunchOptions
 {
   bool warp = false;
   bool capture = false;
+  /// Presents with a sync interval of zero, so that a frame finishes when the renderer is done
+  /// rather than when the display refreshes. m0-foundation/T22 asked the owner for a frame time
+  /// and got 8 to 16 ms, which was a 120 Hz and a 60 Hz monitor and not this renderer at all.
+  bool noVerticalSync = false;
   std::uint32_t captureFrames = 0;
   std::filesystem::path captureDirectory;
 };

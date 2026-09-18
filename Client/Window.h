@@ -44,6 +44,10 @@ public:
   /// True once after the client area changed size, and cleared by the call.
   [[nodiscard]] bool TakeResized() noexcept;
 
+  /// What the title bar says. The frame time goes here (m1-vertical-slice/K5) because it is the
+  /// one place a number can be read off a running build without a pass to draw text.
+  void SetTitle(const wchar_t* _title) noexcept;
+
   /// Where the procedure enqueues input from now on; null detaches. The mouse is registered for
   /// Raw Input at the same time, and the queue outlives the window or is detached first.
   void AttachInput(InputQueue* _queue);

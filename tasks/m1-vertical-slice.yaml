@@ -1229,7 +1229,27 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE LAST ACCEPTANCE LINE IS STILL OPEN and is the owner's: T22's notes carry the unlocked
+      figure once the owner has run with --novsync, and it is that figure a later regression is
+      caught against rather than the 8 to 16 ms band, which was two monitors.
+      Tearing is asked for when the swap chain is CREATED, not when it is presented, so it is asked
+      for wherever the machine allows it and --novsync decides per frame whether to use it; the
+      query lives on IDXGIFactory5 and GraphicsDevice holds an IDXGIFactory4, which the session's
+      Linux syntax check caught. ResizeBuffers takes the same flag or it refuses. Where the output
+      does not allow tearing, --novsync still presents on the retrace: the log says so and the
+      title bar says so, rather than reporting a refresh interval as a frame time a second time.
+      The window is a COUNT of frames and not a duration. "The last second" holds 60 samples at 60
+      frames a second and 500 at 500, so its 99th percentile means a different thing at each rate
+      and two runs cannot be compared; 240 frames always reports the same statistic. The percentile
+      is nearest-rank, so it always names a frame that actually happened.
+      Three figures rather than one because a hitch is invisible in the mean and in the median and
+      is what a player feels: a test pins that one 40 ms frame among 199 of 4 ms moves the
+      hundredth percentile and moves the mean by 180 microseconds.
+      The suite cannot be run on this session's Linux harness - ClientTests does not link there,
+      because Window.cpp needs the real Win32 - so FrameTimerTests was built and run against
+      FrameTimer.cpp alone, six passing. CI is the first run of the whole project.
 
   - id: G3
     title: The owner's run - M1 accepted, and the tick-cost measurements added to the tick ADR

@@ -118,6 +118,14 @@ bool Window::Pump()
   return !m_closeRequested;
 }
 
+void Window::SetTitle(const wchar_t* _title) noexcept
+{
+  if (m_handle != nullptr)
+  {
+    SetWindowTextW(m_handle, _title);
+  }
+}
+
 bool Window::TakeResized() noexcept
 {
   const bool resized = m_resized;

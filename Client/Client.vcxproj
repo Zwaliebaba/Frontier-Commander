@@ -123,6 +123,7 @@
     <ClCompile Include="ScaleMode.cpp" />
     <ClCompile Include="SceneTarget.cpp" />
     <ClCompile Include="SwapChain.cpp" />
+    <ClCompile Include="FrameTimer.cpp" />
     <ClCompile Include="Window.cpp" />
     <ClCompile Include="FrameInput.cpp" />
     <ClCompile Include="InputQueue.cpp" />
@@ -146,6 +147,7 @@
     <ClInclude Include="ScaleMode.h" />
     <ClInclude Include="SceneTarget.h" />
     <ClInclude Include="SwapChain.h" />
+    <ClInclude Include="FrameTimer.h" />
     <ClInclude Include="Window.h" />
     <ClInclude Include="d3dx12.h" />
     <ClInclude Include="FrameInput.h" />
