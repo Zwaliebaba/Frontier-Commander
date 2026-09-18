@@ -16,7 +16,8 @@ namespace Frontier
 
 /// "FCSP", little-endian, at the head of every snapshot.
 inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 2;
+/// 3 since 2026-09-18: a tile carries the biome it is coloured by (OpenQuestions.md Q18).
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 3;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,

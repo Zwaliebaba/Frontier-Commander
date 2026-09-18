@@ -205,6 +205,31 @@ public:
     Assert::IsTrue(Mentions(diagnostics, "the wave 'Cannon.wav' is not under Sounds"));
   }
 
+  TEST_METHOD(ATilePaletteNamingNoBiomeIsFoundAndOneNamingABiomeIsNot)
+  {
+    const ScratchTree tree;
+    Frontier::ContentTree loaded;
+    std::vector<Frontier::ContentDiagnostic> diagnostics;
+    Assert::IsTrue(Frontier::LoadContent(tree.path, loaded, diagnostics));
+    Assert::AreEqual(std::size_t{1}, loaded.landscapes.size());
+    Assert::IsTrue(loaded.landscapes.front().tiles.front().palette.empty(), L"absent means the landscape's own");
+
+    // A tile that names a biome is a region (OpenQuestions.md Q18) and validates.
+    std::string document(GOOD_LANDSCAPE);
+    const std::string anchor = "\"edgeFalloff\": 32";
+    document.replace(document.find(anchor), anchor.size(), anchor + ", \"palette\": \"Default\"");
+    WriteFixture(tree.path / "Landscapes" / "Slice.json", document);
+    Assert::AreEqual(std::size_t{0}, FindingsOf(tree).size());
+
+    // One that names something else is not.
+    std::string broken(GOOD_LANDSCAPE);
+    broken.replace(broken.find(anchor), anchor.size(), anchor + ", \"palette\": \"Tundra\"");
+    WriteFixture(tree.path / "Landscapes" / "Slice.json", broken);
+    const std::vector<Frontier::ContentDiagnostic> findings = FindingsOf(tree);
+    Assert::AreEqual(std::size_t{1}, findings.size());
+    Assert::IsTrue(Mentions(findings, "tile 0 is coloured by 'Tundra', which is not a biome"));
+  }
+
   TEST_METHOD(TheValidatorReportsEveryFaultRatherThanTheFirst)
   {
     const ScratchTree tree;

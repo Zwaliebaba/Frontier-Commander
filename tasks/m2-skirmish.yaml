@@ -129,6 +129,7 @@ tasks:
       - "Biomes.json carries all eight palettes with the light pairs SpeciesLook.md §3 measured, and the sky rows the cloud pass reads: per layer a height, a world-space repeat period and a colour, plus the drift; the sky, cloud and water passes exist per SpeciesLook.md and SpeciesTerrain.md; the sprite pass draws the population walking between structures and the particle events"
       - "The cloud layers are camera-relative with their noise sampled in world space, as OpenQuestions.md Q17 decided: a layer covers the view at any landscape size, a cloud feature keeps its authored size, and the pattern stays over the same ground. The task's ADR records the measured layer heights, the world-space repeat period and the drift, with a frame to look at"
       - ADR-005's two fog frames are re-made with the sky drawn, from the same vantage under both fog modes, and the fog ruling is confirmed or superseded on those rather than on the black-sky ones
+      - "The terrain pass reads a palette per tile and blends where tiles of different biomes overlap, by the same edge falloff their heights merge by (OpenQuestions.md Q18): the schema, the loader and the validator are already there from m1-vertical-slice/C1, and this task draws it. Water stays one look per map; a water blend is raised again here only if a frame shows it is wrong"
       - The pixel post pass is decided in an ADR on captured frames, and the capture job's frames show the completed look
     status: todo
 

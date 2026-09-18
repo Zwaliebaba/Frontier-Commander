@@ -185,6 +185,15 @@ void CheckReferences(const ContentTree& _tree, std::vector<ContentDiagnostic>& _
     {
       Report(_tree, _diagnostics, LANDSCAPES_DIRECTORY, name, "a landscape has at least one start");
     }
+    for (std::size_t tileIndex = 0; tileIndex < landscape.tiles.size(); ++tileIndex)
+    {
+      const std::string& tilePalette = landscape.tiles[tileIndex].palette;
+      if (!tilePalette.empty() && _tree.FindBiome(tilePalette) == nullptr)
+      {
+        Report(_tree, _diagnostics, LANDSCAPES_DIRECTORY, name,
+               "tile " + std::to_string(tileIndex) + " is coloured by '" + tilePalette + "', which is not a biome");
+      }
+    }
   }
 }
 

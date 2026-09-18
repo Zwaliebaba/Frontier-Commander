@@ -106,6 +106,9 @@ void Landscape::AddToHash(StateHash& _hash) const noexcept
     _hash.Add(tile.lowlandExponentHundredths);
     _hash.Add(tile.method);
     _hash.Add(tile.edgeFalloff);
+    // tile.palette is deliberately absent, as the definition's own palette above it is: a biome
+    // colours the ground and generates none of it, so two matches differing only in palette run
+    // identically and must hash identically (ADR-002, amended 2026-09-18 for Q18).
   }
   for (const std::vector<CellPosition>* positions : {&m_definition.starts, &m_definition.deposits})
   {

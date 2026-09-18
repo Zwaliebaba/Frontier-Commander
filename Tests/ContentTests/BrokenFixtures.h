@@ -153,6 +153,29 @@ inline constexpr std::string_view GOOD_SOUNDS = R"({
   ]
 })";
 
+/// A Small landscape of one tile, in the schema Tools/LandscapeTool.py --define writes. Its own
+/// palette is the Default biome, and its tile names none, so the tree is clean until a test gives
+/// the tile a palette of its own (OpenQuestions.md Q18).
+inline constexpr std::string_view GOOD_LANDSCAPE = R"({
+  "version": 1,
+  "sizeClass": "Small",
+  "cellsPerSide": 128,
+  "samplesPerSide": 513,
+  "sampleSpacingWorldUnits": 16,
+  "outsideHeight": -26,
+  "seed": 1,
+  "palette": "Default",
+  "tiles": [
+    {
+      "x": 0, "y": 0, "extent": 512,
+      "fractalDimensionHundredths": 170, "amplitude": 90, "desiredHeight": 100,
+      "heightShift": 48, "lowlandExponentHundredths": 70, "method": 1, "edgeFalloff": 32
+    }
+  ],
+  "starts": [ { "cellX": 36, "cellY": 92 }, { "cellX": 108, "cellY": 20 } ],
+  "deposits": [ { "cellX": 30, "cellY": 86 } ]
+})";
+
 /// Writes _text to _path, creating the directories above it.
 inline void WriteFixture(const std::filesystem::path& _path, std::string_view _text)
 {
@@ -188,6 +211,7 @@ inline void WriteGoodTree(const std::filesystem::path& _directory)
   WriteFixture(_directory / "Damage.json", GOOD_DAMAGE);
   WriteFixture(_directory / "Biomes.json", GOOD_BIOMES);
   WriteFixture(_directory / "Sounds.json", GOOD_SOUNDS);
+  WriteFixture(_directory / "Landscapes" / "Slice.json", GOOD_LANDSCAPE);
 }
 
 } // namespace ContentTests

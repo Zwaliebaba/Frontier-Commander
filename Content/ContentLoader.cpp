@@ -883,6 +883,11 @@ namespace
     {
       return _reader.Fail(row, "'extent' is a power of two");
     }
+    // Absent means the landscape's own palette; a tile that names one is a region (Q18).
+    if (!_reader.OptionalString(row, "palette", tile.palette))
+    {
+      return false;
+    }
     tile.method = static_cast<std::uint8_t>(method);
     _out.tiles.push_back(tile);
   }

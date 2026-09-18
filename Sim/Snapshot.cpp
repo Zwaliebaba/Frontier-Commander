@@ -90,6 +90,7 @@ void WriteLandscape(Neuron::ByteWriter& _writer, const Landscape& _landscape)
     _writer.Write(tile.lowlandExponentHundredths);
     _writer.Write(tile.method);
     _writer.Write(tile.edgeFalloff);
+    _writer.WriteSpan(std::as_bytes(std::span<const char>(tile.palette.data(), tile.palette.size())));
   }
   for (const std::vector<CellPosition>* positions : {&definition.starts, &definition.deposits})
   {
@@ -157,12 +158,15 @@ void WriteLandscape(Neuron::ByteWriter& _writer, const Landscape& _landscape)
   definition.tiles.resize(tileCount);
   for (LandscapeTile& tile : definition.tiles)
   {
+    std::span<const std::byte> tilePalette;
     if (!_reader.Read(tile.x) || !_reader.Read(tile.y) || !_reader.Read(tile.extent) || !_reader.Read(tile.fractalDimensionHundredths) ||
         !_reader.Read(tile.amplitude) || !_reader.Read(tile.desiredHeight) || !_reader.Read(tile.heightShift) ||
-        !_reader.Read(tile.lowlandExponentHundredths) || !_reader.Read(tile.method) || !_reader.Read(tile.edgeFalloff))
+        !_reader.Read(tile.lowlandExponentHundredths) || !_reader.Read(tile.method) || !_reader.Read(tile.edgeFalloff) ||
+        !_reader.ReadSpan(Snapshot::MAX_PALETTE_BYTES, tilePalette))
     {
       return false;
     }
+    tile.palette.assign(reinterpret_cast<const char*>(tilePalette.data()), tilePalette.size());
   }
   if (!ReadPositions(_reader, definition.starts) || !ReadPositions(_reader, definition.deposits))
   {
