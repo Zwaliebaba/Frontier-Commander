@@ -179,7 +179,7 @@ constexpr float PI = 3.14159265358979323846f;
 {
   Neuron::TerrainPass::Frame frame{};
   frame.aspect = static_cast<float>(Neuron::AUTHORED_WIDTH_PIXELS) / static_cast<float>(Neuron::AUTHORED_HEIGHT_PIXELS);
-  frame.lighting = Neuron::GARDEN_LIGHTING;
+  frame.lighting = Neuron::BUILT_IN_LIGHTING;
   frame.fogMode = _fog;
   frame.fogStart = Neuron::FOG_START_WORLD_UNITS;
   frame.fogEnd = Neuron::FOG_FULL_WORLD_UNITS;

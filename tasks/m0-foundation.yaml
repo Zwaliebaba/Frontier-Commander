@@ -1236,3 +1236,14 @@ tasks:
     status: todo
     notes: >
       Owner's task. An agent prepares the PR that archives the plan once the owner reports.
+      Frame time, reported by the owner on 2026-09-18: under 2 ms at 1920x1080 on the owner's
+      hardware, which is over 500 frames a second. It was given as a band rather than a figure,
+      and the build it was measured on was not stated; the band is what a later regression is
+      caught against, so a regression test asserts against 2 ms and not against a tighter number.
+      For the scale it leaves: the capture's orbit draws 161,730 to 220,152 triangles a frame on
+      the Small landscape (T20), so the one thing this measurement does NOT establish is the
+      Frontier landscape of ADR-007, which is 64 times the area. The remaining unmet line is the
+      fog ruling, which waits on a frame drawn with ADR-007's absolute range and its ceiling on
+      the desaturation AND under the light pair Q21 settled the same day (owner: Species's Sandbox),
+      because the frame of 2026-09-18 was dark from the rig rather than from the fog, and ruling on
+      one without the other reads the wrong cause.

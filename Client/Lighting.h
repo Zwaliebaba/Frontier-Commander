@@ -16,16 +16,39 @@ struct DirectionalLight
   std::array<float, 3> color;
 };
 
+/// The two lights of a Species rig, in the order its level files list them. The second is named for
+/// the horizontal orange sun nine of the twelve Species maps put there (SpeciesLook.md §2), but the
+/// slot is only the second light: SANDBOX_LIGHTING puts a cool fill in it, and nothing requires it
+/// to lie on the horizon.
 struct SceneLighting
 {
   DirectionalLight key;
   DirectionalLight sun;
 };
 
-/// The Garden's pair until Content\Biomes.json carries one per biome (SpeciesLook.md §11): a near
-/// white key at 23 degrees and a horizontal orange sun at three and a half times white.
+/// THE BUILT-IN PAIR (OpenQuestions.md Q21, owner 2026-09-18): Species' Sandbox, two elevated
+/// near-white lights from opposite azimuths, warm at 31 degrees and cool at 17. Flat ground comes
+/// out at 0.95 luminance and no sampled normal is left fully black, against the Garden's 0.38 and
+/// its 11.1%; that measurement is the reason, and the Garden's sun lying on the horizon — where it
+/// reaches no surface facing up — is the cause it measures. Sandbox rather than another neutral
+/// pair because it is the rig Species put on its own level 1, the first map a player sees, and
+/// because the pair was authored: a new light in Species is a single horizontal white at 1.3
+/// (GameLogic\WorldObject.cpp:79), which is nobody's map. The zero ambient stays (OpenQuestions.md
+/// R4): nothing here adds a fill term, the two lights simply reach further.
+inline constexpr SceneLighting SANDBOX_LIGHTING = {{{0.85f, 0.52f, 0.09f}, {1.24f, 1.16f, 1.04f}},
+                                                   {{-0.66f, 0.30f, -0.69f}, {1.04f, 1.16f, 1.24f}}};
+
+/// The Garden's pair, which was the built-in until Q21: a near white key at 23 degrees and a
+/// horizontal orange sun at three and a half times white. It is kept because it is the pair that
+/// paints the saturated rim the Species look is known for, and because it belongs to a biome — it
+/// contributes exactly nothing to a surface facing up, so it wants the ground-level vantage Species
+/// gave it rather than an RTS camera.
 inline constexpr SceneLighting GARDEN_LIGHTING = {{{0.04f, 0.39f, -0.92f}, {1.06f, 0.96f, 0.72f}},
                                                   {{0.57f, 0.0f, -0.82f}, {3.58f, 0.79f, 0.14f}}};
+
+/// What the client lights with until Content\Biomes.json carries a rig per biome (SpeciesLook.md
+/// §11).
+inline constexpr SceneLighting BUILT_IN_LIGHTING = SANDBOX_LIGHTING;
 
 /// THE UNLIT TEAM-COLOUR SLOT (ADR-005; TechnicalDesign.md §6.4; OpenQuestions.md R4): a vertex
 /// whose colour carries this alpha is a team-colour slot, and the pixel shader writes its colour
