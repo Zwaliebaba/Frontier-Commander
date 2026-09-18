@@ -79,8 +79,8 @@ constexpr float PI = 3.14159265358979323846f;
 /// an empty tree is honest about that where a tree loaded from nothing would not be.
 [[nodiscard]] const Frontier::ContentTree& MatchContent()
 {
-  static const Frontier::ContentTree tree{};
-  return tree;
+  static const Frontier::ContentTree TREE{};
+  return TREE;
 }
 
 [[nodiscard]] MatchSettings Lobby()

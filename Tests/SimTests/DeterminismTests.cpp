@@ -23,8 +23,8 @@ namespace
 /// the snapshot carries this tree's hash and refuses any other.
 const Frontier::ContentTree& NoContent()
 {
-  static const Frontier::ContentTree tree{};
-  return tree;
+  static const Frontier::ContentTree TREE{};
+  return TREE;
 }
 
 // The three tests TechnicalDesign.md §10 says exist from M0, over a Sim with no systems yet: the
