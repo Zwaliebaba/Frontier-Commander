@@ -11,7 +11,7 @@
 `AGENTS.md` R14 already has the rule this falls under: third-party content compiled in is the owner's question, needs the owner's approval before it lands, and the licence text travels with the bytes. This document therefore sorts the content into three bins; the owner decided the middle one on 2026-09-17:
 
 - **Never**, whatever the owner decides about the rest, because it is licensed to Introversion from someone else or is Introversion's identity: the six soundtrack tracks (Tresk, Trash80, DMA-SC — 126.9 MB, *measured*), the Introversion and publisher logos and splash screens (`IvLogo.bmp`, `MsnOberonComboSplash.bmp`, `DmaCrew.bmp`, `ProgramDarwinia.bmp`, `DarwinResearchAssociates.bmp`), and the Sepulveda narration.
-- **Used, with the risk accepted (owner, 2026-09-17)**: Darwinia's effect sounds, terrain palettes, sprites, icons and fonts, and the Darwinia-derived code. The recommendation was to treat them as placeholders with a replacement plan; the owner chose to use them and to carry the provenance risk, and confirmed the same day that the acceptance covers handing them to other players in M3 and inside mods, against a recommendation to replace them before M3. The provenance ADR (numbered when `m1-vertical-slice/C4` writes it) records the decision in those terms and lists what came across. The fonts are the one item in this bin whose provenance is known rather than unresolved, and §4 says what it is.
+- **Used, with the risk accepted (owner, 2026-09-17)**: Darwinia's effect sounds, terrain palettes, sprites, icons and fonts, and the Darwinia-derived code. The recommendation was to treat them as placeholders with a replacement plan; the owner chose to use them and to carry the provenance risk, and confirmed the same day that the acceptance covers handing them to other players in M3 and inside mods, against a recommendation to replace them before M3. [`ADR-010`](ADR/ADR-010-species-content.md) (2026-09-18) records the decision in those terms, lists every file that has come across with the Species path it came from, and puts the exclusions into `Tools/ImportSounds.py` as a refusal rather than leaving them to be remembered. The fonts are the one item in this bin whose provenance is known rather than unresolved, and §4 says what it is.
 - **Clean**: the engineering Species added on top — the input event system, the network transport, the XAudio2 backend, the slot maps, the checkers, the documents — which is the owner's own work.
 
 ---
@@ -186,7 +186,7 @@ Two things the sheets make plain that the names did not. The set is strongest in
 
 ### Textures, sprites, icons
 
-Magenta (255, 0, 255) is the colour key throughout; the texture loader turns it into alpha.
+Magenta (255, 0, 255) is the colour key for the SPRITES; the texture loader turns it into alpha. It is not the key everywhere, which C4 found when converting: the fonts are white glyphs on black, so their key is black, and the order icons are glyphs on an opaque dark-blue field that is part of the icon and takes no key at all. `Tools/ImportTextures.py` takes the key as an argument for that reason.
 
 | Item | Seen | Disposition |
 |---|---|---|
@@ -197,11 +197,11 @@ Magenta (255, 0, 255) is the colour key throughout; the texture loader turns it 
 | `Textures/Glow`, `CloudyGlow`, `Fuel`, `Starburst`, `MuzzleFlash`, `RadarSignal`, `Laser`, `LaserFence`, `LaserFence2`, `GodRay`, `Particle` | Soft blobs, a beam, a streak, a cloud, a 16×16 grey square | Take: effect sprites |
 | `Textures/ShapeWireframe`, `SkyWireframe`, `TriangleOutline`, `Clouds` | A diagonal-line tile, a bordered black square, a triangle-outline tile, a 16×16 noise mask | Take: the wireframe overlay and the sky are part of the look |
 | `Textures/Deform1c`, `Deform36c` | Distortion maps for shockwaves | Take |
-| `Textures/EditorFont*` (6), `SpeccyFont*` (4) | Two pixel fonts, each with accented variants | The Spectrum font is the game's (owner, 2026-09-17); §4 below says what both are |
+| `Textures/EditorFont*` (6), `SpeccyFont*` (4) | Two pixel fonts, each with accented variants | The Spectrum font is the game's (owner, 2026-09-17); §4 below says what both are. **Taken 2026-09-18**: `SpeccyFontNormal.bmp` is `GameData/Textures/SpectrumFont.dds`, 256×224, black keyed to alpha zero ([`ADR-010`](ADR/ADR-010-species-content.md)) |
 | `Textures/IvLogo`, `MsnOberonComboSplash`, `DmaCrew`, `SpeccyScreen`, `ProgramDarwinia`, `Campaign`, `Prologue` | Logos, a publisher splash, the Darwinia loading screen, campaign paintings | **Never**: branding and Darwinia's campaign art |
 | `Sprites/Citizen`, `LaserTrooper` (32×32×24) | Stick figures, magenta-keyed, the trooper with a gun: the Species population | Take: the population is confirmed as a visual (owner, 2026-09-17) |
 | `Sprites/Virii`, `Egg`, `Ghost`, `SantaHat`, `Sound` | A triangle, an egg, a ghost figure, a hat, an editor speaker icon | Leave |
-| `Icons/Banner*` (6, 64×64) | Order glyphs on a blue field: gather, deploy, follow, go to, none, unload | Take: order icons, nearly as they are |
+| `Icons/Banner*` (6, 64×64) | Order glyphs on a blue field: gather, deploy, follow, go to, none, unload | **Taken 2026-09-18**: all six, with `GestureArmour` and `GestureOfficer`, as the 4×2 atlas `GameData/Textures/Icons.dds`, unkeyed because the blue field is part of the icon ([`ADR-010`](ADR/ADR-010-species-content.md)) |
 | `Icons/Icon*` (15, 128×128×8) | White glyphs on dark-blue discs: Darwinia's programs | Take the style and the generic glyphs (`Delete`, `NoTask`, `Rocket`, `Grenade`, `Laser`, `Shadow`); leave the rest |
 | `Icons/Mouse*` (9, 128×128), `SelectionArrow`, `ScrollBar`, `Compass`, `Background` | Pointer, placement, selection corners, move-here, turret and missile reticles, disabled, highlight | Take |
 | `Icons/Gesture*` (10), `DarwinResearchAssociates` | Mouse-gesture strokes; a Vitruvian-citizen logo | Leave |

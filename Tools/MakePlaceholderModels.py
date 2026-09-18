@@ -159,8 +159,11 @@ MODELS = {
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--out", default="GameData/Models", help="where the model files are written")
+    # Also positionally, because m1-vertical-slice/C4's verify line spells it that way and a tool
+    # whose documented invocation fails is a tool nobody runs.
+    parser.add_argument("directory", nargs="?", help="the same, positionally")
     arguments = parser.parse_args()
-    directory = Path(arguments.out)
+    directory = Path(arguments.directory or arguments.out)
     directory.mkdir(parents=True, exist_ok=True)
     for identifier, body in sorted(MODELS.items()):
         path = directory / f"{identifier}.json"

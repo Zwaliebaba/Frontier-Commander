@@ -13,6 +13,7 @@ One file per engineering decision, numbered from `ADR-001` in this repository (`
 | [`ADR-007`](ADR-007-view-budget.md) | The view budget: the fog range absolute in world units with a ceiling on the desaturation, superseding ADR-005's fractions on the owner's frame; terrain chunk residency bounded by radius with the coarsest level resident everywhere, which holds for the four shipping size classes and is stated as O(area) that a quadtree must replace beyond them; the renderer's distances explicitly not line of sight | 2026-09-18 |
 | [`ADR-008`](ADR-008-fog-grid-encoding.md) | The fog grid, the first O(area) state a snapshot carries, is run-length encoded; ADR-003's refusal of compression superseded for that one section on the measurement it demanded, every other section unchanged | 2026-09-18 |
 | [`ADR-009`](ADR-009-content-in-the-simulation.md) | The simulation reads the content tree, taken by reference at construction and never written; a snapshot carries the digest of the tables it was written against and refuses any other, so reloading against different rules is a refusal rather than a silent divergence | 2026-09-18 |
+| [`ADR-010`](ADR-010-species-content.md) | The Species-derived content: the owner's acceptance of the provenance risk, including distribution in M3 and inside mods; the inventory of every file that has come across and the tool that converted it; the exclusions enforced in `Tools/ImportSounds.py` rather than remembered | 2026-09-18 |
 
 ## When to write one
 

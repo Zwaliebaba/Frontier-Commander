@@ -285,7 +285,38 @@ tasks:
       - python3 Tools/MakePlaceholderModels.py GameData/Models
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      ADR-010 is the provenance ADR, with a table naming every Species-derived file in the tree,
+      the Species path it came from and the tool that converted it. The exclusions - the
+      soundtrack, the branding, the narration - are enforced in Tools/ImportSounds.py as a refusal
+      rather than left to a reader's memory, because that is the one part of the decision that
+      must not fail quietly.
+      THE COLOUR KEY IS NOT MAGENTA EVERYWHERE, which SpeciesLineage.md 4's opening line said and
+      C4 found to be wrong when converting. Magenta is the SPRITES' key; the font is white glyphs
+      on black so its key is black; the order icons are glyphs on an opaque dark-blue field that is
+      part of the icon and take no key at all. Measured before converting; the line is corrected.
+      ImportShp.py reads all 106 Species shapes, both encodings, and the one that failed first -
+      BattleCannonBase.shp - turned out to be markers with no geometry at all, which is a real file
+      and not a broken one: a set of mount points for other shapes. It now comes across as a model
+      with no geometry and says so.
+      ImportSounds.py copies nothing, as the acceptance says, and it found that a SOUNDNAME is
+      often a GROUP rather than a file: 0lasers is not Sounds/0lasers.wav, it is Laser1 through
+      Laser11. 163 names resolve to 54 files exactly and 41 groups covering 316 more, which the
+      tool reports as guesses rather than as matches. Which alternative an event wants is
+      m2-skirmish/T9's to decide.
+      ImportObj.py takes the team-colour slot from a material's DISSOLVE of zero rather than from a
+      name: zero opacity is the one thing an artist can set in any tool and that no real surface
+      wants, where a naming convention breaks on a rename. Tools/Fixtures/MarkerCube.obj is the
+      committed round trip, and its output loads in the real C++ loader.
+      ImportTextures.py writes the DDS header and pixels itself rather than taking a dependency for
+      ninety bytes. Core's TextureFile reads both files it produced.
+      The plan's file list names the models as ChassisLight.json and so on; C2 generated them as
+      ChassisLightI.json, because a model id may not be the id of the row that names it and the
+      mark is part of the row's. The list is stale rather than unmet.
+      MakePlaceholderModels.py now takes its output directory positionally as well, because this
+      task's own verify line spells it that way and a tool whose documented invocation fails is a
+      tool nobody runs.
 
   - id: S1
     title: Sim world objects and seats

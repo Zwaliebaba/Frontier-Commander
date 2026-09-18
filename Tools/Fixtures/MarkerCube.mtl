@@ -1,0 +1,8 @@
+# The materials MarkerCube.obj names. A dissolve of zero is the team-colour slot (ADR-005).
+newmtl Hull
+Kd 0.8 0.8 0.8
+d 1.0
+
+newmtl TeamColour
+Kd 1.0 1.0 1.0
+d 0.0
