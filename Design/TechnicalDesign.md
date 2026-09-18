@@ -284,7 +284,7 @@ Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK
 | Water | One plane at the water level with the wave texture scrolling, and the shore band | One PSO, alpha blended |
 | Geometry | Every device, structure, feature and wreck: models, per-vertex colour, team colour substituted, instanced per model | One PSO; one instance buffer per model per frame |
 | Sprites | Billboards for infantry-sized things, the population, and particles | One PSO, instanced, alpha tested |
-| Fog | A full-screen composite darkening explored-not-visible cells and blacking unexplored ones, from the commander's visibility as the replica knows it | One PSO |
+| Fog | A full-screen composite darkening explored-not-visible cells and blacking unexplored ones, from the commander's visibility as the replica knows it. The pixel's cell comes from the depth buffer through the inverse view projection, so what is darkened is whatever was drawn there; the darkening is the blend state (`ZERO`, `SRC_COLOR`), so the colour target is never read while it is a render target; the grid is fetched per cell with no sampler, because interpolating between two fog states would invent a third | One PSO |
 | UI | Windows, text, icons, the minimap | One PSO, orthographic, alpha blended |
 | Present | The scene target into the back buffer, scaled | One PSO |
 
@@ -296,7 +296,7 @@ Seven pixel shaders and about as many vertex shaders, hand-written HLSL under `C
 
 ### 6.3 The render view
 
-The executable builds, each frame, a plain list of what to draw from the replica: for each object a model id, a position and an orientation interpolated between the last two frames (the first float conversion of a simulation number, and the only place it happens), a team colour and a rank badge; for the terrain, which chunks changed height since the last frame. `Client` draws the list. `Client` never sees a `Device`. The render-view and height-view types are plain aggregates in `Core`, in the engine namespace, so that `Replica` produces them and `Client` consumes them without an edge between the two (`ImplementationPlan.md` §6; ADR-001 records it).
+The executable builds, each frame, a plain list of what to draw from the replica: for each object a model id, a position and an orientation interpolated between the last two frames (the first float conversion of a simulation number, and the only place it happens, and it is to **world units**), a team colour and a rank badge; for the terrain, which chunks changed height since the last frame; and the commander's fog grid with the rows of it that changed, which the fog pass copies and the minimap draws, so that the two can never disagree. `Client` draws the list. `Client` never sees a `Device`. The render-view and height-view types are plain aggregates in `Core`, in the engine namespace, so that `Replica` produces them and `Client` consumes them without an edge between the two (`ImplementationPlan.md` §6; ADR-001 records it).
 
 ### 6.4 The look, mechanically
 

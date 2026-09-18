@@ -113,6 +113,7 @@
     <ClCompile Include="CameraTests.cpp" />
     <ClCompile Include="FrameTimerTests.cpp" />
     <ClCompile Include="ModelBuffersTests.cpp" />
+    <ClCompile Include="FogPassTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

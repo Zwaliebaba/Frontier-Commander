@@ -72,6 +72,9 @@
     <ClCompile Include="GeometryPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FogPass.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="WaterPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -152,11 +155,20 @@
     <ClInclude Include="GeometryPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="FogPass.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="WaterPass.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\FogPS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="Shaders\FogVS.hlsl">
+      <Filter>Shaders</Filter>
+    </FxCompile>
     <FxCompile Include="Shaders\GeometryPS.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>

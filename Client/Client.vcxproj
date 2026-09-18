@@ -135,6 +135,7 @@
     <ClCompile Include="TerrainPass.cpp" />
     <ClCompile Include="ModelBuffers.cpp" />
     <ClCompile Include="GeometryPass.cpp" />
+    <ClCompile Include="FogPass.cpp" />
     <ClCompile Include="WaterPass.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -165,9 +166,16 @@
     <ClInclude Include="TerrainPass.h" />
     <ClInclude Include="ModelBuffers.h" />
     <ClInclude Include="GeometryPass.h" />
+    <ClInclude Include="FogPass.h" />
     <ClInclude Include="WaterPass.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shaders\FogPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\FogVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
+    </FxCompile>
     <FxCompile Include="Shaders\GeometryPS.hlsl">
       <ShaderType>Pixel</ShaderType>
     </FxCompile>

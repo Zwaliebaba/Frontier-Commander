@@ -1119,8 +1119,15 @@ tasks:
       - Client/FogPass.cpp
       - Client/Shaders/FogVS.hlsl
       - Client/Shaders/FogPS.hlsl
+      - Client/SceneTarget.h
+      - Client/SceneTarget.cpp
       - Client/Client.vcxproj
       - Client/Client.vcxproj.filters
+      - Core/RenderView.h
+      - Tests/ClientTests/FogPassTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Design/TechnicalDesign.md
     acceptance:
       - A per-cell fog texture is updated from the render view's fog grid only for rows that changed, and a full-screen pass darkens explored cells and blacks unexplored ones after the geometry pass and before the UI
       - The capture job's frames show the three states once G2 lands
@@ -1129,8 +1136,34 @@ tasks:
       - python3 Build/CheckFormat.py --clang-format clang-format-18
       - python3 Build/CheckProjectFiles.py
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE RENDER VIEW HAD NO FOG GRID TO READ. The acceptance says "from the render view's fog grid"
+      and Core/RenderView.h carried instances and changed chunks and nothing else, so this task added
+      FogShade and FogView to it; R2 fills them, and Interface.md 7 already promised the minimap the
+      same grid. The changed rows are part of the view rather than something the client diffs out:
+      every device that moves changes fog, so "did anything change" is true every frame and only
+      "which rows" is worth having, and the producer knows it for free. Same bargain as changedChunks.
+      HOW A PIXEL FINDS ITS CELL. The pass reads the depth buffer and runs it back through the
+      inverse view projection, because what the fog darkens is whatever was DRAWN at a pixel - ground,
+      device, structure - and the depth buffer is where that already is. The darkening is the blend
+      state, source ZERO and destination SRC_COLOR, so the colour target is never read as a texture
+      while it is a render target, which is not legal. A depth of zero is the reversed depth's far
+      value and means nothing was drawn, so the background keeps the clear colour instead of going
+      black. SceneTarget gained Bind, BindColorOnly and Depth(), because the depth buffer cannot be a
+      texture and a bound depth target at once; its own contract already said whoever moves a target's
+      state moves it back. Two depth views are declared and one is null - a Texture2DMS view of a
+      one-sample resource is not legal and neither is the reverse, and the scene target falls back to
+      one sample on an adapter without multisampling. The pass runs once per pixel and takes sample
+      0's depth, so a silhouette crossing a cell boundary gets one answer for four samples: one pixel
+      along one line, against four times the work to fix it. The shade for explored is 0.5, which is
+      Interface.md 7's "half brightness" rather than a number picked here. The grid is fetched by
+      integer coordinate with no sampler, because interpolating between two fog states would invent a
+      third. FogPassTests covers the one part of this that a test can reach without a device, which is
+      which rows a frame copies; getting that wrong leaves a row showing last frame's fog, and a
+      player reads that as vision they do not have. Nothing calls the pass yet - App.cpp is G2's.
 
   - id: K3
     title: Client UI toolkit - panels, widgets, the Spectrum font atlas, the UI pass, router integration
