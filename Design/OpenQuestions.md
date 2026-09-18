@@ -1,6 +1,6 @@
 # Open questions — answered
 
-**Status: ANSWERED. The twenty-two of 2026-09-17, the six the external review raised included, and Q17 and Q18 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: one open — Q19, below. Otherwise answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 and Q18 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -83,6 +83,33 @@ Species keeps eight 64×64 palettes under `Terrain/`, and a palette is a lookup 
 **What looked like a limit, and was not** (corrected 2026-09-18 on the owner's reading). This question first recorded that water is a single plane at one level, so regions would be land only and a desert coast and a temperate coast would share water they should not. That was wrong twice over. A desert coast and a grass coast share an ocean in the world too, so one water colour is right rather than a compromise; and the real mismatch was never the water but the palettes disagreeing about their own lowland rows, Species's Default putting dark blue there for shallows where Desert puts sand. The answer is an authoring rule and no mechanism at all: **a palette's bottom rows ramp into the water plane's colour**, so every palette meets the water the same way and any two blend cleanly (`SpeciesTerrain.md` §6). `Tools/MakeTerrainPalette.py` applies it and `GameData/Terrain/LandscapeDefault.dds` is the first written to it.
 
 **What the answer cost, as built on 2026-09-18.** A tile carries a palette, absent meaning the landscape's; the loader reads it and the validator refuses one that names no biome; the snapshot carries it, at format version 3; the state hash does not, and ADR-002 is amended to say so rather than leave it implied. The blend itself is `m2-skirmish/T8`'s, because the terrain pass takes one palette today. The hash exclusion is not a new exception: the landscape's own palette was already outside it.
+
+## Open
+
+### Q19 — How much larger than Frontier, and is the target on the side or on the area? (raised 2026-09-18)
+
+The owner stated on 2026-09-18 that a landscape ten times the current largest is a design target, not work for today. The structure that answers it is the same either way and ADR-007 records it: nothing resident may be O(area), so the chunk grid becomes a quadtree whose depth grows with the landscape, and the heightfield stops being a resident vector. What the reading changes is every figure by a factor of ten, and with it whether the answer is a paging scheme or a large machine.
+
+**Why it blocks.** Nothing today, which is why it is a design target rather than a task. It blocks the *numbers*: `GameDesign.md` §3's size table, the cluster-graph sizing of `TechnicalDesign.md` §4.5, the visibility arithmetic of §4.6, and what `m4-frontier/T1` has to measure. A size class cannot be added to `SIZE_CLASS_CELLS` until it is answered, and the four that exist are unaffected either way.
+
+**The options, as arithmetic** (a cell is 64 world units, a chunk 32 cells, heights `std::int16_t` at four samples per cell edge, visibility 1.25 bytes per cell per commander for eight commanders):
+
+| | Frontier today | A: ten times the side | B: ten times the area |
+|---|---|---|---|
+| Cells per side | 1,024 | 10,240 | 3,232 |
+| World units per side | 65,536 | 655,360 | 206,848 |
+| Chunks | 1,024 | 102,400 | 10,201 |
+| Heights, resident | 0.03 GB | **3.13 GB** | 0.31 GB |
+| Cell grid and visibility | 0.01 GB | **1.37 GB** | 0.14 GB |
+| ADR-007's coarse level everywhere | 0.01 GB | **1.01 GB** | 0.10 GB |
+| Pathing clusters (§4.5 sizes 4,096) | 4,096 | 409,600 | 40,804 |
+| Quadtree levels to one root | 5.0 | 8.3 | 6.7 |
+| `int32` position headroom (ADR-002) | 128× | 12.8× | 40.6× |
+
+1. **Ten times the side**, 655,360 world units. The natural reading of "ten times the size", and a hundred times the area. 4.5 GB of simulation state before a triangle, so the heightfield has to be generated per region or paged from disk rather than held; the renderer is the easier half.
+2. **Ten times the area**, about 207,000 units a side. 0.45 GB of simulation state, which a large machine holds. The quadtree is still required, because 10,201 chunks is 10,201 draw calls under today's flat grid, but nothing has to be paged.
+
+**Recommendation: state the target as option 1 and build for it, because the structural work is identical and only option 1 forces the heightfield question**, which is the one that cannot be retrofitted cheaply. `GameDesign.md` §3 also gives a reason to prefer knowing: it names distance as the point of the game and its biggest risk, and a heavy device already takes 19 minutes to cross a Large landscape. Ten times a Frontier side is a crossing measured in hours, so the answer is a gameplay question before it is an engineering one, and the crossing-time test that section already schedules before M1 is where it should be settled.
 
 ## Adding a question
 
