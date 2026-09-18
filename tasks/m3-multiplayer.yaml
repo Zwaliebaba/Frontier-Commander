@@ -95,11 +95,12 @@ tasks:
       §4.6, §6.2); this task measures them with eight AI seats on a Large landscape and takes the
       hierarchical A* against flow fields decision on the numbers.
     project: Sim
-    depends_on: []
+    depends_on: [T11]
     blocked_by:
       - m2-skirmish/T11
     acceptance:
-      - The landscape tool's Large recipe passes the guarantees at a stated rate; eight AI seats on Large run inside the 50-millisecond tick on the owner's machine with the shares recorded; the terrain pass holds its triangle budget; the pathing ADR is written on the measurements
+      - The landscape tool's Large recipe passes the guarantees at a stated rate; eight AI seats on Large run inside the 50-millisecond tick on the owner's machine with the shares recorded; the pathing ADR is written on the measurements
+      - "The terrain pass is measured on Large by what actually bounds it (ADR-007): resident bytes, the load-time mesh build and the draw calls a frame, not only the triangle budget, which a Large landscape holds without engaging it"
     status: todo
 
   - id: T8
@@ -129,7 +130,40 @@ tasks:
     intent: >
       A milestone is done when its "proves" column is true on a running build the owner has run.
     project: Design
-    depends_on: [T4, T5, T6, T8, T9]
+    depends_on: [T4, T5, T6, T8, T9, T11]
     acceptance:
       - Two machines and a headless host play a match, one player drops and rejoins, the replay plays back; every M3 line of GameDesign.md §12 is true; the plan is archived
+    status: todo
+
+  - id: T11
+    title: Terrain chunk residency - the coarsest level everywhere, the detail near the camera
+    intent: >
+      Render cost stops being a function of the landscape's area (ADR-007). TerrainPass builds
+      every chunk at all four strides at construction and holds them for the match, which is
+      621 KiB a chunk: 161 MB on Large and 644 MB on Frontier, with a mesh build to match, and
+      the triangle budget cannot see either figure. After this the coarsest level - 1.6% of a
+      chunk - is resident for the whole landscape so any chunk can always be drawn, strides 1,
+      2 and 4 are built only within a radius of the camera and released beyond it with a chunk
+      of hysteresis, and nothing is culled by distance, so the player sees no change.
+    project: Client
+    depends_on: []
+    blocked_by:
+      - m2-skirmish/T11
+    files:
+      - Client/TerrainPass.h
+      - Client/TerrainPass.cpp
+      - Tests/ClientTests/TerrainPassTests.cpp
+    acceptance:
+      - Resident terrain is within a tenth of 59 MB on every size class from Small to Frontier, measured and logged at load, against 10, 40, 161 and 644 MB before
+      - The load-time mesh build is the coarsest level of the whole landscape plus the chunks first inside the radius, and its cost is logged and stated for each size class
+      - A chunk crossing the radius in either direction gains or loses its fine levels without a frame that draws a hole or a seam, and the hysteresis is a full chunk width so that a camera hovering on the boundary does not thrash
+      - No chunk is skipped for distance - a frame from any vantage draws every chunk the frustum keeps, at some stride
+      - ClientTests covers the residency set a camera position implies, the hysteresis band, and the suballocator returning a released level's range to the pool
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
     status: todo

@@ -20,7 +20,7 @@ struct SceneConstants
   DirectX::XMFLOAT4 lightColor0;
   DirectX::XMFLOAT4 lightDirection1;
   DirectX::XMFLOAT4 lightColor1;
-  DirectX::XMFLOAT4 fog; ///< start, end, mode (0 linear to the colour, 1 desaturation), unused
+  DirectX::XMFLOAT4 fog; ///< start, end, mode (0 linear to the colour, 1 desaturation), the desaturation's ceiling
   DirectX::XMFLOAT4 fogColor;
 };
 

@@ -1,5 +1,6 @@
-// The water pass's pixel half: one colour, fogged as the terrain is. The caustic texture, the shore
-// lightmap and the waves of SpeciesTerrain.md §7 are M2's.
+// The water pass's pixel half: one colour, fogged as the terrain is, the desaturation capped by
+// g_fog.w (ADR-007). The caustic texture, the shore lightmap and the waves of SpeciesTerrain.md §7
+// are M2's.
 
 cbuffer SceneConstants : register(b0)
 {
@@ -27,7 +28,7 @@ float4 main(float4 position : SV_Position, float3 world : WORLDPOS) : SV_Target
   else
   {
     const float luminance = dot(color, float3(0.299, 0.587, 0.114));
-    color = lerp(color, luminance.xxx, amount);
+    color = lerp(color, luminance.xxx, amount * g_fog.w);
   }
   return float4(color, 1.0);
 }
