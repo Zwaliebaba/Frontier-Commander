@@ -155,26 +155,6 @@ constexpr float CAMERA_ELEVATION = 340.0f;
   return settings;
 }
 
-/// The passes that cannot be built until there is a landscape, and the view over it.
-///
-/// M0 BUILT THESE AT STARTUP AND M1 CANNOT. The landscape arrives with the join (Match.h), which
-/// is a datagram answered by a thread, so there are frames - one over loopback, a second or more
-/// over a network - in which the device, the swap chain and the scene target exist and the terrain
-/// does not. Those frames present the cleared target, which is the Species sky, rather than
-/// nothing: a window that stays black until a join lands is indistinguishable from one that hung.
-struct MatchScene
-{
-  Neuron::HeightView heights{};
-  std::optional<Neuron::TerrainPass> terrain;
-  std::optional<Neuron::WaterPass> water;
-  std::optional<Neuron::FogPass> fog;
-
-  [[nodiscard]] bool Ready() const noexcept
-  {
-    return terrain.has_value();
-  }
-};
-
 /// Where the camera starts: over this commander's own base, high enough to see it and the ground
 /// it has to expand into, looking down and inward toward the middle of the landscape so that the
 /// first frame is the picture a player expects rather than a corner of sea.
@@ -246,30 +226,45 @@ void PoseOverBase(Neuron::Camera& _camera, const CellPosition& _start, float _ex
   return Neuron::TerrainPalette::BuiltIn();
 }
 
-/// Builds the passes that needed the landscape, once it has arrived, and puts the camera over the
-/// commander's base. Everything here reads the CLIENT'S landscape (Match::Terrain) and never the
-/// host's, which is the fog boundary of TechnicalDesign.md §5.2.
-void OpenScene(Neuron::GraphicsDevice& _device, const Neuron::SceneTarget& _scene, const Match& _match, const CellPosition& _start,
-               MatchScene& _outScene, Neuron::Camera& _outCamera)
+/// The three passes that cannot exist until there is a landscape, held as ONE object because they
+/// are born together and die together: each is built from the same heights and the same sample
+/// count, and there is no state in which one of them is the right thing to draw without the others.
+///
+/// M0 BUILT THESE AT STARTUP AND M1 CANNOT. The landscape arrives with the join (Match.h), which is
+/// a datagram answered by a thread, so there are frames - one over loopback, a second or more over
+/// a network - in which the device, the swap chain and the scene target exist and the terrain does
+/// not. The window therefore holds this in an optional and presents the cleared target, which is
+/// the Species sky, until it is filled: a window that stays black until a join lands is
+/// indistinguishable from one that hung. The capture holds it as a plain object, because it waits
+/// for the join before it builds anything at all.
+struct MatchPasses
 {
-  _outScene.heights = ViewOf(_match.Terrain());
-  _outScene.terrain.emplace(_device, _outScene.heights, LoadTerrainPalette(), _scene.SampleCount());
-  _outScene.water.emplace(_device, _outScene.heights, _scene.SampleCount());
-  _outScene.fog.emplace(_device, _scene, _match.Terrain().CellsPerSide());
+  MatchPasses(Neuron::GraphicsDevice& _device, const Neuron::SceneTarget& _scene, const Neuron::HeightView& _heights,
+              std::uint32_t _cellsPerSide)
+    : terrain(_device, _heights, LoadTerrainPalette(), _scene.SampleCount()),
+      water(_device, _heights, _scene.SampleCount()),
+      fog(_device, _scene, _cellsPerSide)
+  {
+  }
 
-  const float extent = _outScene.terrain->ExtentWorldUnits();
-  _outCamera.SetFarPlane(extent * Neuron::FAR_PLANE_EXTENT_FACTOR);
+  Neuron::TerrainPass terrain;
+  Neuron::WaterPass water;
+  Neuron::FogPass fog;
+};
+
+/// Pushes the far plane out for this landscape and puts the camera over the commander's base.
+/// Reads the CLIENT'S landscape (Match::Terrain) and never the host's, which is the fog boundary of
+/// TechnicalDesign.md §5.2.
+void AimAtBase(Neuron::Camera& _camera, const Match& _match, const CellPosition& _start, float _extent)
+{
+  _camera.SetFarPlane(_extent * Neuron::FAR_PLANE_EXTENT_FACTOR);
   // The ground the base actually stands on, read off the commander's own landscape rather than
   // guessed from the highest sample: a camera parked at half the island's height is underground on
   // a peak and in orbit over a beach.
   const std::int32_t baseSubunitsX = static_cast<std::int32_t>(_start.x) * Neuron::SUBUNITS_PER_CELL + Neuron::SUBUNITS_PER_CELL / 2;
   const std::int32_t baseSubunitsZ = static_cast<std::int32_t>(_start.y) * Neuron::SUBUNITS_PER_CELL + Neuron::SUBUNITS_PER_CELL / 2;
   const float ground = Neuron::WorldUnitsOfSubunits(GroundHeightSubunits(_match.Terrain(), baseSubunitsX, baseSubunitsZ));
-  PoseOverBase(_outCamera, _start, extent, ground);
-  _outCamera.ClampHeight(_outScene.heights);
-  Neuron::Log::Write(Neuron::LogLevel::Info, "match: the landscape arrived - " + std::to_string(_outScene.heights.samplesPerSide) +
-                                               " samples a side, " + std::to_string(_match.Terrain().CellsPerSide()) + " cells, highest " +
-                                               std::to_string(_outScene.heights.highest));
+  PoseOverBase(_camera, _start, _extent, ground);
 }
 
 /// The fog range is the landscape's no longer (ADR-007): it is absolute, so a Frontier landscape's
@@ -318,17 +313,17 @@ Neuron::FogMode PoseFor(std::uint32_t _frame, float _extent, const CellPosition&
 /// it, the commanders' things on it, and the fog over everything. Shared by the window and the
 /// capture so that the two cannot drift into showing different pictures of the same match - which
 /// they would, because the capture is the only one anybody reviews.
-void DrawMatch(ID3D12GraphicsCommandList* _list, const Neuron::SceneTarget& _scene, MatchScene& _parts, Neuron::GeometryPass& _geometry,
+void DrawMatch(ID3D12GraphicsCommandList* _list, const Neuron::SceneTarget& _scene, MatchPasses& _passes, Neuron::GeometryPass& _geometry,
                const Neuron::Camera& _camera, const Match& _match, Neuron::FogMode _fog)
 {
   const Neuron::TerrainPass::Frame frame = FrameOf(_fog);
-  _parts.terrain->Draw(_list, _camera, frame);
+  _passes.terrain.Draw(_list, _camera, frame);
   // AFTER the draw and not before: TerrainPass::Draw is what writes this frame's constants and sets
   // the address to the slot it wrote, so an address read first is the previous frame's.
-  const D3D12_GPU_VIRTUAL_ADDRESS constants = _parts.terrain->ConstantsAddress();
-  _parts.water->Draw(_list, constants);
+  const D3D12_GPU_VIRTUAL_ADDRESS constants = _passes.terrain.ConstantsAddress();
+  _passes.water.Draw(_list, constants);
   _geometry.Draw(_list, constants, _match.View().instances);
-  _parts.fog->Draw(_list, _scene, _camera, frame.aspect, _match.View().fog);
+  _passes.fog.Draw(_list, _scene, _camera, frame.aspect, _match.View().fog);
 }
 
 [[nodiscard]] std::string Describe(const winrt::hresult_error& _error)
@@ -450,7 +445,10 @@ int App::RunWindowed()
     return EXIT_FAILED; // Match::Start has logged which of its faults it was.
   }
 
-  MatchScene sceneParts;
+  // The passes and the height view they read arrive together, when the join does. The optional is
+  // what says "not yet", and every use of it below is under a check the analyser can follow.
+  Neuron::HeightView heights{};
+  std::optional<MatchPasses> passes;
   Neuron::Camera camera;
   const CameraController controller;
   const Neuron::FogMode fog = Neuron::DEFAULT_FOG_MODE;
@@ -492,13 +490,21 @@ int App::RunWindowed()
     // fly it across the map, and the liveness clock must not be shortened by it - a timeout that
     // ran slow whenever the display hitched is a timeout that cannot be trusted.
     match.Advance(std::chrono::duration_cast<std::chrono::nanoseconds>(sinceLastFrame));
-    if (!sceneParts.Ready() && match.TerrainReady())
+    if (!passes.has_value() && match.TerrainReady())
     {
-      OpenScene(device, scene, match, landscape->starts.front(), sceneParts, camera);
+      heights = ViewOf(match.Terrain());
+      // emplace returns the reference, and that is what is used: there is no operator-> on the
+      // optional here at all, so nothing has to reason about whether it is engaged.
+      MatchPasses& built = passes.emplace(device, scene, heights, match.Terrain().CellsPerSide());
+      AimAtBase(camera, match, landscape->starts.front(), built.terrain.ExtentWorldUnits());
+      camera.ClampHeight(heights);
+      Neuron::Log::Write(Neuron::LogLevel::Info, "match: the landscape arrived - " + std::to_string(heights.samplesPerSide) +
+                                                   " samples a side, " + std::to_string(match.Terrain().CellsPerSide()) +
+                                                   " cells, highest " + std::to_string(heights.highest));
     }
-    if (sceneParts.Ready())
+    if (passes.has_value())
     {
-      controller.Advance(camera, inputView, sceneParts.heights, seconds, window.ClientWidth(), window.ClientHeight());
+      controller.Advance(camera, inputView, heights, seconds, window.ClientWidth(), window.ClientHeight());
     }
     else if (!joinWarned && now - matchStarted > JOIN_WAIT)
     {
@@ -522,9 +528,9 @@ int App::RunWindowed()
     // the Species sky; it is a picture rather than a hang.
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);
-    if (sceneParts.Ready())
+    if (passes.has_value())
     {
-      DrawMatch(list, scene, sceneParts, geometry, camera, match, fog);
+      DrawMatch(list, scene, *passes, geometry, camera, match, fog);
     }
     scene.Resolve(list);
     present.Draw(
@@ -592,7 +598,6 @@ int App::RunCapture()
   {
     return EXIT_FAILED;
   }
-  MatchScene sceneParts;
   Neuron::Camera camera;
 
   // THE JOIN IS WAITED FOR BEFORE THE FIRST FRAME IS COUNTED, and the window deliberately is not.
@@ -615,8 +620,16 @@ int App::RunCapture()
       Neuron::Log::Write(Neuron::LogLevel::Error, "capture: the host did not answer the join; there is nothing to capture");
       return EXIT_FAILED;
     }
-    OpenScene(device, scene, match, landscape->starts.front(), sceneParts, camera);
   }
+  // Plain objects rather than an optional: the landscape is known by the time this line runs, so
+  // there is no "not yet" for the capture to carry, and nothing below has to ask whether it has one.
+  const Neuron::HeightView heights = ViewOf(match.Terrain());
+  MatchPasses passes(device, scene, heights, match.Terrain().CellsPerSide());
+  const float extent = passes.terrain.ExtentWorldUnits();
+  AimAtBase(camera, match, landscape->starts.front(), extent);
+  Neuron::Log::Write(Neuron::LogLevel::Info, "capture: the landscape arrived - " + std::to_string(heights.samplesPerSide) +
+                                               " samples a side, " + std::to_string(match.Terrain().CellsPerSide()) + " cells, highest " +
+                                               std::to_string(heights.highest));
 
   // THE CAPTURE RUNS THE MATCH IN WALL TIME, WHICH IS WHAT G1a CAN PROVE AND NO MORE. The host
   // thread is driven by the clock, so a capture of N frames advances the simulation by however long
@@ -630,12 +643,12 @@ int App::RunCapture()
     const auto elapsed = now - lastFrame;
     lastFrame = now;
     match.Advance(std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
-    const Neuron::FogMode fog = PoseFor(frame, sceneParts.terrain->ExtentWorldUnits(), landscape->starts.front(), camera);
-    camera.ClampHeight(sceneParts.heights);
+    const Neuron::FogMode fog = PoseFor(frame, extent, landscape->starts.front(), camera);
+    camera.ClampHeight(heights);
 
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);
-    DrawMatch(list, scene, sceneParts, geometry, camera, match, fog);
+    DrawMatch(list, scene, passes, geometry, camera, match, fog);
     scene.Resolve(list);
     const bool captured = frame % CAPTURE_EVERY_FRAMES == 0;
     if (captured)
