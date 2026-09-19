@@ -2704,3 +2704,67 @@ tasks:
       DO NOT REACH FOR THE HOST'S LANDSCAPE. It is one member away through Match and it is
       flattened under every structure in the match. Using it would make this task trivial and ship
       a wallhack; the point of the client holding its own Landscape is exactly this moment.
+
+  - id: S13
+    title: The viewer's eye, and the builder deadlock it uncovers
+    intent: >
+      A viewer's line of sight runs from its own ground height, and Sim/Landscape.h's CellHeight is
+      a cell's TALLEST sample, so on any ground with relief every swell between two cells occludes.
+      Measured over six positions of GameData/Landscapes/Slice.json, a structure with a 12-cell
+      sight radius sees 27.7% of its own disc: the fog that reaches the screen is moth-eaten, with
+      holes through ground the commander is standing next to, and the renderer draws it faithfully -
+      which is what the owner saw and reported on 2026-09-19. The owner ruled the same day that the
+      viewer looks out from 16 world units above its own ground, a quarter of a cell and half the
+      32 GameDesign.md §8 already uses as its height step, which takes the same six positions to
+      82.2%.
+      THAT ONE-CONSTANT CHANGE BREAKS THE SCRIPTED COMMANDER, WHICH IS WHY THIS IS A TASK AND NOT A
+      LINE. Measured: with the eye raised and nothing else changed, AiTests' acceptance match fails
+      on every one of eight seeds - seat 0 never builds a factory and seat 1 never builds a
+      generator - where the tree as it stands passes all eight. The mechanism is understood and is
+      a defect of S12 rather than of the sight rule.
+    project: Sim
+    depends_on: [S9, S12]
+    files:
+      - Sim/Visibility.h
+      - Sim/Visibility.cpp
+      - Sim/AiSeat.cpp
+      - Sim/Placement.h
+      - Sim/Placement.cpp
+      - Sim/Construction.cpp
+      - Tests/SimTests/VisibilityTests.cpp
+      - Tests/SimTests/AiTests.cpp
+    acceptance:
+      - "A viewer's line of sight leaves from VIEWER_EYE_WORLD_UNITS above its own ground and reaches the TARGET cell at ground level, because what has to be seen is the ground a target stands on and not the top of the target; the constant is 16 and is stated in Sim/Visibility.h with the measurement that chose it"
+      - "A test asserts the fraction of its own disc a viewer sees over the slice landscape, so that a future change to CellHeight or to the sight radius cannot quietly take the fog back to moth-eaten without a number moving"
+      - "AiSeat's Finish behaviour never orders a builder onto a site's own footprint: a structure occupies its cells from the tick construction begins (Sim/Plan.h's Occupies), the planner refuses a destination the drive cannot stand on, the device falls back to Stop, and the behaviour orders it there again on the next decision - for the rest of the match, starving the generator, the factory and the lab that answer after it. The destination is a cell BESIDE the footprint, within the builder module's reach of it, chosen deterministically"
+      - "A site no builder can be got to is passed over rather than waited on, so that the slack roomToBuild already carries for 'a deposit on a summit no drive can climb' is reachable; today Finish answers first and that slack can never be used"
+      - "AiTests' acceptance match passes with the eye raised, on the plan's seed and on at least eight others, and the multi-seed run is a test rather than a probe"
+      - "Stage 5's reach rule and the AI's reading of it are one function: DistanceSquaredTo(footprint, x, z) moves to Sim/Placement.h and both call it, so a builder the AI sends is a builder stage 5 counts"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      WHAT IS ALREADY MEASURED, so that the next reader starts from the evidence and not from the
+      code. The eye height alone: 0 of 8 seeds meet S12's acceptance, against 8 of 8 on the tree as
+      it stands. Do not read that as "the AI is seed-fragile" - the landscape is fixed and the seed
+      turns out to perturb the opening very little, so the eight runs are nearly the same match; it
+      says the sight change breaks it deterministically, and says nothing either way about
+      robustness to the seed. A Finish that walks the builder to a cell beside the footprint moves
+      the failure from "no factory" to "no lab" rather than curing it, and the remaining stall is a
+      builder that cannot get back to a lab its own base has since been built around. That last one
+      may be a third defect - placement that seals a gap - and this task should measure it before
+      deciding whether it is in scope.
+      THE DEADLOCK IS A CLASS AND NOT AN INSTANCE. Every behaviour in AiSeat that issues a Move and
+      returns true starves everything below it when the Move cannot succeed: Finish has it and
+      Scout has the same shape. Whatever guard this task settles on belongs in one place that both
+      call, not copied into each.
+      DO NOT GUARD IT WITH COMPONENT EQUALITY. ClusterGraph::ComponentAt returns a component that is
+      local to a 16x16 cluster, so two cells a truck can drive between are in different components
+      as soon as they are in different clusters; using equality as a reachability test refuses
+      almost every real site. Reachability over the graph is a planner question and the planner
+      answers it over several ticks, which one decision cannot wait for.
