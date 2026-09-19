@@ -109,6 +109,8 @@
     <ClCompile Include="InterpolationTests.cpp" />
     <ClCompile Include="RenderViewTests.cpp" />
     <ClCompile Include="PickingTests.cpp" />
+    <ClCompile Include="SelectionTests.cpp" />
+    <ClCompile Include="OrderInputTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

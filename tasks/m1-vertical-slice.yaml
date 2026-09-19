@@ -2225,15 +2225,22 @@ tasks:
     project: FrontierCommander
     depends_on: [G1a, N4]
     files:
-      - FrontierCommander/Selection.h
-      - FrontierCommander/Selection.cpp
-      - FrontierCommander/OrderInput.h
-      - FrontierCommander/OrderInput.cpp
+      - Replica/Selection.h
+      - Replica/Selection.cpp
+      - Replica/OrderInput.h
+      - Replica/OrderInput.cpp
+      - Replica/Replica.vcxproj
+      - Replica/Replica.vcxproj.filters
+      - Tests/ReplicaTests/SelectionTests.cpp
+      - Tests/ReplicaTests/OrderInputTests.cpp
+      - Tests/ReplicaTests/ReplicaTests.vcxproj
+      - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
       - FrontierCommander/CameraController.h
       - FrontierCommander/CameraController.cpp
       - FrontierCommander/App.cpp
       - FrontierCommander/FrontierCommander.vcxproj
       - FrontierCommander/FrontierCommander.vcxproj.filters
+      - Design/Interface.md
     acceptance:
       - "Selection by click and drag rectangle through Replica's picking; orders by right click (Move, or Attack on an enemy), by hotkey (attack-move, stop, stances) and, until K4's panels, by hotkey plus click for structure placement with the footprint ghost; every order becomes an OrderMessage and nothing in the executable touches Sim"
       - "The middle button aims the camera and the right button gives orders, which is Design/Interface.md §12 ruling 3 and reverses what M0's CameraController bound"
@@ -2248,6 +2255,31 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: todo
+    notes: >
+      SELECTION AND ORDERINPUT ARE IN Replica AND NOT IN THE EXECUTABLE, which is a change from the
+      file list this task was written with and not a preference. Build/CheckProjectFiles.py refuses
+      any project that lists a source outside its own flat directory, and FrontierCommander is an
+      Application, so an .exe exports nothing a test DLL can link against: a suite for logic that
+      lives in the executable cannot be built at all. The repository's rules therefore say that
+      logic worth testing lives in a library, and these two are the most intricate logic in M1 -
+      seven rows of a default-order table, a drag threshold, an armed-order state machine. Replica
+      is the right library on its own merits: Design/Interface.md §5 calls this code "R2's picking
+      functions, as pure functions over the replica and the camera matrices", Picking.h is already
+      there, and no layering edge is new, because Replica is built on Core, Content, Sim and Net and
+      this needs only Picking and Sim/Order.h. What stays in the executable is what needs a device:
+      App's wiring, the overlays and the camera.
+      THE CAMERA LOST ITS LETTER KEYS BY THE OWNER'S RULING ON 2026-09-19. Design/Interface.md §7's
+      hotkey table and M0's CameraController collided on two: S was Stop as well as backward, and R
+      was Attack-move as well as pitch down. §7 is the document that specifies the game's controls
+      and the camera's letters were placeholders from SpeciesLook.md §7 that predate any order
+      existing, so the orders win. The camera keeps the arrow keys, the screen's edges, the wheel,
+      PageUp and PageDown, and the middle button's drag, which §12 ruling 3 had already given it.
+      SHIFT-QUEUED ORDERS ARE NOT DONE AND ARE NOT SILENTLY DROPPED. Design/Interface.md §6 and §12
+      ruling 5 describe them as a client-side convenience the simulation knows nothing about; no
+      acceptance line of this task asks for them, so they are not here. They belong with K4's orders
+      panel or with a line of their own, and this note is so that the next reader of §6 does not
+      look for them in OrderInput and conclude they were forgotten.
+
 
   - id: G2
     title: FrontierCommander --capture replays a scripted match and CI uploads its frames

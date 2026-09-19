@@ -20,6 +20,12 @@
     <ClCompile Include="Picking.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Selection.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OrderInput.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="RenderViewBuilder.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -41,6 +47,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Picking.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Selection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="OrderInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="RenderViewBuilder.h">

@@ -101,6 +101,8 @@
     <ClCompile Include="Interpolation.cpp" />
     <ClCompile Include="ModelComposer.cpp" />
     <ClCompile Include="Picking.cpp" />
+    <ClCompile Include="Selection.cpp" />
+    <ClCompile Include="OrderInput.cpp" />
     <ClCompile Include="RenderViewBuilder.cpp" />
     <ClCompile Include="Replica.cpp" />
     <ClCompile Include="pch.cpp">
@@ -112,6 +114,8 @@
     <ClInclude Include="Interpolation.h" />
     <ClInclude Include="ModelComposer.h" />
     <ClInclude Include="Picking.h" />
+    <ClInclude Include="Selection.h" />
+    <ClInclude Include="OrderInput.h" />
     <ClInclude Include="RenderViewBuilder.h" />
     <ClInclude Include="Replica.h" />
     <ClInclude Include="ReplicaObject.h" />
