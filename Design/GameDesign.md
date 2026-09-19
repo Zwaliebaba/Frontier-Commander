@@ -356,6 +356,8 @@ Each milestone is a playable state, not a subsystem list; a milestone is done wh
 | **M3 — Multiplayer** | Eight commanders over LAN and direct IP on a headless host; a client is never sent what its commander cannot see; a dropped player rejoins; Large landscapes and the dominance victory; mods and the content hash; replays record and play | Lobby; the UDP transport; headless host; replay viewer |
 | **M4 — Frontier** | Frontier-class landscapes at full performance; the neutral faction; commanders; legs, and lift if the owner decides so then | Version 2 of the tables |
 
+**M0 was accepted by the owner on 2026-09-19** on a Snapdragon X with an Adreno X1-85: Debug and Release both built from the solution, 398 tests passing in each, every checker clean, a Small landscape on screen at a median frame time of 0.7 ms for about 180,000 triangles, and the hardware and WARP captures of the same scene measured 0.07 of 255 apart per channel. One line of its plan is unmet and named rather than dropped: the fog ruling of ADR-005, deferred to `m2-skirmish/T8`, because its evidence is the horizon band and nothing draws a sky before then. The plan is `tasks/Archive/m0-foundation.yaml`, T22.
+
 Revised on 2026-09-17 after the external review: Large landscapes, the dominance victory, mods and the content hash move to M3; M1 uses fixed panels; the look's extras come with M2. The review had also proposed deferring `Net` and `Replica` to M3, and the owner kept them in M1 (2026-09-17): replication is exercised over loopback from the first playable build.
 
 A campaign, if there is one, follows M4 and gets its own design document.
