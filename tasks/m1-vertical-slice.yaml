@@ -1701,7 +1701,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       The toolkit's rules are documented in the header comment of UiPanel.h, not in a prose
       file: project directories are flat (AGENTS.md §2).
