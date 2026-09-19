@@ -60,7 +60,7 @@ The M1 interface, as fixed panels at the authored resolution. It exists because 
 
 ## 3. The chrome
 
-One palette table, `GameData\Interface.json`, loaded by `Content` alongside the other tables, so that the look of a panel is data (`SpeciesCanvas.md` §7). Every colour below is that file's starting value, in 8-bit RGBA.
+One palette table, `GameData\Interface.json`, loaded by `Content` alongside the other tables, so that the look of a panel is data (`SpeciesCanvas.md` §7). Every colour below is that file's starting value, in 8-bit RGBA. The same file carries the eight commander colours of `GameDesign.md` §11, which are not chrome but are read by the same panels and the same minimap, and one file of eight rows is cheaper than a second loader (`C6`).
 
 | Role | Colour | Where |
 |---|---|---|
@@ -342,15 +342,17 @@ The elapsed match time as `mm:ss` from the replica's tick, and, when the victory
 
 ## 11. What this document needs that does not exist yet
 
-Each of these is a real gap found while writing this document, with the task that owns it. None of them blocks `K3`; the ones marked **blocks K4** must land before the panels are finished.
+Each of these is a real gap found while writing this document, with the task that owns it. The ones marked **blocks K4** must land before the panels are finished.
+
+**Rows 3, 4 and 5 changed owner on 2026-09-19.** They were given to `N1`, `C1` and `C2`, and those three tasks were marked `done` without them — the acceptance lines that would have caught it were never written, and `Tools/CheckTaskDag.py` reads the plan's YAML and not this table, so a row whose owner is `done` is invisible to the thing that schedules work. They are now `N4` and `C6` in `tasks/m1-vertical-slice.yaml`, where the checker can see them. Row 4 is also moved ahead of `K3`: this document previously said none of these blocks `K3`, which was true of the letter of `K3`'s acceptance and false of its intent, because a toolkit that hard-codes the palette leaves nobody owning the move to data that §3 promises.
 
 | # | What is missing | Owner |
 |---|---|---|
 | 1 | `AuthoredFromClient`, the inverse of `FitAuthored`, with its round-trip test | `K3` |
 | 2 | `Core/RenderView.h` must carry a selection flag, construction progress, a commander colour index rather than a packed colour, the fog grid, and a wreck-or-projectile distinction | `R2` — **blocks K4** |
-| 3 | A wire record carrying the per-seat order rejections `S2` already records, so §6 can show them | `N1` — **blocks K4** |
-| 4 | `GameData\Interface.json`, the chrome palette of §3, and its loader row | `C1` and `C2` — **blocks K4** |
-| 5 | The eight commander colours, as a content table. §3 names none, because the only palette written down is Species's and this game's has never been chosen | `C2`, and a ruling in `GameDesign.md` §11 |
+| 3 | A wire record carrying the per-seat order rejections `S2` already records, so §6 can show them | `N4` — **blocks K4** |
+| 4 | `GameData\Interface.json`, the chrome palette of §3, and its loader row | `C6` — **blocks K4** |
+| 5 | The eight commander colours, as a content table | Ruled in `GameDesign.md` §11 (owner, 2026-09-19); `C6` carries the table, and `R2` reads an index into it |
 | 6 | The eight ranks' names, badges and percentages. `GameDesign.md` §6 says "a small percentage" and nothing more, and `S5` defers to a design that proposes none | `GameDesign.md` §6, then `C2` |
 | 7 | The icon list: six cursors and one icon per structure, module, order and stance, with `Icons.dds` laid out as a grid of 32×32 cells | `C4` — **blocks K4** |
 | 8 | Whether a structure's own "target priority" stance has options at all; `GameDesign.md` §8 names it and gives no set | `GameDesign.md` §8 |

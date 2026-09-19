@@ -323,6 +323,21 @@ Structures with weapons take a target-priority stance only. Orders are given to 
 
 **Where the look and pillar 3 disagree, pillar 3 wins (owner, 2026-09-17), and three points were ruled on that basis**: zero ambient stays, because black in shadow is the look, and the terrain mottling stays with it; team-colour slots are drawn unlit, because lights of up to (5.0, 2.35, 0.77) would tint every team colour orange; and the black fog from 1,000 to 4,000 units, sized for maps of 5,400, either scales with the landscape or becomes distance desaturation, which ADR-005 decided with two frames to look at: distance desaturation (2026-09-17), the owner confirming or overriding at `m0-foundation/T22`.
 
+**The eight commander colours (owner, 2026-09-19)**, the palette the team-colour slot of point 1 is replaced with, and the same eight the minimap draws a device with as a single pixel (`Interface.md` §7):
+
+| Seat | Colour | Source |
+|---|---|---|
+| 0 | (100, 255, 100) | Species team 0 |
+| 1 | (200, 50, 50) | Species team 1 |
+| 2 | (200, 200, 30) | Species team 2 |
+| 3 | (120, 180, 255) | Species team 3 |
+| 4 | (190, 110, 230) | New |
+| 5 | (60, 210, 200) | New |
+| 6 | (240, 130, 190) | New |
+| 7 | (170, 170, 170) | Species team 7, lifted from (150, 150, 150) |
+
+Species's own palette (`GameLogic/Location.cpp:248`) could not supply eight: it declares four and comments out four more, and of those eight, team 3 and team 4 are the same blue, team 0 and team 5 are both green, and team 2 and team 6 are both yellow-orange. Only four are distinct, so the four are taken byte for byte and the other four are chosen — separated in hue, and none within reach of the chrome `accent` (255, 196, 64), because `Interface.md` §7 draws the selection in `accent` over whatever colour the object had and a commander whose colour is the accent would never look unselected. Grey is lifted from 150 to 170 because it is read at one pixel against fog-darkened terrain rather than as a billboard. The colours are drawn unlit, as the ruling above requires, so these are the values that reach the glass.
+
 **Sound** uses the Species effect library where an effect fits — weapons, explosions, engines, construction, interface — as WAV files under `GameData\Sounds` (`SpeciesLineage.md` §5), positioned in 3D by XAudio2 as Species does. There is no soundtrack in the first version: the Species music is licensed to Introversion from third-party artists and is not available to this game.
 
 **Rendering is Direct3D 12 at an authored resolution presented scaled** (`AGENTS.md` §5). The authored resolution is the first client ADR; this design assumes 1920×1080 and a pixel font drawn 1:1 at that resolution, which is what pillar 3 needs and what the scaling rule exists to protect.

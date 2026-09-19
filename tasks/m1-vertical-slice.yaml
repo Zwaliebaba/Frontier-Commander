@@ -170,6 +170,16 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: done
+    notes: >
+      THE LAST ACCEPTANCE LINE IS STALE AS WRITTEN, corrected 2026-09-19. It says getting GameData
+      beside the executable is the owner's step and that no build target does it; a build target
+      does it now - FrontierCommander.vcxproj's post-build event mirrors GameData into $(TargetDir)
+      with robocopy and treats only errorlevel 8 and above as failure, which is right, because
+      robocopy reports 0 to 7 on success and a plain check for a non-zero exit would fail every
+      build. So the line is checkable, and what is left of it is the check itself: that the
+      capture's frames are coloured by LandscapeDefault.dds rather than by the built-in gradient.
+      G2's capture is the first one that runs with the content tree beside it, and it confirms this
+      line or reopens it.
 
   - id: C3
     title: Write Tools/CheckBalance.py, the cost-efficiency script
@@ -1431,10 +1441,22 @@ tasks:
       composed from its chassis, drive and module models at their markers, plus the picking that
       turns a click into an object, so that the executable holds no logic worth a test.
     project: Replica
-    depends_on: [R1, C4]
+    depends_on: [R1, C4, C6]
     blocked_by:
       - m0-foundation/T20
+    # THE FILE LIST REACHES OUT OF Replica\ ON PURPOSE. The acceptance below asks RenderView to
+    # carry a selection flag, construction progress, a colour INDEX rather than a packed colour and
+    # a wreck-or-projectile distinction (Design/Interface.md §11 row 2), and RenderView is Core's.
+    # Client/GeometryPass.cpp packs teamColor straight into the instance buffer and
+    # Client/ModelBuffers.h mirrors the field, so the index has to be resolved against C6's
+    # commander colours somewhere, and the geometry pass is where the palette is known once per
+    # match rather than once per instance. This is a three-layer change, not a Replica-only one.
     files:
+      - Core/RenderView.h
+      - Client/GeometryPass.h
+      - Client/GeometryPass.cpp
+      - Client/ModelBuffers.h
+      - Client/Client.vcxproj
       - Replica/RenderViewBuilder.h
       - Replica/RenderViewBuilder.cpp
       - Replica/ModelComposer.h
@@ -1451,6 +1473,7 @@ tasks:
       - "RenderViewBuilder fills Core's RenderView each frame: for every replica object one instance per model part with its interpolated transform, the seat's colour index, a rank badge, a selection flag and, for a structure under construction, its progress; wrecks and short-lived projectile instances from events; the terrain chunks whose heights changed since the last frame; the commander's fog grid for the fog pass and the minimap"
       - ModelComposer places a drive model at each of the chassis's MarkerDrive markers and a module model at each MarkerMount, carrying the module's MarkerMuzzle forward, so a device is a tree of three model kinds and the model count is a sum, not a product
       - Picking finds the nearest replica object under a screen ray and the objects inside a screen rectangle, as pure functions over the replica and the camera matrices
+      - "Core/RenderView.h carries what Design/Interface.md §11 row 2 asks of it: a selection flag, construction progress, a commander colour INDEX in place of the packed teamColor, and a wreck-or-projectile distinction; GeometryPass takes C6's eight commander colours once and resolves the index, so the palette is a table rather than a number in a vertex buffer, and Interface.md §11 row 2 is struck"
       - "Tests: the composition of a heavy with two modules yields the expected instance list; a construction site scales; a ray picks the nearer of two overlapping devices; a rectangle selects only own devices"
     verify:
       - python3 Tools/CheckTaskDag.py
@@ -1596,7 +1619,7 @@ tasks:
       UI-first through the router of M0, so that the game's panels are assembled rather than
       hand-drawn.
     project: Client
-    depends_on: [D1, C4]
+    depends_on: [D1, C4, C6]
     blocked_by:
       - m0-foundation/T19
       - m0-foundation/T20
@@ -1622,7 +1645,7 @@ tasks:
       - Tests/ClientTests/ClientTests.vcxproj
       - Tests/ClientTests/ClientTests.vcxproj.filters
     acceptance:
-      - "Panels are fixed rectangles at the authored resolution holding widgets: label, button, toggle, list, progress bar, icon, text field taking WM_CHAR characters; flat rectangles with one-pixel borders in the chrome palette of SpeciesCanvas.md §3"
+      - "Panels are fixed rectangles at the authored resolution holding widgets: label, button, toggle, list, progress bar, icon, text field taking WM_CHAR characters; flat rectangles with one-pixel borders in the chrome palette, which is READ FROM C6's GameData/Interface.json and never spelled as a constant in Client - Design/Interface.md §3 makes the look of a panel data, and a toolkit that hard-codes it leaves nobody owning the move"
       - BitmapFont loads the Spectrum atlas from its DDS through Core's TextureFile (16 by 14 cells from ASCII 32, glyph advance 0.6 of the size per SpeciesCanvas.md §4) and lays out text as quads at 1:1; UiPass draws panels, text and icons orthographically, alpha blended, after the fog pass
       - UiInputSink is the router's first sink; a widget that acts on an event consumes it, and a panel under the cursor consumes clicks so they never reach selection
       - "Tests: layout arithmetic, text measurement, the consume rule with stub events"
@@ -1638,13 +1661,14 @@ tasks:
       The toolkit's rules are documented in the header comment of UiPanel.h, not in a prose
       file: project directories are flat (AGENTS.md §2).
 
-  - id: G1
-    title: FrontierCommander application - the client loop, the host thread over loopback, match start, camera, selection and orders
+  - id: G1a
+    title: FrontierCommander application - the client loop and the host thread over loopback
     intent: >
       The slice runs as the two loops of TechnicalDesign.md §3 in one process: a host thread
       with Sim and Net's Host over loopback, and the client loop with Net's Client, the replica,
       the render view and the passes, so that single-player is the same code path as a match
-      over the network from the first playable build (owner, 2026-09-17).
+      over the network from the first playable build (owner, 2026-09-17). This half is the one
+      the capture can witness on its own, which is why it is worked and reviewed on its own.
     project: FrontierCommander
     depends_on: [R2, N2, K1, K2, S12]
     files:
@@ -1654,10 +1678,6 @@ tasks:
       - FrontierCommander/LocalHost.cpp
       - FrontierCommander/Match.h
       - FrontierCommander/Match.cpp
-      - FrontierCommander/Selection.h
-      - FrontierCommander/Selection.cpp
-      - FrontierCommander/OrderInput.h
-      - FrontierCommander/OrderInput.cpp
       - FrontierCommander/Main.cpp
       - FrontierCommander/FrontierCommander.vcxproj
       - FrontierCommander/FrontierCommander.vcxproj.filters
@@ -1665,8 +1685,47 @@ tasks:
       - "LocalHost runs Sim, Net's Host and the AI seat on its own thread driven by wall time, mapping wall time to ticks in exactly one place, slowing the match clock rather than skipping when it falls behind; it talks to the client only through LoopbackTransport"
       - "The client loop is the seven steps of §3: pump, drain the network, apply frames, interpolate 100 milliseconds behind, build the render view, route input, draw and present; it has no simulation clock"
       - Starting the executable starts a match on GameData/Landscapes/Slice.json with the human in seat 0 and the scripted AI in seat 1 at the lobby defaults, until M2's lobby exists
+      - The capture of G2 is what proves this task on CI, and the frames show a landscape with two bases on it
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      SPLIT OUT OF G1 ON 2026-09-19 (owner), with G1b. G1 was thirteen files and the whole
+      application - the host thread, the wall-time-to-tick mapping, match start, camera, selection,
+      order input, the pause menu, the end-of-match overlay and a measured click-to-move - with five
+      dependencies and everything downstream of it, and ImplementationPlan.md §2 says no session can
+      build or run it: only CI sees it. The split makes G2's capture the witness for this half
+      rather than for the whole, so the capture and G1b proceed at the same time instead of one
+      behind the other, and it halves the largest single diff of the milestone.
+
+  - id: G1b
+    title: Selection, orders, the camera's buttons and the match overlays
+    intent: >
+      The operator drives the slice: picking things, giving them orders, and being told the match
+      is over. Every order becomes an OrderMessage and nothing in the executable touches Sim,
+      which is what makes the panels of K4 a matter of emitting the same messages.
+    project: FrontierCommander
+    depends_on: [G1a, N4]
+    files:
+      - FrontierCommander/Selection.h
+      - FrontierCommander/Selection.cpp
+      - FrontierCommander/OrderInput.h
+      - FrontierCommander/OrderInput.cpp
+      - FrontierCommander/CameraController.h
+      - FrontierCommander/CameraController.cpp
+      - FrontierCommander/App.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+    acceptance:
       - "Selection by click and drag rectangle through Replica's picking; orders by right click (Move, or Attack on an enemy), by hotkey (attack-move, stop, stances) and, until K4's panels, by hotkey plus click for structure placement with the footprint ghost; every order becomes an OrderMessage and nothing in the executable touches Sim"
+      - "The middle button aims the camera and the right button gives orders, which is Design/Interface.md §12 ruling 3 and reverses what M0's CameraController bound"
       - "The end of the match shows a win or loss overlay; Escape pauses the local host and shows a menu with resume and quit; Alt+F4 quits"
+      - "A rejected order shows N4's reason as one line of warning text for two seconds, per Design/Interface.md §6"
       - A click moves a unit in about 250 milliseconds over loopback, measured with the log and recorded in the notes
     verify:
       - python3 Tools/CheckTaskDag.py
@@ -1684,7 +1743,7 @@ tasks:
       M0 capture grows into a headless AI-versus-AI match whose frames show bases, devices,
       combat and fog, and the CI job runs it on every pull request.
     project: FrontierCommander
-    depends_on: [G1]
+    depends_on: [G1a]
     files:
       - FrontierCommander/App.cpp
       - FrontierCommander/Capture.h
@@ -1694,6 +1753,7 @@ tasks:
       - "--warp --capture <landscape> <ticks> <directory> runs LocalHost with two AI seats for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
       - "The CI step runs --warp --capture Slice 6000 Captures and uploads the sixty frames; the frames at ticks 2,000, 4,000 and 6,000 show a base, devices in transit and fog"
       - The capture's wall time in CI is recorded in the notes, and the tick count is reduced if it exceeds five minutes
+      - "C2's last acceptance line is settled here: this is the first capture that runs with GameData mirrored beside the executable, so the frames confirm the terrain is coloured by the biome's LandscapeDefault.dds and not by the built-in gradient, or C2 is reopened"
     verify:
       - python3 Tools/CheckTaskDag.py
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
@@ -1707,7 +1767,7 @@ tasks:
       the fixed panels Design/Interface.md specifies, reading the replica and emitting orders, so
       that the slice is playable without hotkey lore.
     project: FrontierCommander
-    depends_on: [K3, G1]
+    depends_on: [K3, G1b]
     files:
       - FrontierCommander/Hud.h
       - FrontierCommander/Hud.cpp
@@ -1847,3 +1907,76 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: done
+
+  - id: C6
+    title: The chrome palette and the eight commander colours as content - GameData/Interface.json and its loader row
+    intent: >
+      Design/Interface.md §3 specifies the panel palette as a table so that the look of a panel is
+      data, and GameDesign.md §11 now names the eight commander colours; neither exists as a file.
+      ADR-006 recorded the gap and gave it to C2, and C2 landed done without it - its acceptance
+      lines never mentioned it - so K3 would spell the palette as constants and nobody would own
+      the move to data, and R2 would have no table to resolve a colour index against.
+    project: Content
+    depends_on: [C1]
+    files:
+      - GameData/Interface.json
+      - Content/InterfaceDesc.h
+      - Content/ContentTree.h
+      - Content/ContentLoader.h
+      - Content/ContentLoader.cpp
+      - Content/ContentValidator.cpp
+      - Content/Content.vcxproj
+      - Content/Content.vcxproj.filters
+      - Tests/ContentTests/InterfaceDescTests.cpp
+      - Design/ADR/ADR-006-content-format.md
+    acceptance:
+      - "GameData/Interface.json carries the seventeen chrome roles of Design/Interface.md §3 with the values that document gives, in 8-bit RGBA, and the eight commander colours of GameDesign.md §11 in seat order"
+      - "Content/InterfaceDesc.h is a plain row aggregate (AGENTS.md R8): the seventeen roles as named fields and the commander colours as an array of MAX_SEATS; ContentTree holds one, loaded with the other tables by the same loader"
+      - "The loader refuses, with the file and line ContentLoader already gives: a missing role, an unknown role, a channel outside 0 to 255, and a commander list that is not exactly eight long"
+      - FrontierHost --validate passes over the tree with the new file, and fails with a located diagnostic when a role is removed from it
+      - ADR-006's open point that nothing loads Interface.json is struck, dated, naming this task
+      - "ContentTests covers: every role parsed to the value §3 gives, the eight commander colours in seat order, and each of the four refusals"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: N4
+    title: The order-rejection wire record - a seat's last refusal reaches the commander who sent it
+    intent: >
+      Sim records why it dropped an order - Sim/Order.h's RejectReason, collected into Sim/Seat.h's
+      rejections - and Design/Interface.md §6 draws it as one line of warning text for two seconds.
+      SeatState carries no such field: Interface.md §11 gave the record to N1 and N1 landed done
+      without it, so the operator gets no answer when an order does nothing and K4 cannot be
+      finished.
+    project: Net
+    depends_on: [N1, N2]
+    files:
+      - Net/Records.h
+      - Net/Records.cpp
+      - Net/FrameEncoder.h
+      - Net/FrameEncoder.cpp
+      - Net/Host.h
+      - Net/Host.cpp
+      - Tests/NetTests/RecordTests.cpp
+      - Tests/NetTests/HostTests.cpp
+      - Design/Interface.md
+    acceptance:
+      - "SeatState carries the seat's most recent rejection as three FIXED-SIZE fields - a wrapping rejectSequence, the OrderKind and the RejectReason - and not as a list: §6 draws one line and replaces it, and a variable-length field in a record the delta encoder compares by value costs every frame for a display that shows one line at a time"
+      - "Host latches each seat's rejections in Advance, on every tick, because Sim clears them at the start of every stage 1 (Sim/Sim.cpp:244) and publishes only on even ticks (Sim/Sim.cpp:599) - reading the vector at publish time drops every odd tick's refusals outright"
+      - "The reader refuses an OrderKind at or over ORDER_KIND_COUNT, a RejectReason at or over REJECT_REASON_COUNT, and Accepted as a reason, the way Read(SeatState) already refuses a seat and a victory state"
+      - "rejectSequence changes on a repeat of the same rejection, so a commander who asks twice for what he cannot afford sees the line restart rather than appearing not to have been heard"
+      - "NetTests covers: the round trip, the three refusals, a rejection raised on an odd tick reaching the next frame, and two identical rejections yielding two different sequences"
+      - Design/Interface.md §11 row 3 is struck
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
