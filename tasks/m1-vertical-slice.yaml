@@ -1598,8 +1598,32 @@ tasks:
       behind-the-ray early-out turned out NOT to be load-bearing - the distance comes out negative
       anyway and the caller drops it - so the comment says it is an early-out rather than a guard,
       which is what it had claimed to be.
-      STILL TO WRITE: Replica/RenderViewBuilder, and the draw scale's way through GeometryInstance
-      and Client/Shaders/GeometryVS.hlsl.
+      RenderViewBuilder IS BLOCKED ON CONTENT THAT DOES NOT EXIST, for two of the five things this
+      task's acceptance asks it to fill. Found by reading before writing, and recorded rather than
+      invented: a feature table and a projectile's appearance are content-schema decisions, and the
+      last three of those became C6 and N4 rather than being guessed at inside a task.
+      (a) FEATURES HAVE NO TABLE. Sim/Feature.h's `design` is documented "Row index in the feature
+      table"; Content/ContentTree.h has no feature table and GameData ships no Features.json. So a
+      feature arrives over the wire naming a row of nothing, and the builder cannot resolve its
+      model. Nothing places features in a match yet either, so M1 may simply not need them - but the
+      acceptance says "every replica object".
+      (b) A PROJECTILE HAS NO APPEARANCE. TechnicalDesign.md §5.3 is clear that "projectiles and
+      effects inside the set are sent as short-lived events rather than objects", which is what the
+      acceptance means by "from events" - but no row anywhere says what a shot LOOKS like.
+      ModuleDesc carries a model whose MarkerMuzzle is where the shot leaves, and no projectile
+      model, no tracer, no lifetime. There is nothing to draw.
+      THE THIRD ONE RESOLVED ITSELF AND IS WORTH RECORDING AS SETTLED. changedChunks looked blocked
+      too - the replica holds no terrain heights and Net/Records.h sends none - until the reason
+      turned up in that file: "a snapshot carries the landscape's flatten deltas and the wire must
+      not, because the terrain under an unscouted base is not public (§5.2)". It is a fog boundary,
+      not an omission. The client generates the landscape from the definition it was given at the
+      join and flattens it under the structures it can SEE, which is exactly why StructureState
+      carries `y`, "the flattened height under the footprint". So the builder computes the changed
+      chunks from the structures it applied this frame, and the terrain a commander has not scouted
+      stays unflattened on his machine, which is the point.
+      STILL TO WRITE: Replica/RenderViewBuilder for devices, structures, wrecks, the changed chunks
+      and the fog - the four of five that have data - and the draw scale's way through
+      GeometryInstance and Client/Shaders/GeometryVS.hlsl.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals
