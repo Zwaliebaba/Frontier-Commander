@@ -1736,6 +1736,14 @@ tasks:
       client-area and column arithmetic, AuthoredFromClient's round trip at all three scale modes
       (lossless at Exact and Integer, within one authored pixel at Bilinear) and the whole consume
       rule with stub events. With the atlas removed the suite fails cleanly rather than crashing.
+      AND THE GUARD ITSELF CAME BACK RED. Assert::Fail is [[noreturn]] under the framework, so the
+      `return` after it is unreachable code - MSVC's C4702, fatal under /warnaserror. The guard is
+      Assert::IsFalse followed by a reachable return now, which stops the read under a harness that
+      only counts AND satisfies a compiler that knows Fail never comes back. The session's Linux
+      harness was the thing at fault rather than the code: its stub counted a failure and carried
+      on, where the framework throws. It marks Fail [[noreturn]], throws on a failed assertion and
+      builds with -Wunreachable-code now, and reproduces C4702 on the old guard - so this class of
+      finding is caught here rather than in CI next time.
       STILL TO COME: UiPass and its two shaders, which need Direct3D and are CI's alone.
 
   - id: G1a

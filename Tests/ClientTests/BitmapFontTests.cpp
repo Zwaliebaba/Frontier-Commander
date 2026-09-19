@@ -30,13 +30,17 @@ namespace
   std::ifstream stream(path, std::ios::binary);
   const std::vector<char> raw((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
   // Fail HERE and RETURN, rather than three lines into a test that indexes the header of a file it
-  // never read. The first draft asserted and carried on, and the case that pokes the width field
-  // walked off the end of an empty vector - a crash instead of a failure, which is a worse thing for
-  // a suite to do. The return is not belt and braces either: Assert::Fail throws under the framework
-  // and a harness that only counted would carry straight on into the same read.
+  // never read: the case that pokes the width field walked off the end of an empty vector, which is
+  // a crash instead of a failure and a worse thing for a suite to do.
+  //
+  // IsFalse AND NOT Fail, and the difference is the whole reason this comment exists. Assert::Fail
+  // is [[noreturn]], so a return after it is unreachable code, and MSVC says so under /warnaserror
+  // - which is how the first version of this guard came back red. IsFalse returns, so the return
+  // below is reachable and is what actually stops the read; under the framework the assertion has
+  // already thrown by then, which is belt as well as braces rather than instead of it.
+  Assert::IsFalse(raw.empty(), L"GameData\\Textures\\SpectrumFont.dds could not be read");
   if (raw.empty())
   {
-    Assert::Fail(L"GameData\\Textures\\SpectrumFont.dds could not be read");
     return {};
   }
   std::vector<std::byte> bytes(raw.size());
@@ -70,9 +74,9 @@ public:
   TEST_METHOD(AnAtlasOfAnotherSizeIsRefusedRatherThanDrawnWrong)
   {
     std::vector<std::byte> bytes = ShippedAtlas();
+    Assert::IsTrue(bytes.size() > 20, L"the atlas has a header to break");
     if (bytes.size() <= 20)
     {
-      Assert::Fail(L"the atlas has a header to break");
       return;
     }
     bytes[16] = static_cast<std::byte>(64); // the DDS header's width, low byte
