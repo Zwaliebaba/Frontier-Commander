@@ -61,12 +61,12 @@ Work is planned as **directed acyclic graphs of tasks in YAML under `tasks/`**, 
 ```
 tasks/
   _template.yaml            copy this to start; files beginning with _ are not plans
-  m0-foundation.yaml        one plan per milestone, kebab-case, matching `plan:`
-  m1-vertical-slice.yaml
+  m1-vertical-slice.yaml    one plan per milestone, kebab-case, matching `plan:`
   m2-skirmish.yaml          M2 to M4 are coarse: units of scope, split into units of work
   m3-multiplayer.yaml       when the previous milestone closes and the slice has numbers
   m4-frontier.yaml
   Archive/                  plans with nothing left open; still loaded so blocked_by resolves
+    m0-foundation.yaml      closed 2026-09-19 by the owner's run (T22)
 ```
 
 **The schema**, per task: `id` (unique in the plan), `title` (imperative), `intent` (why, one or two sentences — the part that survives), `project`, `depends_on` (ids in this plan), `blocked_by` (tasks in another plan as `plan/Tn`), `files` (the expected touch set, used to spot collisions), `acceptance` (observable outcomes, at least one), `verify` (commands that prove them), `parallel_safe` (false when the task needs the tree to itself), `status`, `notes` (findings, appended as work proceeds; one key, once — the loader rejects a duplicate). Status is `todo`, `in_progress`, `blocked`, `done` or `abandoned`; the validator refuses `in_progress` or `done` while a dependency is not `done` or `abandoned`.
@@ -75,9 +75,9 @@ tasks/
 
 ```
 python3 Tools/CheckTaskDag.py                                  # validate every plan (CI runs this)
-python3 Tools/CheckTaskDag.py --next tasks/m0-foundation.yaml  # what can start now
-python3 Tools/CheckTaskDag.py --waves tasks/m0-foundation.yaml # what may run concurrently
-python3 Tools/CheckTaskDag.py --mermaid tasks/m0-foundation.yaml
+python3 Tools/CheckTaskDag.py --next tasks/m1-vertical-slice.yaml  # what can start now
+python3 Tools/CheckTaskDag.py --waves tasks/m1-vertical-slice.yaml # what may run concurrently
+python3 Tools/CheckTaskDag.py --mermaid tasks/m1-vertical-slice.yaml
 ```
 
 **The rules that make the format work**, carried over from the Species standard because each was learned there the hard way:
@@ -115,13 +115,13 @@ The milestone is done when its "proves" column in `GameDesign.md` §12 is true o
 
 | Milestone | Plan | Proves (`GameDesign.md` §12) | Tasks | Grain |
 |---|---|---|---|---|
-| M0 Foundation | `tasks/m0-foundation.yaml` | Window, scene target and a CI capture on WARP; a deterministic, hashing tick; a suite per library; every checker in CI; the landscape tool; heights generated and drawn | 22 | Units of work |
+| M0 Foundation | `tasks/Archive/m0-foundation.yaml` | Window, scene target and a CI capture on WARP; a deterministic, hashing tick; a suite per library; every checker in CI; the landscape tool; heights generated and drawn | 22 | Units of work |
 | M1 Vertical slice | `tasks/m1-vertical-slice.yaml` | Two commanders on a Small landscape build, design, research and fight to annihilation over loopback, the client a replica | 29 | Units of work |
 | M2 Skirmish | `tasks/m2-skirmish.yaml` | Four commanders on Medium with the full catalogue and component set, personalities, save and resume, the look completed | 11 | Units of scope |
 | M3 Multiplayer | `tasks/m3-multiplayer.yaml` | Eight commanders over LAN and direct IP on a headless host; rejoin; Large and dominance; mods; replays | 10 | Units of scope |
 | M4 Frontier | `tasks/m4-frontier.yaml` | Frontier-class landscapes at full performance; the neutral faction; commanders; legs and possibly lift | 7 | Units of scope |
 
-**M0 in one paragraph.** Three tasks start at once: the solution with `Core` and its tests plus ADR-001 for all eight projects (T1), the format checker (T3), and the landscape tool in Python (T16), which needs nothing and is the one piece of the simulation the agent can run and tune in the session. The other seven projects (T2), the build-shape checker (T4), clang-tidy's runner (T5) and the `Core` pieces — arithmetic, randomness and hashing, the slot map, the byte stream, JSON, bitmaps and waves, paths and logging, the transport seam with loopback — follow, each with its tests. The `Sim` skeleton (T15) puts the fourteen-stage tick, the hash, the snapshot and the three determinism tests in place before any system exists, and the landscape (T17) is the first system, tested bit for bit against the tool's golden fields. The `Client` foundation (T18) is the window, the device with WARP, the scene target presented scaled, the shader pipeline and the capture that writes BMPs, with ADR-002; input (T19) follows the Species design; the terrain pass and camera (T20) draw the landscape and write the fog-and-lighting ADR on captured frames; the capture job (T21) makes the frames CI artefacts. The owner's run (T22) closes it.
+**M0 in one paragraph.** Three tasks start at once: the solution with `Core` and its tests plus ADR-001 for all eight projects (T1), the format checker (T3), and the landscape tool in Python (T16), which needs nothing and is the one piece of the simulation the agent can run and tune in the session. The other seven projects (T2), the build-shape checker (T4), clang-tidy's runner (T5) and the `Core` pieces — arithmetic, randomness and hashing, the slot map, the byte stream, JSON, bitmaps and waves, paths and logging, the transport seam with loopback — follow, each with its tests. The `Sim` skeleton (T15) puts the fourteen-stage tick, the hash, the snapshot and the three determinism tests in place before any system exists, and the landscape (T17) is the first system, tested bit for bit against the tool's golden fields. The `Client` foundation (T18) is the window, the device with WARP, the scene target presented scaled, the shader pipeline and the capture that writes BMPs, with ADR-002; input (T19) follows the Species design; the terrain pass and camera (T20) draw the landscape and write the fog-and-lighting ADR on captured frames; the capture job (T21) makes the frames CI artefacts. The owner's run (T22) closes it. **It closed on 2026-09-19** and the plan moved to `tasks/Archive/`; T22's notes carry the machine, the frame time and the WARP-against-hardware comparison, and name the one acceptance line left unmet.
 
 **M1 in one paragraph.** The interface specification (D1) is the one design task and the owner accepts it by merging. `Content` gets its loaders, validation and `FrontierHost --validate` (C1), then the M1 tables (C2), the balance script (C3) and the importers with placeholder models and the provenance ADR (C4). `Sim` grows in the order the tick runs: objects and seats (S1), orders (S2), economy (S3), structures (S4), devices and production (S5), research (S6), pathing (S7), movement (S8), visibility (S9), combat (S10), victory (S11), and the scripted AI (S12), whose AI-against-AI test is the one that exercises everything at once. `Net` is the records (N1), the host with the interest test and the network ADR (N2) and the client endpoint (N3); `Replica` converges (R1) and builds the render view with composition at markers and picking (R2). `Client` gets the geometry, fog and UI passes (K1, K2, K3). The executable assembles the two loops over loopback with selection and orders (G1), the capture becomes a scripted match (G2), the panels and minimap land (K4), and the owner's run (G3) closes it with the tick measured.
 

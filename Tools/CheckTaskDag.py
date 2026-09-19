@@ -16,10 +16,10 @@ being told. `--next` lists tasks whose dependencies are all satisfied; `--waves`
 shows which tasks may run concurrently.
 
     python3 Tools/CheckTaskDag.py                          # validate every plan
-    python3 Tools/CheckTaskDag.py tasks/m0-foundation.yaml
-    python3 Tools/CheckTaskDag.py --next tasks/m0-foundation.yaml
-    python3 Tools/CheckTaskDag.py --waves tasks/m0-foundation.yaml
-    python3 Tools/CheckTaskDag.py --mermaid tasks/m0-foundation.yaml
+    python3 Tools/CheckTaskDag.py tasks/m1-vertical-slice.yaml
+    python3 Tools/CheckTaskDag.py --next tasks/m1-vertical-slice.yaml
+    python3 Tools/CheckTaskDag.py --waves tasks/m1-vertical-slice.yaml
+    python3 Tools/CheckTaskDag.py --mermaid tasks/m1-vertical-slice.yaml
 
 The schema is documented in Design/ImplementationPlan.md §3. This script is a
 port of the Species repository's tools/check_task_dag.py; it is a development
