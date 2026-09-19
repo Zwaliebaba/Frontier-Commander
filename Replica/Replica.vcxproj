@@ -99,6 +99,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Interpolation.cpp" />
+    <ClCompile Include="ModelComposer.cpp" />
     <ClCompile Include="Replica.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -107,6 +108,7 @@
   <ItemGroup>
     <ClInclude Include="DesignStore.h" />
     <ClInclude Include="Interpolation.h" />
+    <ClInclude Include="ModelComposer.h" />
     <ClInclude Include="Replica.h" />
     <ClInclude Include="ReplicaObject.h" />
     <ClInclude Include="pch.h" />

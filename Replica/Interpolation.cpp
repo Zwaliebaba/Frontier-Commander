@@ -3,9 +3,9 @@
 #include "Interpolation.h"
 
 #include "FixedPoint.h"
+#include "RenderView.h"
 
 #include <algorithm>
-#include <numbers>
 
 namespace Frontier
 {
@@ -27,7 +27,6 @@ constexpr float WORLD_UNITS_PER_WIRE_UNIT =
 constexpr std::int64_t HEADING_SUBSTEPS = 256;
 /// The wire's headings to a full turn: Net/Records.h carries the high byte of a binary angle.
 constexpr std::int32_t HEADINGS_PER_TURN = 256;
-constexpr float RADIANS_PER_HEADING_SUBSTEP = 2.0f * std::numbers::pi_v<float> / 65536.0f;
 
 [[nodiscard]] constexpr float WorldFromWire(std::int64_t _wireUnits) noexcept
 {
@@ -46,7 +45,7 @@ constexpr float RADIANS_PER_HEADING_SUBSTEP = 2.0f * std::numbers::pi_v<float> /
 [[nodiscard]] Pose AtRest(const Sample& _sample) noexcept
 {
   return Pose{WorldFromWire(_sample.x), WorldFromWire(_sample.y), WorldFromWire(_sample.z),
-              static_cast<float>(static_cast<std::int64_t>(_sample.heading) * HEADING_SUBSTEPS) * RADIANS_PER_HEADING_SUBSTEP};
+              Neuron::RadiansOfBinaryAngle(static_cast<std::int64_t>(_sample.heading) * HEADING_SUBSTEPS)};
 }
 
 } // namespace
@@ -98,7 +97,7 @@ Pose Evaluate(const Motion& _motion, std::int64_t _renderTime) noexcept
   return Pose{WorldFromWire(Between(_motion.older.x, _motion.newer.x, offset, span)),
               WorldFromWire(Between(_motion.older.y, _motion.newer.y, offset, span)),
               WorldFromWire(Between(_motion.older.z, _motion.newer.z, offset, span)),
-              static_cast<float>(Between(headingFrom, headingTo, offset, span)) * RADIANS_PER_HEADING_SUBSTEP};
+              Neuron::RadiansOfBinaryAngle(Between(headingFrom, headingTo, offset, span))};
 }
 
 } // namespace Frontier

@@ -1518,11 +1518,14 @@ tasks:
       - Replica/RenderViewBuilder.cpp
       - Replica/ModelComposer.h
       - Replica/ModelComposer.cpp
+      - Replica/Interpolation.cpp
+      - Client/Shaders/GeometryVS.hlsl
       - Replica/Picking.h
       - Replica/Picking.cpp
       - Replica/Replica.vcxproj
       - Replica/Replica.vcxproj.filters
       - Tests/ReplicaTests/RenderViewTests.cpp
+      - Core/FixedPoint.h
       - Tests/ReplicaTests/PickingTests.cpp
       - Tests/ReplicaTests/ReplicaTests.vcxproj
       - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
@@ -1539,7 +1542,42 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
+    notes: >
+      DONE SO FAR: Core/RenderView.h carries everything Design/Interface.md §11 row 2 asks of it -
+      RenderInstanceKind, a commander colour INDEX in place of the packed teamColor, buildPercent,
+      selected and a per-row draw scale - and Client/GeometryPass takes C6's eight colours once per
+      match and resolves the index. Replica/ModelComposer composes a device from its chassis, drive
+      and module models at the chassis's MarkerDrive and MarkerMount markers, carries each module's
+      MarkerMuzzle forward through two frames, and composes a structure with its modules. Verified
+      on Linux: 22 ReplicaTests (14 new), the whole convergence probe still green, clang-tidy 18
+      clean over ModelComposer, Interpolation and RenderViewTests.
+      THE KIND IS NOT A DRAWING SWITCH. TechnicalDesign.md §6.2's pass table draws "every device,
+      structure, feature and wreck" with "team colour substituted", so GeometryPass does not read
+      RenderInstanceKind at all; it is what picking and the minimap read, a wreck being something
+      drawn that nothing selects.
+      THE ROTATION IS Client/Shaders/GeometryVS.hlsl's Turn WRITTEN AGAIN and has to be: the
+      chassis's own vertices are turned by that function, so a marker on the chassis has to land
+      where they do. Heading zero looks along +z and grows toward +x. A sign the other way round
+      mirrors every drive and every mount about the device and reads as a different model rather
+      than as a defect, which is why a case pins it by hand-worked numbers rather than by
+      recomputing the implementation.
+      THREE CONVERSIONS HAD THREE HOMES AND NOW HAVE ONE. Client/ModelBuffers.cpp kept a WorldUnits,
+      Replica/Interpolation.cpp a RADIANS_PER_HEADING_SUBSTEP, and the composer was about to write a
+      third of each; both are in Core/RenderView.h now, beside the aggregate whose fields they
+      produce, with the standing rule that nothing in Sim may call either of them.
+      TWO GAPS IN THIS TASK'S OWN FILE LIST, found by reading rather than by guessing.
+      (1) Client/Shaders/GeometryVS.hlsl HAS NO SCALE INPUT AT ALL - its instance attributes are
+      origin, heading and teamColor - while every component and structure row carries
+      modelScaleHundredths ("so that one model serves two rows at two sizes") and this task's own
+      acceptance says a construction site scales. So GeometryInstance and the vertex shader both
+      have to change, and the shader was not in the file list; it is now.
+      (2) Content's ModelMarker carries a pitchBinaryAngle that RenderInstance cannot express, so a
+      part on a pitched marker is drawn level. Every M1 marker is level - a drive sits on the ground
+      and a mount faces out - so nothing is wrong on screen yet, but the content already records
+      something the render path throws away. Raising it rather than adding a pitch nobody asked for.
+      STILL TO WRITE: Replica/Picking, Replica/RenderViewBuilder, PickingTests, and the scale's way
+      through GeometryInstance and GeometryVS.hlsl.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals

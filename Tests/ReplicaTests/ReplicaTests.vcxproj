@@ -107,6 +107,7 @@
   <ItemGroup>
     <ClCompile Include="ConvergenceTests.cpp" />
     <ClCompile Include="InterpolationTests.cpp" />
+    <ClCompile Include="RenderViewTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

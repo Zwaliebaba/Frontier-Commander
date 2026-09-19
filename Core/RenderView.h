@@ -1,10 +1,39 @@
 #pragma once
 
+#include "BinaryAngle.h"
+#include "FixedPoint.h"
+
 #include <cstdint>
+#include <numbers>
 #include <vector>
 
 namespace Neuron
 {
+
+// THE TWO CONVERSIONS THAT MAKE A RENDER NUMBER OUT OF A SIMULATION ONE live here, beside the
+// aggregate whose fields they produce. §6.3 says this is where the conversion happens; before
+// m1-vertical-slice/R2 each caller kept its own copy of them - Client/ModelBuffers.cpp a
+// WorldUnits, Replica/Interpolation.cpp a RADIANS_PER_HEADING_SUBSTEP - and a third was about to be
+// written for the model composer.
+//
+// NOTHING IN Sim MAY CALL EITHER OF THEM. The simulation is fixed point and binary angles from end
+// to end because that is what makes it identical on every machine (ADR-002); a float that reached
+// it would be a divergence nobody could reproduce. These are the render side of the boundary, and
+// Sim does not include this header.
+
+/// Subunits as world units. SUBUNITS_PER_WORLD_UNIT is a power of two, so this divide is exact and
+/// a position converted twice is the same float both times.
+[[nodiscard]] constexpr float WorldUnitsOfSubunits(std::int32_t _subunits) noexcept
+{
+  return static_cast<float>(_subunits) / static_cast<float>(SUBUNITS_PER_WORLD_UNIT);
+}
+
+/// A binary angle (Core/BinaryAngle.h) in radians. One conversion, so that a device's heading and a
+/// marker's cannot disagree about which way round the circle goes.
+[[nodiscard]] constexpr float RadiansOfBinaryAngle(std::int64_t _binaryAngle) noexcept
+{
+  return static_cast<float>(_binaryAngle) * (2.0f * std::numbers::pi_v<float> / static_cast<float>(FULL_TURN));
+}
 
 /// The one packing of a colour into a 32-bit word, named here because this header is where the
 /// convention started and because everything that carries one agrees with it: red in the LOW byte,

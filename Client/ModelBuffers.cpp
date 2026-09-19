@@ -73,9 +73,11 @@ struct VertexKey
          (static_cast<std::uint32_t>(_color[2]) << 16) | (static_cast<std::uint32_t>(_color[3]) << 24);
 }
 
+/// Core/RenderView.h's, kept under this name because the calls below read better for it and because
+/// one definition is the point rather than one spelling.
 [[nodiscard]] float WorldUnits(std::int32_t _subunits) noexcept
 {
-  return static_cast<float>(_subunits) / static_cast<float>(SUBUNITS_PER_WORLD_UNIT);
+  return WorldUnitsOfSubunits(_subunits);
 }
 
 [[nodiscard]] winrt::com_ptr<ID3D12Resource> UploadBuffer(ID3D12Device* _device, const void* _bytes, std::size_t _size,
