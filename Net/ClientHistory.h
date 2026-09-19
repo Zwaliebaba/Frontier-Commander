@@ -30,6 +30,17 @@ struct FrameRecord
   std::vector<StructureState> structures;
   std::vector<WreckState> wrecks;
   std::vector<FeatureState> features;
+  /// The fog runs this frame carried, relative to the fog of the baseline it was encoded against.
+  ///
+  /// THE FOG IS THE ONE FIELD THAT IS NOT REBUILT FROM THE SIMULATION EACH PUBLISH, so it is the
+  /// one that has to be remembered per frame. Every list above is the whole of what the client can
+  /// see now, and the frame is the difference between it and the baseline - so a frame the client
+  /// drops costs nothing, because the next one is the same difference taken again. The fog is a
+  /// grid of 16,384 cells and is sent as the runs that CHANGED, so a dropped frame's runs would be
+  /// lost for good unless the host knows which client state they were relative to. Keeping them
+  /// here is what lets ClientView::fog track what the client has ACKNOWLEDGED rather than what it
+  /// has been sent (m1-vertical-slice/G1a).
+  std::vector<FogDelta> fog;
 
   void Clear() noexcept
   {
@@ -38,6 +49,7 @@ struct FrameRecord
     structures.clear();
     wrecks.clear();
     features.clear();
+    fog.clear();
   }
 };
 

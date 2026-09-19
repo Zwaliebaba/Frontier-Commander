@@ -39,10 +39,23 @@ struct ClientView
   std::uint32_t nextSequence = 1; ///< NO_BASELINE is 0, so a frame's sequence starts at 1
   std::uint32_t acknowledgedSequence = NO_BASELINE;
   ClientHistory history;
-  /// The fog this client last had, cell by cell, so that a publish sends the runs that changed.
-  /// O(cells) a client, which ADR-008 already names as the price of a per-commander fog grid.
+  /// The fog this client is KNOWN TO HOLD, cell by cell: the grid as of `foggedThrough`, which is
+  /// the newest frame it has acknowledged and whose runs have been folded in. O(cells) a client,
+  /// which ADR-008 already names as the price of a per-commander fog grid.
+  ///
+  /// ACKNOWLEDGED AND NOT SENT, WHICH IS THE WHOLE POINT. Net/Client.cpp drops any delta whose
+  /// baseline is not exactly the frame it last applied, which happens whenever a publish outruns an
+  /// acknowledgement - the ordinary case at a 10 Hz publish rate, not a lossy-link one. Every other
+  /// field survives that, because a frame is the difference between what the client can see NOW and
+  /// the baseline it acknowledged, so the next frame carries the same difference again. The fog
+  /// used to advance this grid on every ENCODE, so a dropped frame took its runs with it and the
+  /// cells in them were never sent again: the commander's map kept whatever it had and diverged for
+  /// the rest of the match (m1-vertical-slice/G1a - the first capture of a real match came back
+  /// 100% black). Advancing it only on acknowledgement gives the fog the same semantics as
+  /// everything else in the frame.
   std::vector<FogState> fog;
-  bool everSentFog = false;
+  /// The sequence `fog` is the state as of, or NO_BASELINE when the client holds nothing.
+  std::uint32_t foggedThrough = NO_BASELINE;
   /// What this client was last told about a refused order, and what it will be told again until
   /// another one is refused. Host::Advance folds the seat's rejections into it EVERY TICK; the
   /// simulation clears them at the start of every stage 1 and a publish is due on even ticks only,

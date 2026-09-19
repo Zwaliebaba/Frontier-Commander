@@ -256,7 +256,9 @@ void Host::OnJoin(Neuron::ConnectionId _connection, const Join& _join, std::uint
       client.lastHeardTick = _tick;
       client.view.history.Clear();
       client.view.acknowledgedSequence = NO_BASELINE;
-      client.view.everSentFog = false;
+      // The history is gone, so no baseline can be folded into the fog again; the next frame is a
+      // full one and encodes the whole grid against an empty one (Net/FrameEncoder.cpp).
+      client.view.foggedThrough = NO_BASELINE;
       client.orders = {};
       ++m_counters.rejoins;
       JoinAccepted accepted{};

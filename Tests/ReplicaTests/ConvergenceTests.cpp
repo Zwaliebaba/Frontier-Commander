@@ -311,6 +311,38 @@ void AssertConverged(const Frontier::Sim& _sim, std::uint8_t _seat, const Fronti
   // ever stops being true this line fails rather than quietly comparing less than it says it does.
   const Frontier::RejectionLatch nothingRefused;
   Assert::IsTrue(replica.Own() == Frontier::WireSeat(_seat, _sim.Seats()[_seat], nothingRefused), _where);
+
+  // AND THE FOG, CELL FOR CELL. This suite compared only its SIZE until m1-vertical-slice/G1a,
+  // which is a comparison an all-black grid passes - and an all-black grid is exactly what the
+  // first capture of a real match produced, for a bug that had been in the encoder since N2. The
+  // two spans are compared flat because flat is what the wire carries: Net/FrameEncoder.cpp reads
+  // seat.fog.States() and Replica::ApplyFog writes the same indices, so an index computed here
+  // would be a third opinion about the layout rather than a check of it.
+  const std::span<const Frontier::FogState> hostFog = _sim.Seats()[_seat].fog.States();
+  Assert::AreEqual(hostFog.size(), replica.Fog().size(), _where);
+  std::size_t disagreeing = 0;
+  std::size_t firstDisagreement = 0;
+  for (std::size_t cell = 0; cell < hostFog.size(); ++cell)
+  {
+    if (hostFog[cell] != replica.Fog()[cell])
+    {
+      firstDisagreement = disagreeing == 0 ? cell : firstDisagreement;
+      ++disagreeing;
+    }
+  }
+  // COUNTED, AND THE FIRST ONE NAMED. A grid that has diverged diverges in hundreds of cells, so
+  // asserting per cell buries every other finding in the run; and "a cell disagrees" says nothing
+  // about which way, which is the difference between a fog that never arrived and one that arrived
+  // and was not withdrawn. Written only on failure, so it costs a passing run nothing.
+  if (disagreeing != 0)
+  {
+    Logger::WriteMessage((L"    fog: " + std::to_wstring(disagreeing) + L" of " + std::to_wstring(hostFog.size()) +
+                          L" cells disagree; the first is cell " + std::to_wstring(firstDisagreement) + L", host " +
+                          std::to_wstring(static_cast<int>(hostFog[firstDisagreement])) + L", replica " +
+                          std::to_wstring(static_cast<int>(replica.Fog()[firstDisagreement])) + L"\n")
+                           .c_str());
+  }
+  Assert::AreEqual(std::size_t{0}, disagreeing, _where);
 }
 
 } // namespace
@@ -318,6 +350,52 @@ void AssertConverged(const Frontier::Sim& _sim, std::uint8_t _seat, const Fronti
 TEST_CLASS(ConvergenceTests)
 {
 public:
+  /// THE BUG THIS CASE IS NAMED FOR: the host republishes FULL frames until a baseline is
+  /// acknowledged, and a replica clears everything it holds - fog included - on each one
+  /// (Replica::Apply). The encoder re-sent the whole fog only on the FIRST full frame, so the
+  /// second blacked out a map the first had drawn correctly and nothing ever refilled it. The
+  /// commander's map stayed black for the rest of the match.
+  ///
+  /// Found in m1-vertical-slice/G1a, not here: the first capture of a real match came back 100%
+  /// black on a green build, because the only fog this suite compared was its SIZE.
+  TEST_METHOD(ASecondFullFrameDoesNotBlackOutAMapTheFirstOneDrew)
+  {
+    Match match;
+    StructureAt(match.sim, 0, 14, 14);
+    Reveal(match.sim, 0, 10, 10, 20);
+    match.Join(0);
+
+    // Pass by pass rather than in one go, so that a failure names the publish that lost the map
+    // rather than reporting that it is gone.
+    for (std::uint32_t pass = 1; pass <= 12; ++pass)
+    {
+      match.Pump(1);
+      const std::span<const Frontier::FogState> hostFog = match.sim.Seats()[0].fog.States();
+      Assert::AreEqual(hostFog.size(), match.replica.Fog().size(), L"the grid kept its size");
+      std::size_t visible = 0;
+      std::size_t agreeing = 0;
+      for (std::size_t cell = 0; cell < hostFog.size(); ++cell)
+      {
+        visible += hostFog[cell] == Frontier::FogState::Visible ? 1 : 0;
+        agreeing += hostFog[cell] == match.replica.Fog()[cell] ? 1 : 0;
+      }
+      Assert::IsTrue(visible > 0, L"the host has cells this commander can see, or the case tests nothing");
+      Logger::WriteMessage((L"pass " + std::to_wstring(pass) + L": " + std::to_wstring(agreeing) + L" of " +
+                            std::to_wstring(hostFog.size()) + L" cells agree\n")
+                             .c_str());
+      Assert::AreEqual(hostFog.size(), agreeing, L"every cell of the commander's map survived this publish");
+    }
+
+    // AND A SETTLED MATCH SENDS NO FOG AT ALL, which is the half of the fix the assertion above
+    // cannot see. Correctness would survive a host that re-sent the whole grid on every publish -
+    // the replica would agree with it every time - and that is exactly what a host does if it never
+    // folds an acknowledged baseline into the grid it encodes against. Mutation testing found this
+    // gap: removing the fold left all nine cases passing. Nothing is moving by here, so a frame
+    // that carries a fog run is a frame telling this commander something he already knew.
+    match.Pump(8);
+    Assert::IsTrue(match.replica.ChangedFogRows().empty(), L"a settled match publishes no fog runs");
+  }
+
   TEST_METHOD(TheReplicaEqualsTheHostsInterestSetOverAWholeMatch)
   {
     Match match;

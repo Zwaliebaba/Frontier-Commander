@@ -350,13 +350,45 @@ void EncodeFrame(const Sim& _sim, const InterestSet& _interest, ClientView& _vie
     }
   }
 
-  // The commander's own fog, as runs of cells that changed since the last frame he was sent. It is
-  // his own information and leaks nothing: it is his grid and no other seat's.
+  // ── The commander's own fog ────────────────────────────────────────────────────────────────
+  //
+  // His own information, which leaks nothing: it is his grid and no other seat's.
+  //
+  // THE RUNS ARE RELATIVE TO WHAT HE HAS ACKNOWLEDGED, exactly as every other list in this frame
+  // is. _view.fog is the grid as of _view.foggedThrough, and it moves only when a baseline the
+  // client acknowledged is folded into it - never on an encode. That is the whole fix of
+  // m1-vertical-slice/G1a: Net/Client.cpp drops any delta whose baseline is not the frame it last
+  // applied, which happens whenever a publish outruns an acknowledgement, and a grid advanced on
+  // encode loses those runs for good.
   const std::span<const FogState> now = seat.fog.States();
-  if (!_view.everSentFog || _view.fog.size() != now.size())
+  if (_view.fog.size() != now.size())
   {
     _view.fog.assign(now.size(), FogState::Unexplored);
-    _view.everSentFog = true;
+    _view.foggedThrough = NO_BASELINE;
+  }
+  if (_baseline == nullptr)
+  {
+    // A full frame lands on a replica that clears everything it holds first (Replica::Apply), so
+    // the state it is a difference from is an empty grid rather than whatever this client had.
+    std::fill(_view.fog.begin(), _view.fog.end(), FogState::Unexplored);
+    _view.foggedThrough = NO_BASELINE;
+  }
+  else if (_view.foggedThrough != _baseline->sequence)
+  {
+    // The client has acknowledged a newer frame. Its runs were taken against the grid held here, so
+    // folding them in once gives the grid that client now holds. Folding only the acknowledged
+    // record and not the ones between is right for the same reason: each record's runs are relative
+    // to the baseline it was encoded against, which is the frame acknowledged before it.
+    for (const FogDelta& run : _baseline->fog)
+    {
+      const std::size_t first = run.firstCell;
+      const std::size_t last = std::min(first + run.cells, _view.fog.size());
+      for (std::size_t cell = first; cell < last; ++cell)
+      {
+        _view.fog[cell] = run.state;
+      }
+    }
+    _view.foggedThrough = _baseline->sequence;
   }
   std::size_t cell = 0;
   while (cell < now.size())
@@ -370,7 +402,6 @@ void EncodeFrame(const Sim& _sim, const InterestSet& _interest, ClientView& _vie
     const std::size_t first = cell;
     while (cell < now.size() && now[cell] == state && now[cell] != _view.fog[cell])
     {
-      _view.fog[cell] = state;
       ++cell;
     }
     FogDelta run{};
@@ -379,6 +410,9 @@ void EncodeFrame(const Sim& _sim, const InterestSet& _interest, ClientView& _vie
     run.state = state;
     _outFrame.fog.push_back(run);
   }
+  // The record keeps them so that the fold above can replay exactly these runs if this frame is the
+  // one the client acknowledges.
+  _outRecord.fog = _outFrame.fog;
 
   _outFrame.events.assign(_events.begin(), _events.end());
 }

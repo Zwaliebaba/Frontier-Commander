@@ -1333,6 +1333,14 @@ tasks:
       minutes. Snapshot version 15 carries it.
 
       Measured: NetTests 49 passed, 0 failed; SimTests still 143.
+      A DEFECT OF THIS TASK WAS FOUND AND FIXED IN m1-vertical-slice/G1a ON 2026-09-19. The fog was
+      the one field encoded against a rolling per-client grid that advanced on every ENCODE rather
+      than against the baseline the client ACKNOWLEDGED, so every frame Net/Client.cpp dropped -
+      which is every frame published while an acknowledgement is in flight, not a lossy-link case -
+      lost its fog runs for good and the commander's map diverged for the rest of the match. It made
+      the first capture of a real match come back entirely black. FrameRecord now carries the runs
+      its frame sent and ClientView::fog advances only on acknowledgement; G1a's notes carry the
+      whole account, and ConvergenceTests now compares the fog cell for cell rather than by size.
 
   - id: N3
     title: Net client endpoint - frames in, acknowledgements, the reliable order stream
@@ -2168,6 +2176,40 @@ tasks:
       2026-09-19. changedChunks has no consumer, Match never calls Landscape::ApplyDelta, and
       TerrainPass cannot re-mesh a chunk; K6 carries the whole finding. Sequenced before G2, so that
       the frames G2 uploads do not show bases half-buried in hillsides.
+      AND THE FIRST CAPTURE OF A REAL MATCH CAME BACK 100% BLACK ON A GREEN BUILD, which turned out
+      to be a Net defect that had been in the tree since N2. DescribeCapture said it plainly - "mean
+      colour (0, 0, 0); near-black 100.0%" for every frame - and the job passed anyway, because the
+      capture's exit code reports debug-layer messages and nothing else. M0's frames showed the
+      island because M0 had no fog pass; M1's multiplies every pixel by FOG_SHADES[shade], and an
+      all-unexplored grid multiplies the whole frame by zero. So the fog pass was right and the fog
+      was wrong.
+      NARROWED BY PROBES RATHER THAN BY READING. The host's own grid: 166 cells visible from tick 1,
+      so Sim and the base placement were fine. The replica's: all 16,384 unexplored, so the copy into
+      the render view was fine too. The whole stack single-threaded, printing both sides every pass:
+      the replica had the right fog at passes 3 and 4 and lost it at pass 5, permanently.
+      THE DEFECT. Every list in a frame is the difference between what the commander can see NOW and
+      the baseline he ACKNOWLEDGED, so a frame he drops costs nothing - the next one carries the
+      same difference again. The fog was the one field encoded against a rolling per-client grid
+      that advanced on every ENCODE. And Net/Client.cpp drops any delta whose baseline is not
+      exactly the frame it last applied, which is not a lossy-link case: it happens whenever a
+      publish outruns an acknowledgement, which at a 10 Hz publish rate is most of them. Every
+      dropped frame took its fog runs with it and those cells were never sent again.
+      THE FIX GIVES THE FOG THE SAME SEMANTICS AS EVERYTHING ELSE. FrameRecord carries the runs its
+      frame sent; ClientView::fog is now the grid the client is KNOWN to hold, advanced only when a
+      baseline it acknowledged is folded in; and a full frame encodes against an empty grid, because
+      the replica clears everything it holds on one. Runs per record rather than a grid per record,
+      so the memory is ADR-008's O(cells) a client and not O(cells x history).
+      THE TEST HOLE WAS THE REAL FINDING. ConvergenceTests is the suite whose whole purpose is "the
+      replica holds exactly what the host would send", and the only fog it compared was its SIZE -
+      which an all-black grid passes. AssertConverged now compares it cell for cell, which put the
+      failure count at 12,070 over six cases before the fix and 0 after, and a case named for the
+      bug walks the publishes one at a time so a failure says which one lost the map.
+      MUTATION TESTING FOUND THE FIX HALF-TESTED. Three ways to break it: advancing the grid on
+      encode again, never folding the acknowledged baseline, and diffing a full frame against what
+      the client had. The first and third went red; the SECOND SURVIVED, because a host that never
+      folds re-sends the whole grid every publish and is still correct - the replica agrees with it
+      every time. That is a bandwidth defect a correctness suite cannot see, so the case also
+      asserts that a settled match publishes no fog runs at all, which kills it.
       ONE EDGE LEFT AS IT IS, DELIBERATELY. A minimised window blocks in WaitMessage while the host
       thread keeps ticking, so the liveness clock falls behind and, past Match's thousand-tick debt
       ceiling, wall time is written off. Pausing the local host is G1b's Escape menu and that is the
