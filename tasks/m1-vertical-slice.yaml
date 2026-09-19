@@ -1420,6 +1420,9 @@ tasks:
       - Tests/ReplicaTests/InterpolationTests.cpp
       - Tests/ReplicaTests/ReplicaTests.vcxproj
       - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
+      # Deleted: the placeholder suite, which the definition of done says the first real test in a
+      # project replaces (ImplementationPlan.md §4).
+      - Tests/ReplicaTests/SuiteSmoke.cpp
     acceptance:
       - Replica applies created, changed and removed records, keeps ghosts for structures, holds the seat's own state, designs by DesignState, and its commander's fog grid from fog deltas
       - Interpolation keeps the last two frames per object and evaluates positions and headings at a time 100 milliseconds behind the newest frame, which is the first float conversion and the only one, never outside the segment between the two frames
@@ -1433,6 +1436,48 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      THE REPLICA STARTS ITSELF FROM THE CLIENT, and that is the finding of this task rather than a
+      convenience. The first version took the seat and the landscape size through a Begin() the
+      caller made after joining - and the convergence test came back with an EMPTY replica. Net's
+      Client reads the JoinAccepted and delivers the first full frame inside the SAME Advance
+      (Net/Client.cpp), so there is no moment between the two to call anything in: Begin ran after
+      the first frame had been applied and cleared it, and every frame after that was a delta the
+      replica had no baseline for. G1a would have hit the identical trap with no signal. The
+      constructor now takes the Client and Apply adopts the seat and the landscape on every full
+      frame, which also makes a rejoin into a different seat fall out rather than need a rule.
+      A DEVICE THAT SENT NO CHANGE DID NOT MOVE, which the protocol says by omission: an empty
+      change is never sent. Without accounting for that, a device standing still for a hundred ticks
+      and then moving hands Evaluate a segment spanning the whole still period and is dragged across
+      it in the one frame that ends it. Apply stamps the held position at the last frame THIS
+      REPLICA APPLIED before pushing the new sample - not a guess, and not an assumption about the
+      publish rate either, only what this replica observed.
+      A GHOST NEEDS NO SECOND COLLECTION. The host sends a remembered structure in the same list as
+      a standing one, at its last-seen state with no hit points (Net/FrameEncoder.cpp's WireGhost),
+      and Net/Interest.h guarantees an id is never in both. So the id never leaves the replica and
+      the flag is one comparison in the line that takes the record.
+      MUTATION TESTING FOUND TWO HOLES IN THE FIRST SUITE, and they are the reason it has seven
+      tests and not five. With device removals ignored the suite still passed - nothing in it ever
+      died. With every position delta thrown away it still passed - nothing in it ever moved. The
+      removal test and the walking test exist because of those two runs, and each carries the
+      assertion that would fail again.
+      WHAT IS ASSERTED WHILE SOMETHING MOVES IS NOT FULL CONVERGENCE. A replica is one publish
+      behind a moving world - that is what interpolating 100 ms back is for - so a replica equal to
+      the simulation mid-stride would mean the client had guessed ahead, which Interpolation.h
+      refuses to do. The walking test holds the object set and the following, and makes the full
+      claim once the world stops.
+      THE SIMULATION WAS RIGHT AND THE TEST WAS WRONG, twice. Razing a seat's only structure
+      annihilates it, S11 ends the match and Sim::Advance stops on m_finished, so the frames the
+      test was waiting for never came; the removal test now gives the seat two. And the first
+      settling loop stopped the simulation and pumped the network alone, which the host answers by
+      republishing until acknowledged - true, but a state the game is never in, and it took the
+      sequence numbers twenty publishes past a tick that never changed. Settling is ordinary ticks
+      now.
+      Verified in the session on Linux: CheckTaskDag, CheckFormat and CheckProjectFiles clean;
+      -fsyntax-only over Replica.cpp and Interpolation.cpp; and the whole of ConvergenceTests built
+      against the real Sim, Net's Host and Client and the LoopbackTransport and RUN - seven tests,
+      zero failures, including the seeded-loss run at 250 per mille. The MSVC build, clang-tidy and
+      InterpolationTests under vstest are CI's.
 
   - id: R2
     title: Replica render view, model composition at markers, and picking
@@ -1943,7 +1988,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       THE FILE LIST WAS WRONG IN BOTH DIRECTIONS. Content/ContentValidator.cpp is NOT touched: the
       validator is for rules that span files and the palette has none - every fault it can have is
@@ -1980,8 +2025,10 @@ tasks:
       and GameDesign.md 11 records that the accent moves if a running build shows it too weak. The
       three chosen colours were moved from the first draft to get the closest commander pair up to
       145, which is now seat 3 against seat 7 - both Species's - so the limit is the lineage's.
-      CI HAS NOT RUN. The workflow triggers on main and on pull requests only; the suite, the
-      MSVC build and clang-tidy are still to be read off it before this goes to done.
+      CI IS GREEN on 5393ba3, run 98, dispatched onto this branch: the workflow triggers on main
+      and on pull requests, so a branch that has neither needs workflow_dispatch to be read at all.
+      The MSVC build, every suite, clang-tidy, the format job, the plan validation and the capture
+      all passed, and FrontierHost --validate passed over the tree with Interface.json in it.
 
   - id: N4
     title: The order-rejection wire record - a seat's last refusal reaches the commander who sent it
@@ -2017,7 +2064,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       THE PROTOCOL VERSION IS BUMPED TO 2 and SEAT_STATE_BYTES from 34 to 38. Records.h's own rule
       is that any layout change in it bumps the version, and nothing has shipped against 1, but the
@@ -2046,4 +2093,6 @@ tasks:
       judges an order on depends on when the reliable stream delivered it, and a test that assumed
       a parity would pass while proving half of what it is for; it asserts instead that across the
       two runs both an odd and an even tick were seen, and fails if they were not.
-      CI HAS NOT RUN on this change yet.
+      CI IS GREEN on 0b9d01e, run 99, dispatched onto this branch: the MSVC build, every suite,
+      clang-tidy, the format job, the plan validation and the capture all passed, which is where
+      the two host tests and the round-trip tests were actually run.
