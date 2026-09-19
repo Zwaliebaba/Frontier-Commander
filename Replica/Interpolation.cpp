@@ -25,6 +25,8 @@ constexpr float WORLD_UNITS_PER_WIRE_UNIT =
 /// of the two endpoints and a device would snap through its turn in 1.4-degree jumps however many
 /// frames were drawn inside the interval.
 constexpr std::int64_t HEADING_SUBSTEPS = 256;
+/// The wire's headings to a full turn: Net/Records.h carries the high byte of a binary angle.
+constexpr std::int32_t HEADINGS_PER_TURN = 256;
 constexpr float RADIANS_PER_HEADING_SUBSTEP = 2.0f * std::numbers::pi_v<float> / 65536.0f;
 
 [[nodiscard]] constexpr float WorldFromWire(std::int64_t _wireUnits) noexcept
@@ -79,9 +81,13 @@ Pose Evaluate(const Motion& _motion, std::int64_t _renderTime) noexcept
   // extrapolate, and a device that lost a frame would be drawn somewhere the host never put it.
   const std::int64_t offset = std::clamp(_renderTime - RenderTimeOfTick(_motion.older.tick), std::int64_t{0}, span);
 
-  // The shortest way round, as a signed step: 250 to 10 is +16 and not -240, and the cast through
-  // std::int8_t is what makes the wrap arithmetic rather than a special case.
-  const std::int64_t step = static_cast<std::int8_t>(static_cast<std::uint8_t>(_motion.newer.heading - _motion.older.heading));
+  // The shortest way round: 250 to 10 is +16 and not -240. Stated as arithmetic on the unsigned
+  // difference rather than as a cast through std::int8_t, which is what it was and which
+  // clang-tidy's bugprone-signed-char-misuse rightly refused: a `signed char` widening to a 64-bit
+  // integer is a classic way to turn a byte into a negative number by accident, and a reader should
+  // not have to know that this one was on purpose.
+  const std::int32_t forward = static_cast<std::uint8_t>(_motion.newer.heading - _motion.older.heading);
+  const std::int64_t step = forward >= HEADINGS_PER_TURN / 2 ? forward - HEADINGS_PER_TURN : forward;
   const std::int64_t headingFrom = static_cast<std::int64_t>(_motion.older.heading) * HEADING_SUBSTEPS;
   const std::int64_t headingTo = headingFrom + step * HEADING_SUBSTEPS;
   // NOT REDUCED BACK UNDER A TURN. A heading that crossed zero comes out just over one turn, which

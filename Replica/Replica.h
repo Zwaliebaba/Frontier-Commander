@@ -45,7 +45,12 @@ public:
   /// replica started by hand after that Advance would therefore be started AFTER its first full
   /// frame had already been applied, and would clear it: an ordering trap with no signal, which the
   /// convergence test of this task fell into before this constructor existed.
-  explicit Replica(const Client& _client) noexcept
+  /// NOT noexcept, although it does nothing but take a pointer: the members it default-constructs
+  /// are four maps, three vectors and a DesignStore, and every one of those can allocate. A
+  /// constructor that promised otherwise would be a promise the compiler turns into std::terminate
+  /// the first time a client runs out of memory (clang-tidy's bugprone-exception-escape, which is
+  /// how this was found).
+  explicit Replica(const Client& _client)
     : m_client(&_client)
   {
   }
