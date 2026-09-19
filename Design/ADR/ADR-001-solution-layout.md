@@ -10,7 +10,11 @@
 
 ## Decision
 
-**The solution** is `FrontierCommander.slnx` at the repository root, in the XML solution format, with `x64` as its only platform. CI finds it by extension, so there is exactly one.
+**The solution** is `FrontierCommander.slnx` at the repository root, in the XML solution format, with two platforms: `x64` and `ARM64`. CI finds it by extension, so there is exactly one.
+
+**ARM64 was added on 2026-09-19** (owner). The machine the game is developed and played on is a Snapdragon X, which had been running the x64 build under Prism emulation — `m0-foundation/T22` measured it there. A native build is the point of a second platform.
+
+**CI gates x64 only** (owner, 2026-09-19). A configuration nothing builds is a configuration that rots, and the usual answer to that is a CI leg; here the answer is the developer's own machine. ARM64 is the architecture the one developer compiles and plays on daily, so it is exercised harder than any nightly leg would exercise it, and what CI would add is the case where someone else breaks it — which this tree does not have. Two things make that reading cheap to hold: `Build/CheckProjectFiles.py` gates all four slices whether or not any of them is compiled, and it, not a build, is what caught Visual Studio silently replacing x64's AVX2 with ARMv8.7; and GitHub's `windows-11-arm` image ships Visual Studio 2022, whose `v143` cannot build a tree this ADR pins to `v145`, so an ARM64 leg would have been skipped rather than green in any case. What is therefore NOT gated: a portability fault in the fixed-point arithmetic or in a record's layout is found when the owner builds, not when CI runs. Revisit this when the ARM runner image carries the pinned toolset, or when a second developer joins.
 
 **The projects**, each in a flat directory of its own name at the root (`AGENTS.md` §2), with `Tests/<Name>Tests` for every static library:
 
@@ -45,17 +49,19 @@ Edges point downward only; a library never references one beside it (`Client` an
 | `ConformanceMode` | `true` |
 | `WarningLevel`, `TreatWarningAsError` | `Level4`, `true` |
 | `FloatingPointModel` | `Precise` |
-| `EnableEnhancedInstructionSet` | `AdvancedVectorExtensions2` |
+| `EnableEnhancedInstructionSet` | **per platform**: `AdvancedVectorExtensions2` on `x64`, `CPUExtensionRequirementsARMv87` on `ARM64` |
 | `ExceptionHandling` | `Sync` |
 | `CharacterSet` | `Unicode` |
 | `SDLCheck`, `MultiProcessorCompilation` | `true`, `true` |
 | Precompiled header | `Use` of `pch.h`, created by `pch.cpp` |
-| `OutDir` | `$(SolutionDir)x64\$(Configuration)\` |
-| `IntDir` | `$(SolutionDir)x64\$(Configuration)\Intermediate\$(ProjectName)\` |
+| `OutDir` | `$(SolutionDir)$(Platform)\$(Configuration)\` |
+| `IntDir` | `$(SolutionDir)$(Platform)\$(Configuration)\Intermediate\$(ProjectName)\` |
 | `PreferredToolArchitecture` | `x64` |
 | `WindowsTargetPlatformVersion` | `10.0` (the newest installed SDK) |
 | Debug only | `Optimization` `Disabled`, `RuntimeLibrary` `MultiThreadedDebugDLL`, `_DEBUG`, `UseDebugLibraries`, `LinkIncremental` |
 | Release only | `Optimization` `MaxSpeed`, `FunctionLevelLinking`, `IntrinsicFunctions`, `RuntimeLibrary` `MultiThreadedDLL`, `NDEBUG`, `WholeProgramOptimization`, `EnableCOMDATFolding`, `OptimizeReferences` |
+
+**The instruction set is the one setting that belongs to the platform**, and it sits in an item-definition group conditioned on `$(Platform)` rather than in the unconditional one. This is not decoration: when Visual Studio first wrote the ARM64 configurations it put `CPUExtensionRequirementsARMv87` in the group both platforms read, which silently took AVX2 off the x64 build that CI gates on, and `Build/CheckProjectFiles.py` is what caught it. A condition on the ELEMENT rather than on the group is refused for the same reason — the checker models a condition on the group and nothing finer, so a conditioned element would be attributed to every slice of the group and a setting really present on one platform would be reported, or excused, on all four.
 
 No project defines any of the Windows macro family. Include directories name other projects only, as `$(SolutionDir)<Project>`; a project's own directory is never listed (`AGENTS.md` §3).
 

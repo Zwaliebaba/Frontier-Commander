@@ -43,7 +43,12 @@ namespace Frontier
 
 /// Bumped by any change to a layout in this file or in Messages.h. A client whose version differs
 /// from the host's is refused at the join rather than left to misread a frame (§5.4).
-inline constexpr std::uint16_t NET_PROTOCOL_VERSION = 1;
+///
+/// 2 (m1-vertical-slice/N4, 2026-09-19): SeatState carries the seat's last refused order, which
+/// Design/Interface.md §6 draws. Nothing shipped against version 1, but the bump is not skipped for
+/// that: the rule is the layout's and not the audience's, and a version that is bumped only when
+/// someone might notice is a version nobody can reason about.
+inline constexpr std::uint16_t NET_PROTOCOL_VERSION = 2;
 
 /// A quarter of a world unit, in the subunits the simulation holds positions in (§5.3). Coarse on
 /// purpose: a device is several world units across and the replica interpolates between frames, so
@@ -253,6 +258,21 @@ struct SeatState
   std::uint16_t structureCount;
   std::uint16_t structureCap;
 
+  /// The seat's most recent refused order, for the one line of warning text Design/Interface.md §6
+  /// draws for two seconds and then replaces.
+  ///
+  /// NOT A LIST, although Sim/Seat.h keeps one. The display shows one refusal at a time, and a
+  /// variable-length field in a record the encoder compares by value would be walked and sent every
+  /// frame for a line that is usually the same one. THE SEQUENCE IS WHY THREE FIELDS AND NOT TWO:
+  /// two identical refusals in a row are equal by value, so without a counter a commander who asks
+  /// twice for what he cannot afford would see the line fail to restart and read it as not having
+  /// been heard. It counts refusals rather than naming a tick, so the client compares it for
+  /// inequality and never for order; it wraps, and skips 0 when it does, because 0 is how a seat
+  /// that has had no refusal at all says so.
+  std::uint16_t rejectSequence;
+  std::uint8_t rejectKind;   ///< An OrderKind. Meaningless, and zero, while rejectSequence is 0
+  std::uint8_t rejectReason; ///< A RejectReason, never Accepted while rejectSequence is not 0
+
   [[nodiscard]] constexpr bool operator==(const SeatState&) const noexcept = default;
 };
 
@@ -361,7 +381,7 @@ inline constexpr std::size_t DEVICE_STATE_BYTES = 31;
 inline constexpr std::size_t STRUCTURE_STATE_BYTES = 26;
 inline constexpr std::size_t WRECK_STATE_BYTES = 23;
 inline constexpr std::size_t FEATURE_STATE_BYTES = 17;
-inline constexpr std::size_t SEAT_STATE_BYTES = 34;
+inline constexpr std::size_t SEAT_STATE_BYTES = 38; ///< 34, and four for the refusal (m1/N4)
 inline constexpr std::size_t DESIGN_STATE_BYTES = 46;
 inline constexpr std::size_t EVENT_BYTES = 27;
 inline constexpr std::size_t FOG_DELTA_BYTES = 7;

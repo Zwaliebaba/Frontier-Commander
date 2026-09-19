@@ -10,9 +10,9 @@ A finding is one line, `<file>:<line>: <rule>: <message>`, and any finding fails
   solution-missing    the solution lists a project file that does not exist
   solution-unlisted   a .vcxproj in the tree is not in the solution (so CI would never build it)
   solution-directory  a project is not in a flat directory of its own name (Tests/<Name>Tests for a suite)
-  platform            a configuration other than Debug|x64 and Release|x64, or a condition naming one
-  setting             a setting ADR-001 fixes is absent or has another value, in either configuration
-  alignment           Debug and Release differ on a property outside the set AGENTS.md §3 enumerates
+  platform            a configuration outside Debug/Release on x64/ARM64, or a condition naming one
+  setting             a setting ADR-001 fixes is absent or has another value, in any configuration or platform
+  alignment           Debug and Release differ, within a platform, outside the set AGENTS.md §3 enumerates
   include-directory   an include directory that is not $(SolutionDir)<AnotherProject>
   macro-family        a project defines a macro of the Windows family Core/WindowsHeader.h owns
   unregistered        a .cpp or .h in the project directory that the .vcxproj does not list
@@ -51,8 +51,15 @@ from pathlib import Path
 
 MSBUILD = "{http://schemas.microsoft.com/developer/msbuild/2003}"
 CONFIGURATIONS = ("Debug", "Release")
-PLATFORM = "x64"
-SKIPPED_DIRECTORIES = {".git", ".vs", "x64"}
+# TWO PLATFORMS SINCE 2026-09-19 (ADR-001, owner). The owner's machine is a Snapdragon X, which ran
+# the x64 build under Prism emulation; ARM64 is a native build of the same tree. A project therefore
+# has FOUR slices rather than two, and this file checks each of them, because a setting that is
+# right for one instruction set is not automatically right for the other - which is exactly what
+# went wrong when Visual Studio first wrote the ARM64 configurations and replaced x64's AVX2 with
+# ARMv8.7 in the group both platforms read.
+PLATFORMS = ("x64", "ARM64")
+SLICES = tuple(f"{configuration}|{platform}" for platform in PLATFORMS for configuration in CONFIGURATIONS)
+SKIPPED_DIRECTORIES = {".git", ".vs", "x64", "ARM64"}
 FIXTURES = Path("Build") / "Fixtures" / "ProjectFiles"
 # Vendored, and the one exception to R14 (owner, 2026-09-17): neither named nor read by any rule here.
 VENDORED = {"Client/d3dx12.h"}
@@ -83,8 +90,11 @@ FIXED_PROPERTIES = {
     "CharacterSet": "Unicode",
     "PreferredToolArchitecture": "x64",
     "WindowsTargetPlatformVersion": "10.0",
-    "OutDir": "$(SolutionDir)x64\\$(Configuration)\\",
-    "IntDir": "$(SolutionDir)x64\\$(Configuration)\\Intermediate\\$(ProjectName)\\",
+    # $(Platform) AND NOT A LITERAL x64: an ARM64 build that wrote into x64\ would overwrite the
+    # other platform's binaries with ones that cannot run on it, and the first symptom would be a
+    # test run failing in a way that looks like a code fault.
+    "OutDir": "$(SolutionDir)$(Platform)\\$(Configuration)\\",
+    "IntDir": "$(SolutionDir)$(Platform)\\$(Configuration)\\Intermediate\\$(ProjectName)\\",
 }
 FIXED_COMPILE = {
     "WarningLevel": "Level4",
@@ -93,12 +103,19 @@ FIXED_COMPILE = {
     "ConformanceMode": "true",
     "LanguageStandard": "stdcpplatest",
     "FloatingPointModel": "Precise",
-    "EnableEnhancedInstructionSet": "AdvancedVectorExtensions2",
     "ExceptionHandling": "Sync",
     "MultiProcessorCompilation": "true",
     "PrecompiledHeader": "Use",
     "PrecompiledHeaderFile": "pch.h",
 }
+# What ADR-001 fixes PER PLATFORM, because the value is an instruction set and an instruction set
+# belongs to an architecture. It is the only setting that varies this way; everything above is the
+# same on both, and everything below varies by configuration instead.
+PLATFORM_COMPILE = {
+    "x64": {"EnableEnhancedInstructionSet": "AdvancedVectorExtensions2"},
+    "ARM64": {"EnableEnhancedInstructionSet": "CPUExtensionRequirementsARMv87"},
+}
+
 # What AGENTS.md §3 lets the two configurations differ in, and the value ADR-001 fixes for each.
 CONFIGURATION_PROPERTIES = {
     "Debug": {"UseDebugLibraries": "true", "LinkIncremental": "true"},
@@ -268,23 +285,36 @@ def text_of(element: ElementTree.Element) -> str:
 
 
 CONDITION_RE = re.compile(r"^\s*'\$\(Configuration\)(\|\$\(Platform\))?'\s*==\s*'([^'|]*)(?:\|([^']*))?'\s*$")
+PLATFORM_CONDITION_RE = re.compile(r"^\s*'\$\(Platform\)'\s*==\s*'([^']*)'\s*$")
+KNOWN = ", ".join(SLICES)
 
 
 def configurations_of(condition: str | None, project: Project, where: str) -> list[str]:
-    """The configurations a group applies to, or every one when it has no condition."""
+    """The SLICES a group applies to - "<Configuration>|<Platform>" - or every one when it has no
+    condition. A group conditioned on the configuration alone applies to that configuration on both
+    platforms, and one conditioned on the platform alone to both configurations of that platform."""
     if condition is None:
-        return list(CONFIGURATIONS)
+        return list(SLICES)
+    platform_only = PLATFORM_CONDITION_RE.match(condition)
+    if platform_only:
+        platform = platform_only.group(1)
+        if platform not in PLATFORMS:
+            project.findings.append(Finding("platform", project.relative, f"{where}: condition names platform {platform}; only {', '.join(PLATFORMS)} exist"))
+            return []
+        return [f"{configuration}|{platform}" for configuration in CONFIGURATIONS]
     match = CONDITION_RE.match(condition)
     if not match:
         project.findings.append(Finding("platform", project.relative, f"{where}: condition not understood: {condition.strip()}"))
         return []
     configuration, platform = match.group(2), match.group(3)
-    if configuration not in CONFIGURATIONS or (platform is not None and platform != PLATFORM):
+    if configuration not in CONFIGURATIONS or (platform is not None and platform not in PLATFORMS):
         project.findings.append(
-            Finding("platform", project.relative, f"{where}: condition names {configuration}|{platform or '*'}; only Debug|x64 and Release|x64 exist")
+            Finding("platform", project.relative, f"{where}: condition names {configuration}|{platform or '*'}; only {KNOWN} exist")
         )
         return []
-    return [configuration]
+    if platform is not None:
+        return [f"{configuration}|{platform}"]
+    return [f"{configuration}|{each}" for each in PLATFORMS]
 
 
 def resolve_metadata(previous: str | None, value: str, name: str) -> str:
@@ -297,7 +327,7 @@ def resolve_metadata(previous: str | None, value: str, name: str) -> str:
 
 def parse_project(root: Path, file: Path) -> Project:
     relative = file.relative_to(root).as_posix()
-    project = Project(file.stem, file, relative, file.parent, {c: Configuration() for c in CONFIGURATIONS}, [], [], [])
+    project = Project(file.stem, file, relative, file.parent, {slice_: Configuration() for slice_ in SLICES}, [], [], [])
     try:
         tree = ElementTree.parse(file)
     except ElementTree.ParseError as error:
@@ -323,6 +353,16 @@ def parse_project(root: Path, file: Path) -> Project:
                 kind = local(definition.tag)
                 for element in definition:
                     name = local(element.tag)
+                    # A CONDITION ON THE ELEMENT IS REFUSED RATHER THAN MISREAD. This file models a
+                    # condition on the GROUP and nothing finer, so a conditioned element would be
+                    # attributed to every slice the group covers - and a setting that is really on
+                    # one platform would be reported, or excused, on all four. Visual Studio wrote
+                    # exactly one of these when it added the ARM64 configurations (2026-09-19).
+                    if element.get("Condition") is not None:
+                        project.findings.append(
+                            Finding("platform", project.relative, f"ItemDefinitionGroup: {kind}.{name} carries its own Condition; put it on the group, which is what this check reads")
+                        )
+                        continue
                     for configuration in targets:
                         table = project.configurations[configuration].metadata.setdefault(kind, {})
                         table[name] = resolve_metadata(table.get(name), text_of(element), name)
@@ -331,14 +371,14 @@ def parse_project(root: Path, file: Path) -> Project:
 
 def check_shape(project: Project) -> None:
     findings = project.findings
-    expected_configurations = {f"{c}|{PLATFORM}" for c in CONFIGURATIONS}
+    expected_configurations = set(SLICES)
     actual_configurations = set(project.project_configurations)
     for extra in sorted(actual_configurations - expected_configurations):
-        findings.append(Finding("platform", project.relative, f"configuration {extra}; only Debug|x64 and Release|x64 exist"))
+        findings.append(Finding("platform", project.relative, f"configuration {extra}; only {KNOWN} exist"))
     for absent in sorted(expected_configurations - actual_configurations):
         findings.append(Finding("platform", project.relative, f"configuration {absent} is not declared"))
 
-    def require(table_of, name: str, expected: str, configurations: tuple[str, ...] = CONFIGURATIONS) -> None:
+    def require(table_of, name: str, expected: str, configurations: tuple[str, ...] = SLICES) -> None:
         wrong = [c for c in configurations if table_of(project.configurations[c], name) != expected]
         if wrong:
             actual = table_of(project.configurations[wrong[0]], name)
@@ -353,15 +393,20 @@ def check_shape(project: Project) -> None:
     for name, expected in FIXED_COMPILE.items():
         require(Configuration.compile, name, expected)
     for configuration in CONFIGURATIONS:
+        both = tuple(f"{configuration}|{platform}" for platform in PLATFORMS)
         for name, expected in CONFIGURATION_PROPERTIES[configuration].items():
-            require(property_of, name, expected, (configuration,))
+            require(property_of, name, expected, both)
         for name, expected in CONFIGURATION_COMPILE[configuration].items():
-            require(Configuration.compile, name, expected, (configuration,))
+            require(Configuration.compile, name, expected, both)
         for name, expected in CONFIGURATION_LINK[configuration].items():
-            require(Configuration.link, name, expected, (configuration,))
+            require(Configuration.link, name, expected, both)
+    for platform in PLATFORMS:
+        both = tuple(f"{configuration}|{platform}" for configuration in CONFIGURATIONS)
+        for name, expected in PLATFORM_COMPILE[platform].items():
+            require(Configuration.compile, name, expected, both)
 
-    kind = project.configurations["Debug"].properties.get("ConfigurationType")
-    subtype = project.configurations["Debug"].properties.get("ProjectSubType")
+    kind = project.configurations[SLICES[0]].properties.get("ConfigurationType")
+    subtype = project.configurations[SLICES[0]].properties.get("ProjectSubType")
     if project.is_suite:
         if kind != "DynamicLibrary" or subtype != "NativeUnitTestProject":
             findings.append(
@@ -374,12 +419,21 @@ def check_shape(project: Project) -> None:
     if not pch or pch[0].metadata.get("PrecompiledHeader") != "Create":
         findings.append(Finding("setting", project.relative, "pch.cpp is not listed with <PrecompiledHeader>Create</PrecompiledHeader>"))
 
-    # Alignment: outside the enumerated set, the two configurations read identically.
-    debug, release = project.configurations["Debug"], project.configurations["Release"]
+    # Alignment: outside the enumerated set, the two configurations read identically. WITHIN A
+    # PLATFORM, because the comparison is about what Debug and Release differ in and the platforms
+    # differ in their own right; comparing across them would report the instruction set as a
+    # misalignment on every project.
+    for platform in PLATFORMS:
+        check_alignment(project, platform)
+
+
+def check_alignment(project: Project, platform: str) -> None:
+    findings = project.findings
+    debug, release = project.configurations[f"Debug|{platform}"], project.configurations[f"Release|{platform}"]
     allowed_properties = set(CONFIGURATION_PROPERTIES["Debug"]) | set(CONFIGURATION_PROPERTIES["Release"])
     for name in sorted(set(debug.properties) | set(release.properties)):
         if name not in allowed_properties and debug.properties.get(name) != release.properties.get(name):
-            findings.append(Finding("alignment", project.relative, f"{name} differs: Debug '{debug.properties.get(name)}', Release '{release.properties.get(name)}'"))
+            findings.append(Finding("alignment", project.relative, f"{name} differs on {platform}: Debug '{debug.properties.get(name)}', Release '{release.properties.get(name)}'"))
     allowed_metadata = {
         "ClCompile": set(CONFIGURATION_COMPILE["Debug"]) | set(CONFIGURATION_COMPILE["Release"]) | {"PreprocessorDefinitions"},
         "Link": set(CONFIGURATION_LINK["Debug"]) | set(CONFIGURATION_LINK["Release"]),
@@ -391,28 +445,31 @@ def check_shape(project: Project) -> None:
                 continue
             if debug_table.get(name) != release_table.get(name):
                 findings.append(
-                    Finding("alignment", project.relative, f"{kind_name}.{name} differs: Debug '{debug_table.get(name)}', Release '{release_table.get(name)}'")
+                    Finding("alignment", project.relative, f"{kind_name}.{name} differs on {platform}: Debug '{debug_table.get(name)}', Release '{release_table.get(name)}'")
                 )
 
     # Definitions: the configuration's own macro and nothing else may differ, and none of the family.
-    definitions = {c: [d for d in (project.configurations[c].compile("PreprocessorDefinitions") or "").split(";") if d] for c in CONFIGURATIONS}
+    definitions = {
+        c: [d for d in (project.configurations[f"{c}|{platform}"].compile("PreprocessorDefinitions") or "").split(";") if d]
+        for c in CONFIGURATIONS
+    }
     for configuration in CONFIGURATIONS:
         own = CONFIGURATION_DEFINITION[configuration]
         if own not in definitions[configuration]:
-            findings.append(Finding("setting", project.relative, f"{configuration} does not define {own}"))
+            findings.append(Finding("setting", project.relative, f"{configuration}|{platform} does not define {own}"))
         other = CONFIGURATION_DEFINITION["Release" if configuration == "Debug" else "Debug"]
         if other in definitions[configuration]:
-            findings.append(Finding("setting", project.relative, f"{configuration} defines {other}"))
+            findings.append(Finding("setting", project.relative, f"{configuration}|{platform} defines {other}"))
     stripped = {c: [d for d in definitions[c] if d not in CONFIGURATION_DEFINITION.values()] for c in CONFIGURATIONS}
     if stripped["Debug"] != stripped["Release"]:
-        findings.append(Finding("alignment", project.relative, f"PreprocessorDefinitions differ beyond _DEBUG/NDEBUG: Debug {stripped['Debug']}, Release {stripped['Release']}"))
+        findings.append(Finding("alignment", project.relative, f"PreprocessorDefinitions differ beyond _DEBUG/NDEBUG on {platform}: Debug {stripped['Debug']}, Release {stripped['Release']}"))
     for macro in sorted({d for c in CONFIGURATIONS for d in definitions[c]} & MACRO_FAMILY):
         findings.append(Finding("macro-family", project.relative, f"defines {macro}; Core/WindowsHeader.h owns the family and a /D of it is C4005 under /WX"))
 
 
 def check_include_directories(project: Project, project_names: set[str]) -> None:
     seen: set[str] = set()
-    for configuration in CONFIGURATIONS:
+    for configuration in SLICES:
         for entry in (project.configurations[configuration].compile("AdditionalIncludeDirectories") or "").split(";"):
             entry = entry.strip()
             if not entry or entry == "%(AdditionalIncludeDirectories)" or entry in seen:
@@ -622,7 +679,7 @@ def check_layering(root: Path, projects: list[Project]) -> None:
                 if other not in permitted:
                     project.findings.append(Finding("edge-reference", project.relative, f"references {other}; {edge(other)}"))
         seen: set[str] = set()
-        for configuration in CONFIGURATIONS:
+        for configuration in SLICES:
             for entry in (project.configurations[configuration].compile("AdditionalIncludeDirectories") or "").split(";"):
                 entry = entry.strip()
                 if entry.startswith("$(SolutionDir)") and entry not in seen:

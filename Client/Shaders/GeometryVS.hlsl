@@ -27,6 +27,7 @@ struct Input
   float3 origin : ORIGIN;
   float2 heading : HEADING;
   float4 teamColor : TEAMCOLOR;
+  float3 scale : SCALE;
 };
 
 struct Output
@@ -47,10 +48,18 @@ float3 Turn(float3 value, float2 heading)
 
 Output main(Input input)
 {
-  const float3 world = Turn(input.position, input.heading) + input.origin;
+  // SCALED BEFORE IT IS TURNED, because the scale is in the model's own axes: a construction site
+  // is short along ITS vertical, which is the same vertical either way, but a row drawn at another
+  // size must be scaled where its vertices are and not after they have been placed in the world.
+  const float3 world = Turn(input.position * input.scale, input.heading) + input.origin;
   Output output;
   output.world = world;
   output.position = mul(float4(world, 1.0), g_viewProjection);
+  // THE NORMAL IS NOT SCALED, and for a non-uniform scale that is not exactly right: the correct
+  // transform is the inverse transpose, which for a squash along y tilts the normals of every
+  // sloped face. What it would buy is correct lighting on a building for the seconds it is going
+  // up, at the cost of an inverse transpose per instance on every instance in the frame for the
+  // whole match. The lighting is a little flat on a construction site; nothing else is wrong.
   output.normal = Turn(input.normal, input.heading);
   output.color = input.color;
   output.teamColor = input.teamColor;

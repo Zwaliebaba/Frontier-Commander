@@ -145,6 +145,39 @@ inline constexpr std::string_view GOOD_BIOMES = R"({
   ]
 })";
 
+inline constexpr std::string_view GOOD_INTERFACE = R"({
+  "version": 1,
+  "chrome": {
+    "panelFill": [24, 10, 12, 245],
+    "panelBorder": [199, 214, 220, 255],
+    "panelTitleFrom": [199, 214, 220, 255],
+    "panelTitleTo": [112, 141, 168, 255],
+    "titleText": [255, 255, 150, 255],
+    "bodyText": [222, 226, 230, 255],
+    "dimText": [128, 132, 136, 255],
+    "accent": [255, 196, 64, 255],
+    "warning": [232, 96, 72, 255],
+    "buttonFill": [107, 37, 39, 255],
+    "buttonFillHover": [140, 52, 54, 255],
+    "buttonFillDown": [199, 214, 220, 255],
+    "buttonDisabled": [60, 32, 34, 255],
+    "barEmpty": [40, 20, 22, 255],
+    "barBuild": [120, 180, 220, 255],
+    "barHealth": [96, 200, 108, 255],
+    "barHealthLow": [232, 96, 72, 255]
+  },
+  "commanders": [
+    [100, 255, 100, 255],
+    [200, 50, 50, 255],
+    [200, 200, 30, 255],
+    [120, 180, 255, 255],
+    [190, 110, 230, 255],
+    [60, 210, 200, 255],
+    [240, 130, 190, 255],
+    [170, 170, 170, 255]
+  ]
+})";
+
 inline constexpr std::string_view GOOD_SOUNDS = R"({
   "version": 1,
   "events": [
@@ -210,6 +243,7 @@ inline void WriteGoodTree(const std::filesystem::path& _directory)
   WriteFixture(_directory / "Research.json", GOOD_RESEARCH);
   WriteFixture(_directory / "Damage.json", GOOD_DAMAGE);
   WriteFixture(_directory / "Biomes.json", GOOD_BIOMES);
+  WriteFixture(_directory / "Interface.json", GOOD_INTERFACE);
   WriteFixture(_directory / "Sounds.json", GOOD_SOUNDS);
   WriteFixture(_directory / "Landscapes" / "Slice.json", GOOD_LANDSCAPE);
 }

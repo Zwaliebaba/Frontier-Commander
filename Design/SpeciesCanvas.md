@@ -106,6 +106,8 @@ Both atlases are 256×224, **16 columns by 14 rows of 16×16 cells from ASCII 32
 
 plus a **selection arrow** (`SelectionArrow.bmp` with its shadow) over the selected unit and **markers** placed in the world where an order was given, with a start time so they animate and fade.
 
+**NOT ALL OF THEM ARE TWO-DIMENSIONAL, which this section said until 2026-09-19.** `MouseCursor` has a second entry point, `Render3D` (`GameCursor.cpp:1129`), and the cursors the game spends most of its time drawing go through it: the same four-vertex quad, placed at the point where the cursor's ray meets the landscape and **tilted to lie against the ground**, its up vector the terrain's interpolated normal. The plain ground disc, the placement ring, move-here and the fading order markers are all `Render3D`; the arrow, the selection ring and the turret target are the two-dimensional ones. `SpeciesLook.md` §7.1 has the mechanism, because the owner asked for this cursor in Frontier Commander and `Design/Interface.md` §4 now specifies it.
+
 ---
 
 ## 7. What this means for Frontier Commander

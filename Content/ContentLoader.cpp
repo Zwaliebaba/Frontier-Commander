@@ -4,6 +4,7 @@
 
 #include "Json.h"
 
+#include <array>
 #include <cstdio>
 #include <fstream>
 #include <map>
@@ -755,6 +756,94 @@ constexpr std::uint32_t TABLE_VERSION = 1;
   return true;
 }
 
+/// A colour as Interface.json writes one: four whole numbers, red first, each a byte. Read from the
+/// value rather than from a key, because the commander list holds bare arrays.
+[[nodiscard]] bool ReadRgba8At(Reader& _reader, const Neuron::JsonValue& _value, const char* _what, Rgba8& _out)
+{
+  if (!_value.IsArray() || _value.Size() != 4)
+  {
+    return _reader.Fail(_value, std::string("'") + _what + "' is an array of four whole numbers, red first");
+  }
+  std::array<std::int32_t, 4> channels{};
+  for (std::size_t index = 0; index < channels.size(); ++index)
+  {
+    std::int64_t value = 0;
+    if (!_reader.IntegerAt(_value.At(index), _what, 0, 255, value))
+    {
+      return false;
+    }
+    channels[index] = static_cast<std::int32_t>(value);
+  }
+  _out = Rgba8{static_cast<std::uint8_t>(channels[0]), static_cast<std::uint8_t>(channels[1]), static_cast<std::uint8_t>(channels[2]),
+               static_cast<std::uint8_t>(channels[3])};
+  return true;
+}
+
+[[nodiscard]] bool ReadRgba8(Reader& _reader, const Neuron::JsonValue& _object, const char* _key, Rgba8& _out)
+{
+  const Neuron::JsonValue* member = _reader.Member(_object, _key);
+  return member != nullptr && ReadRgba8At(_reader, *member, _key, _out);
+}
+
+[[nodiscard]] bool ReadInterface(Reader& _reader, const Neuron::JsonValue& _document, InterfaceDesc& _out)
+{
+  if (!_reader.Object(_document, "Interface.json") || !_reader.Version(_document, TABLE_VERSION))
+  {
+    return false;
+  }
+
+  const Neuron::JsonValue* chrome = _reader.Member(_document, "chrome");
+  if (chrome == nullptr || !_reader.Object(*chrome, "'chrome'"))
+  {
+    return false;
+  }
+  for (const ChromeRole& role : CHROME_ROLES)
+  {
+    if (!ReadRgba8(_reader, *chrome, role.name, _out.chrome.*role.member))
+    {
+      return false;
+    }
+  }
+  // Every role is now read; this pass is the other half, and it is the half that catches a
+  // misspelling. Without it 'acccent' would be read as an unknown member the loop above never asked
+  // for, the real accent would come back missing - which is the diagnostic the author would then
+  // have to work backwards from - or, worse, a role renamed in the document would leave the field
+  // at whatever the aggregate initialised it to and the panel would draw in a colour nobody chose.
+  for (std::size_t index = 0; index < chrome->Size(); ++index)
+  {
+    const std::string& key = chrome->KeyAt(index);
+    bool known = false;
+    for (const ChromeRole& role : CHROME_ROLES)
+    {
+      known = known || key == role.name;
+    }
+    if (!known)
+    {
+      return _reader.Fail(chrome->ValueAt(index), "'" + key + "' is not a chrome role of Design/Interface.md 3");
+    }
+  }
+
+  const Neuron::JsonValue* commanders = _reader.Member(_document, "commanders");
+  if (commanders == nullptr || !_reader.Array(*commanders, "'commanders'"))
+  {
+    return false;
+  }
+  if (commanders->Size() != COMMANDER_COLOR_COUNT)
+  {
+    char message[96];
+    std::snprintf(message, sizeof message, "'commanders' holds one colour a seat, which is %zu", COMMANDER_COLOR_COUNT);
+    return _reader.Fail(*commanders, message);
+  }
+  for (std::size_t index = 0; index < COMMANDER_COLOR_COUNT; ++index)
+  {
+    if (!ReadRgba8At(_reader, commanders->At(index), "commanders", _out.commanders[index]))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 [[nodiscard]] bool ReadSounds(Reader& _reader, const Neuron::JsonValue& _document, std::vector<SoundEventDesc>& _out)
 {
   if (!_reader.Object(_document, "Sounds.json") || !_reader.Version(_document, TABLE_VERSION))
@@ -1135,6 +1224,8 @@ bool LoadContent(const std::filesystem::path& _directory, ContentTree& _out, std
              [&](Reader& _reader, const Neuron::JsonValue& _document) { return ReadDamage(_reader, _document, tree.damage); }) ||
       !table(BIOMES_FILE,
              [&](Reader& _reader, const Neuron::JsonValue& _document) { return ReadBiomes(_reader, _document, tree.biomes); }) ||
+      !table(INTERFACE_FILE,
+             [&](Reader& _reader, const Neuron::JsonValue& _document) { return ReadInterface(_reader, _document, tree.ui); }) ||
       !table(SOUNDS_FILE, [&](Reader& _reader, const Neuron::JsonValue& _document) { return ReadSounds(_reader, _document, tree.sounds); }))
   {
     return false;

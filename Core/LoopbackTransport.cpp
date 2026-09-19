@@ -22,7 +22,8 @@ public:
 
   bool Send(ConnectionId _connection, std::span<const std::byte> _bytes) override
   {
-    if (_bytes.size() > MAX_DATAGRAM_BYTES || !IsOpen(_connection))
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
+    if (_bytes.size() > MAX_DATAGRAM_BYTES || !IsOpenUnlocked(_connection))
     {
       ++m_refused;
       return false;
@@ -33,12 +34,13 @@ public:
 
   void Poll() override
   {
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
     // Out: everything queued since the last poll, through the faults, to its destination.
     std::vector<Outgoing> outgoing = std::move(m_outbox);
     m_outbox.clear();
     for (const Outgoing& datagram : outgoing)
     {
-      if (IsOpen(datagram.to))
+      if (IsOpenUnlocked(datagram.to))
       {
         m_network.Carry(m_id, datagram.to, datagram.bytes);
       }
@@ -67,6 +69,7 @@ public:
 
   bool Receive(ConnectionId& _connection, std::span<const std::byte>& _bytes) override
   {
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
     if (m_inbox.empty())
     {
       return false;
@@ -80,6 +83,7 @@ public:
 
   bool Accept(ConnectionId& _connection) override
   {
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
     if (m_acceptable.empty())
     {
       return false;
@@ -91,7 +95,8 @@ public:
 
   void Close(ConnectionId _connection) override
   {
-    if (!IsOpen(_connection))
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
+    if (!IsOpenUnlocked(_connection))
     {
       return;
     }
@@ -106,6 +111,15 @@ public:
 
   [[nodiscard]] bool IsOpen(ConnectionId _connection) const override
   {
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
+    return IsOpenUnlocked(_connection);
+  }
+
+  /// The same answer with the lock already held, for the four functions above that ask it while
+  /// holding it. Separate rather than a recursive mutex: a recursive lock hides exactly the
+  /// re-entry a reader of this class needs to be able to see.
+  [[nodiscard]] bool IsOpenUnlocked(ConnectionId _connection) const
+  {
     for (const ConnectionId open : m_open)
     {
       if (open == _connection)
@@ -118,6 +132,7 @@ public:
 
   [[nodiscard]] std::uint32_t Refused() const override
   {
+    const std::lock_guard<std::mutex> held(m_network.m_lock);
     return m_refused;
   }
 
@@ -125,7 +140,7 @@ public:
 
   void Open(ConnectionId _connection)
   {
-    if (!IsOpen(_connection))
+    if (!IsOpenUnlocked(_connection))
     {
       m_open.push_back(_connection);
     }
@@ -202,6 +217,13 @@ Transport& LoopbackTransport::Host() noexcept
 
 Transport& LoopbackTransport::Connect()
 {
+  // CONNECTING IS LOCKED AND Host() IS NOT, and the difference is the whole of what this lock is
+  // for: Connect grows m_ends, which every End holds a reference into, while Host only reads the
+  // first element that the constructor put there and that nothing ever removes. Every match is
+  // built before its threads start, so this is contended by nobody; it is locked because a caller
+  // that connected a second client mid-match would otherwise reallocate the vector under the host
+  // thread's feet.
+  const std::lock_guard<std::mutex> held(m_lock);
   const ConnectionId id = m_nextClient++;
   m_ends.push_back(std::make_unique<End>(*this, id));
   End& client = *m_ends.back();

@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <deque>
 #include <memory>
+#include <mutex>
 #include <span>
 #include <vector>
 
@@ -39,17 +40,22 @@ public:
   LoopbackTransport(const LoopbackTransport&) = delete;
   LoopbackTransport& operator=(const LoopbackTransport&) = delete;
 
-  void SetFaults(const LoopbackFaults& _faults) noexcept
+  void SetFaults(const LoopbackFaults& _faults)
   {
+    const std::lock_guard<std::mutex> held(m_lock);
     m_faults = _faults;
   }
 
-  [[nodiscard]] const LoopbackFaults& Faults() const noexcept
+  /// BY VALUE, not by reference: a reference into state another thread may be writing is a race the
+  /// caller cannot see, and this is four integers.
+  [[nodiscard]] LoopbackFaults Faults() const
   {
+    const std::lock_guard<std::mutex> held(m_lock);
     return m_faults;
   }
 
-  /// The host end. It exists from construction and never closes.
+  /// The host end. It exists from construction and never closes, so this needs no lock: it reads
+  /// the one element the constructor put there, which nothing moves and nothing erases.
   [[nodiscard]] Transport& Host() noexcept;
 
   /// A new client end, connected to the host; the host accepts it on its next Poll. The end
@@ -67,8 +73,10 @@ public:
     std::uint32_t reordered = 0;
   };
 
-  [[nodiscard]] const Counters& Statistics() const noexcept
+  /// By value, for the reason Faults() is.
+  [[nodiscard]] Counters Statistics() const
   {
+    const std::lock_guard<std::mutex> held(m_lock);
     return m_counters;
   }
 
@@ -87,6 +95,10 @@ private:
   void Carry(ConnectionId _from, ConnectionId _to, std::span<const std::byte> _bytes);
   [[nodiscard]] End* EndOf(ConnectionId _connection) noexcept;
 
+  /// Guards everything below and every End. Recursive-free by construction: the Transport overrides
+  /// and this class's own public functions take it, and the private helpers they call - Carry,
+  /// EndOf, and an End's Queue, Open, Connecting and Forget - assume it is already held.
+  mutable std::mutex m_lock;
   LoopbackFaults m_faults;
   Random m_random;
   Counters m_counters;

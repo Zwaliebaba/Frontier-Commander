@@ -181,7 +181,7 @@ jobs:
             exit 0
           }
           $suites = foreach ($project in $projects) {
-            $dll = "x64\$env:CONFIGURATION\$($project.BaseName).dll"
+            $dll = "$env:PLATFORM\$env:CONFIGURATION\$($project.BaseName).dll"
             if (-not (Test-Path $dll)) { throw "$dll was not built. A suite that does not exist is not a suite that passed." }
             $dll
           }

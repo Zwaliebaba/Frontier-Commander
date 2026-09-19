@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <climits>
 #include <cmath>
+#include <cstddef>
 #include <cstring>
 #include <iterator>
 #include <string>
@@ -27,10 +28,18 @@ constexpr std::uint32_t MINIMUM_INSTANCE_CAPACITY = 64;
 
 } // namespace
 
-GeometryPass::GeometryPass(GraphicsDevice& _device, const ModelBuffers& _models, std::uint32_t _sceneSampleCount)
+GeometryPass::GeometryPass(GraphicsDevice& _device, const ModelBuffers& _models, std::uint32_t _sceneSampleCount,
+                           std::span<const Frontier::Rgba8> _commanderColors)
   : m_device(&_device),
     m_models(&_models)
 {
+  m_commanderColors.fill(UNKNOWN_COMMANDER_COLOR);
+  for (std::size_t seat = 0; seat < m_commanderColors.size() && seat < _commanderColors.size(); ++seat)
+  {
+    const Frontier::Rgba8& color = _commanderColors[seat];
+    m_commanderColors[seat] = PackedRgba8(color.red, color.green, color.blue, color.alpha);
+  }
+
   ID3D12Device* device = _device.Device();
 
   // b0 as a root descriptor, exactly as the terrain pass declares it, because the constants are the
@@ -60,6 +69,7 @@ GeometryPass::GeometryPass(GraphicsDevice& _device, const ModelBuffers& _models,
     {"ORIGIN", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1},
     {"HEADING", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 12, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1},
     {"TEAMCOLOR", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 1, 20, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1},
+    {"SCALE", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 24, D3D12_INPUT_CLASSIFICATION_PER_INSTANCE_DATA, 1},
   };
   // Every member set by hand: the description holds enumerations with no zero enumerator.
   D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline;
@@ -166,8 +176,10 @@ void GeometryPass::Draw(ID3D12GraphicsCommandList* _list, D3D12_GPU_VIRTUAL_ADDR
     }
     // The one place a heading becomes a pair of floats: once per instance rather than once per
     // vertex, which is what the vertex shader's two multiply-adds buy.
-    const GeometryInstance ordered{
-      instance.x, instance.y, instance.z, std::cos(instance.headingRadians), std::sin(instance.headingRadians), instance.teamColor};
+    const std::uint32_t color =
+      instance.colorIndex < m_commanderColors.size() ? m_commanderColors[instance.colorIndex] : UNKNOWN_COMMANDER_COLOR;
+    const GeometryInstance ordered{instance.x, instance.y, instance.z, std::cos(instance.headingRadians), std::sin(instance.headingRadians),
+                                   color};
     m_ordered[m_runCursor[instance.modelId]++] = ordered;
   }
 

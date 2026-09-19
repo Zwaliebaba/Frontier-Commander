@@ -3,6 +3,7 @@
 #include "BiomeDesc.h"
 #include "ComponentDesc.h"
 #include "DamageTable.h"
+#include "InterfaceDesc.h"
 #include "LandscapeDefinition.h"
 #include "ModelDesc.h"
 #include "ResearchItemDesc.h"
@@ -60,6 +61,10 @@ struct ContentTree
   std::vector<ResearchItemDesc> research;
   DamageTable damage;
   std::vector<BiomeDesc> biomes;
+  /// The chrome palette and the commander colours (Content/InterfaceDesc.h). NOT named `interface`:
+  /// the Windows SDK defines that as a macro for `struct`, and a member spelled that way compiles
+  /// everywhere except the one platform this game is built on.
+  InterfaceDesc ui;
   std::vector<LandscapeDefinition> landscapes;
   std::vector<std::string> landscapeIds; ///< The file stem of each landscape, in the same order
   std::vector<StampDesc> stamps;

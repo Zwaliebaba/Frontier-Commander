@@ -42,6 +42,7 @@ inline constexpr const char* STRUCTURES_FILE = "Structures.json";
 inline constexpr const char* RESEARCH_FILE = "Research.json";
 inline constexpr const char* DAMAGE_FILE = "Damage.json";
 inline constexpr const char* BIOMES_FILE = "Biomes.json";
+inline constexpr const char* INTERFACE_FILE = "Interface.json";
 inline constexpr const char* SOUNDS_FILE = "Sounds.json";
 inline constexpr const char* LANDSCAPES_DIRECTORY = "Landscapes";
 inline constexpr const char* STAMPS_DIRECTORY = "Stamps";

@@ -61,6 +61,11 @@ tasks:
       and the right button giving orders while the middle button aims the camera, which M0 had
       bound the other way and G1 changes. The owner's merge of the pull request is the acceptance
       of all nine.
+      RULING 3 WAS REWRITTEN ON 2026-09-19 and this note is left as it was written, because the
+      point of the note is what D1 decided. The owner asked for Species's arrangement - the mouse
+      connected to the camera with no button held, Escape releasing it - so aiming comes off the
+      buttons altogether, the pointer has the two modes Design/Interface.md §4 now names, and the
+      pause menu moves to F10. G1b carries it; K7 carries the ground cursor that goes with it.
 
   - id: C1
     title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
@@ -170,6 +175,16 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: done
+    notes: >
+      THE LAST ACCEPTANCE LINE IS STALE AS WRITTEN, corrected 2026-09-19. It says getting GameData
+      beside the executable is the owner's step and that no build target does it; a build target
+      does it now - FrontierCommander.vcxproj's post-build event mirrors GameData into $(TargetDir)
+      with robocopy and treats only errorlevel 8 and above as failure, which is right, because
+      robocopy reports 0 to 7 on success and a plain check for a non-zero exit would fail every
+      build. So the line is checkable, and what is left of it is the check itself: that the
+      capture's frames are coloured by LandscapeDefault.dds rather than by the built-in gradient.
+      G2's capture is the first one that runs with the content tree beside it, and it confirms this
+      line or reopens it.
 
   - id: C3
     title: Write Tools/CheckBalance.py, the cost-efficiency script
@@ -1323,6 +1338,14 @@ tasks:
       minutes. Snapshot version 15 carries it.
 
       Measured: NetTests 49 passed, 0 failed; SimTests still 143.
+      A DEFECT OF THIS TASK WAS FOUND AND FIXED IN m1-vertical-slice/G1a ON 2026-09-19. The fog was
+      the one field encoded against a rolling per-client grid that advanced on every ENCODE rather
+      than against the baseline the client ACKNOWLEDGED, so every frame Net/Client.cpp dropped -
+      which is every frame published while an acknowledgement is in flight, not a lossy-link case -
+      lost its fog runs for good and the commander's map diverged for the rest of the match. It made
+      the first capture of a real match come back entirely black. FrameRecord now carries the runs
+      its frame sent and ClientView::fog advances only on acknowledgement; G1a's notes carry the
+      whole account, and ConvergenceTests now compares the fog cell for cell rather than by size.
 
   - id: N3
     title: Net client endpoint - frames in, acknowledgements, the reliable order stream
@@ -1410,6 +1433,9 @@ tasks:
       - Tests/ReplicaTests/InterpolationTests.cpp
       - Tests/ReplicaTests/ReplicaTests.vcxproj
       - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
+      # Deleted: the placeholder suite, which the definition of done says the first real test in a
+      # project replaces (ImplementationPlan.md §4).
+      - Tests/ReplicaTests/SuiteSmoke.cpp
     acceptance:
       - Replica applies created, changed and removed records, keeps ghosts for structures, holds the seat's own state, designs by DesignState, and its commander's fog grid from fog deltas
       - Interpolation keeps the last two frames per object and evaluates positions and headings at a time 100 milliseconds behind the newest frame, which is the first float conversion and the only one, never outside the segment between the two frames
@@ -1422,7 +1448,61 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE REPLICA STARTS ITSELF FROM THE CLIENT, and that is the finding of this task rather than a
+      convenience. The first version took the seat and the landscape size through a Begin() the
+      caller made after joining - and the convergence test came back with an EMPTY replica. Net's
+      Client reads the JoinAccepted and delivers the first full frame inside the SAME Advance
+      (Net/Client.cpp), so there is no moment between the two to call anything in: Begin ran after
+      the first frame had been applied and cleared it, and every frame after that was a delta the
+      replica had no baseline for. G1a would have hit the identical trap with no signal. The
+      constructor now takes the Client and Apply adopts the seat and the landscape on every full
+      frame, which also makes a rejoin into a different seat fall out rather than need a rule.
+      A DEVICE THAT SENT NO CHANGE DID NOT MOVE, which the protocol says by omission: an empty
+      change is never sent. Without accounting for that, a device standing still for a hundred ticks
+      and then moving hands Evaluate a segment spanning the whole still period and is dragged across
+      it in the one frame that ends it. Apply stamps the held position at the last frame THIS
+      REPLICA APPLIED before pushing the new sample - not a guess, and not an assumption about the
+      publish rate either, only what this replica observed.
+      A GHOST NEEDS NO SECOND COLLECTION. The host sends a remembered structure in the same list as
+      a standing one, at its last-seen state with no hit points (Net/FrameEncoder.cpp's WireGhost),
+      and Net/Interest.h guarantees an id is never in both. So the id never leaves the replica and
+      the flag is one comparison in the line that takes the record.
+      MUTATION TESTING FOUND TWO HOLES IN THE FIRST SUITE, and they are the reason it has seven
+      tests and not five. With device removals ignored the suite still passed - nothing in it ever
+      died. With every position delta thrown away it still passed - nothing in it ever moved. The
+      removal test and the walking test exist because of those two runs, and each carries the
+      assertion that would fail again.
+      WHAT IS ASSERTED WHILE SOMETHING MOVES IS NOT FULL CONVERGENCE. A replica is one publish
+      behind a moving world - that is what interpolating 100 ms back is for - so a replica equal to
+      the simulation mid-stride would mean the client had guessed ahead, which Interpolation.h
+      refuses to do. The walking test holds the object set and the following, and makes the full
+      claim once the world stops.
+      THE SIMULATION WAS RIGHT AND THE TEST WAS WRONG, twice. Razing a seat's only structure
+      annihilates it, S11 ends the match and Sim::Advance stops on m_finished, so the frames the
+      test was waiting for never came; the removal test now gives the seat two. And the first
+      settling loop stopped the simulation and pumped the network alone, which the host answers by
+      republishing until acknowledged - true, but a state the game is never in, and it took the
+      sequence numbers twenty publishes past a tick that never changed. Settling is ordinary ticks
+      now.
+      Verified in the session on Linux: CheckTaskDag, CheckFormat and CheckProjectFiles clean;
+      -fsyntax-only over Replica.cpp and Interpolation.cpp; and the whole of ConvergenceTests built
+      against the real Sim, Net's Host and Client and the LoopbackTransport and RUN - seven tests,
+      zero failures, including the seeded-loss run at 250 per mille. The MSVC build, clang-tidy and
+      InterpolationTests under vstest are CI's.
+      AND CI HAS NOW RUN THEM. clang-tidy 22.1.8 found two things clang-tidy 18 was not asked about
+      in this session, both fixed in the head this note sits on: Replica's constructor was noexcept
+      while default-constructing four maps, three vectors and a DesignStore, every one of which
+      allocates (bugprone-exception-escape), and the heading wrap cast through std::int8_t
+      (bugprone-signed-char-misuse). The heading step is arithmetic on the unsigned difference now,
+      and the replacement was checked against the original over all 65,536 heading pairs with no
+      mismatch rather than reasoned about.
+      DONE ON THE EVIDENCE OF RUN 35435306312 (head 530d206): the MSVC build, vstest over every test
+      DLL, and clang-tidy 22.1.8 over all 162 translation units all ran. The two translation units
+      that failed that run were m1/K3's - Tests/ClientTests/UiLayoutTests.cpp and Client/UiPanel.cpp
+      - and clang-tidy reached them only because the build and the tests before it had passed, which
+      is what makes Replica's half of that run evidence rather than an assumption.
 
   - id: R2
     title: Replica render view, model composition at markers, and picking
@@ -1431,26 +1511,43 @@ tasks:
       composed from its chassis, drive and module models at their markers, plus the picking that
       turns a click into an object, so that the executable holds no logic worth a test.
     project: Replica
-    depends_on: [R1, C4]
+    depends_on: [R1, C4, C6]
     blocked_by:
       - m0-foundation/T20
+    # THE FILE LIST REACHES OUT OF Replica\ ON PURPOSE. The acceptance below asks RenderView to
+    # carry a selection flag, construction progress, a colour INDEX rather than a packed colour and
+    # a wreck-or-projectile distinction (Design/Interface.md §11 row 2), and RenderView is Core's.
+    # Client/GeometryPass.cpp packs teamColor straight into the instance buffer and
+    # Client/ModelBuffers.h mirrors the field, so the index has to be resolved against C6's
+    # commander colours somewhere, and the geometry pass is where the palette is known once per
+    # match rather than once per instance. This is a three-layer change, not a Replica-only one.
     files:
+      - Core/RenderView.h
+      - Client/GeometryPass.h
+      - Client/GeometryPass.cpp
+      - Client/ModelBuffers.h
+      - Client/Client.vcxproj
       - Replica/RenderViewBuilder.h
       - Replica/RenderViewBuilder.cpp
       - Replica/ModelComposer.h
       - Replica/ModelComposer.cpp
+      - Replica/Interpolation.cpp
+      - Client/Shaders/GeometryVS.hlsl
       - Replica/Picking.h
       - Replica/Picking.cpp
       - Replica/Replica.vcxproj
       - Replica/Replica.vcxproj.filters
       - Tests/ReplicaTests/RenderViewTests.cpp
+      - Core/FixedPoint.h
       - Tests/ReplicaTests/PickingTests.cpp
       - Tests/ReplicaTests/ReplicaTests.vcxproj
       - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
     acceptance:
-      - "RenderViewBuilder fills Core's RenderView each frame: for every replica object one instance per model part with its interpolated transform, the seat's colour index, a rank badge, a selection flag and, for a structure under construction, its progress; wrecks and short-lived projectile instances from events; the terrain chunks whose heights changed since the last frame; the commander's fog grid for the fog pass and the minimap"
+      - "RenderViewBuilder fills Core's RenderView each frame: for every device and structure the replica holds, one instance per model part with its interpolated transform, the seat's colour index, a rank badge, a selection flag and, for a structure under construction, its progress; wrecks as one instance each; the terrain chunks the structures applied this frame flattened; the commander's fog grid for the fog pass and the minimap"
+      - "FEATURES AND PROJECTILES ARE NOT THIS TASK'S, and the line above says so rather than leaving them implied. This acceptance asked for both before anybody checked whether the content existed: Sim/Feature.h's `design` indexes a feature table Content does not have, and no row anywhere says what a shot looks like. C7 and C8 own them, each carrying its own RenderViewBuilder change, and each depends on this task rather than blocking it - so the four sources that have data ship now and neither gap is lost"
       - ModelComposer places a drive model at each of the chassis's MarkerDrive markers and a module model at each MarkerMount, carrying the module's MarkerMuzzle forward, so a device is a tree of three model kinds and the model count is a sum, not a product
       - Picking finds the nearest replica object under a screen ray and the objects inside a screen rectangle, as pure functions over the replica and the camera matrices
+      - "Core/RenderView.h carries what Design/Interface.md §11 row 2 asks of it: a selection flag, construction progress, a commander colour INDEX in place of the packed teamColor, and a wreck-or-projectile distinction; GeometryPass takes C6's eight commander colours once and resolves the index, so the palette is a table rather than a number in a vertex buffer, and Interface.md §11 row 2 is struck"
       - "Tests: the composition of a heavy with two modules yields the expected instance list; a construction site scales; a ray picks the nearer of two overlapping devices; a rectangle selects only own devices"
     verify:
       - python3 Tools/CheckTaskDag.py
@@ -1459,7 +1556,151 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      DONE SO FAR: Core/RenderView.h carries everything Design/Interface.md §11 row 2 asks of it -
+      RenderInstanceKind, a commander colour INDEX in place of the packed teamColor, buildPercent,
+      selected and a per-row draw scale - and Client/GeometryPass takes C6's eight colours once per
+      match and resolves the index. Replica/ModelComposer composes a device from its chassis, drive
+      and module models at the chassis's MarkerDrive and MarkerMount markers, carries each module's
+      MarkerMuzzle forward through two frames, and composes a structure with its modules. Verified
+      on Linux: 22 ReplicaTests (14 new), the whole convergence probe still green, clang-tidy 18
+      clean over ModelComposer, Interpolation and RenderViewTests.
+      THE KIND IS NOT A DRAWING SWITCH. TechnicalDesign.md §6.2's pass table draws "every device,
+      structure, feature and wreck" with "team colour substituted", so GeometryPass does not read
+      RenderInstanceKind at all; it is what picking and the minimap read, a wreck being something
+      drawn that nothing selects.
+      THE ROTATION IS Client/Shaders/GeometryVS.hlsl's Turn WRITTEN AGAIN and has to be: the
+      chassis's own vertices are turned by that function, so a marker on the chassis has to land
+      where they do. Heading zero looks along +z and grows toward +x. A sign the other way round
+      mirrors every drive and every mount about the device and reads as a different model rather
+      than as a defect, which is why a case pins it by hand-worked numbers rather than by
+      recomputing the implementation.
+      THREE CONVERSIONS HAD THREE HOMES AND NOW HAVE ONE. Client/ModelBuffers.cpp kept a WorldUnits,
+      Replica/Interpolation.cpp a RADIANS_PER_HEADING_SUBSTEP, and the composer was about to write a
+      third of each; both are in Core/RenderView.h now, beside the aggregate whose fields they
+      produce, with the standing rule that nothing in Sim may call either of them.
+      TWO GAPS IN THIS TASK'S OWN FILE LIST, found by reading rather than by guessing.
+      (1) Client/Shaders/GeometryVS.hlsl HAS NO SCALE INPUT AT ALL - its instance attributes are
+      origin, heading and teamColor - while every component and structure row carries
+      modelScaleHundredths ("so that one model serves two rows at two sizes") and this task's own
+      acceptance says a construction site scales. So GeometryInstance and the vertex shader both
+      have to change, and the shader was not in the file list; it is now.
+      (2) Content's ModelMarker carries a pitchBinaryAngle that RenderInstance cannot express, so a
+      part on a pitched marker is drawn level. Every M1 marker is level - a drive sits on the ground
+      and a mount faces out - so nothing is wrong on screen yet, but the content already records
+      something the render path throws away. Raising it rather than adding a pitch nobody asked for.
+      PICKING IS DONE: a world ray from an authored screen point, the nearest object under it, and
+      the devices inside a screen rectangle, all as pure functions. §5's rules rather than this
+      task's opinion - a click takes the nearest object of any seat because an enemy one is an
+      inspection, a rectangle takes DEVICES OF ONE SEAT because "a rectangle never selects
+      structures and never selects another commander's anything", and a wreck, a feature and a
+      projectile are picked by nothing. Refusing a ray that starts on a panel stays the caller's;
+      the interface already knows where its panels are.
+      REPLICA HAS NO MATRIX TYPE AND MAY NOT HAVE ONE - it includes no platform header ever and
+      CheckProjectFiles refuses one - so the camera arrives as sixteen floats, row major, row vector
+      times matrix, which is what XMStoreFloat4x4 gives and what GeometryVS.hlsl's mul computes. The
+      unprojection is here rather than in the executable BECAUSE that is where it can be tested,
+      which is this task's whole intent.
+      THE FIXTURE CAMERA WAS WRONG IN A WAY THAT LOOKED RIGHT. Its projection and its inverse agreed
+      with each other and described a camera looking the other way; four cases failed and not one of
+      them said which. The z row is written out with the reversed depth of ADR-005 spelled beside
+      it now - near at 1, far at 0.
+      MUTATION TESTING, TWELVE TRIED. Two survived and both were worth the finding. The rectangle
+      case moved both axes at once, so a box that had lost its right-edge test entirely still
+      excluded the device by its bottom edge; each of the four edges has its own case now. And the
+      behind-the-ray early-out turned out NOT to be load-bearing - the distance comes out negative
+      anyway and the caller drops it - so the comment says it is an early-out rather than a guard,
+      which is what it had claimed to be.
+      RenderViewBuilder IS BLOCKED ON CONTENT THAT DOES NOT EXIST, for two of the five things this
+      task's acceptance asks it to fill. Found by reading before writing, and recorded rather than
+      invented: a feature table and a projectile's appearance are content-schema decisions, and the
+      last three of those became C6 and N4 rather than being guessed at inside a task.
+      (a) FEATURES HAVE NO TABLE. Sim/Feature.h's `design` is documented "Row index in the feature
+      table"; Content/ContentTree.h has no feature table and GameData ships no Features.json. So a
+      feature arrives over the wire naming a row of nothing, and the builder cannot resolve its
+      model. Nothing places features in a match yet either, so M1 may simply not need them - but the
+      acceptance says "every replica object".
+      (b) A PROJECTILE HAS NO APPEARANCE. TechnicalDesign.md §5.3 is clear that "projectiles and
+      effects inside the set are sent as short-lived events rather than objects", which is what the
+      acceptance means by "from events" - but no row anywhere says what a shot LOOKS like.
+      ModuleDesc carries a model whose MarkerMuzzle is where the shot leaves, and no projectile
+      model, no tracer, no lifetime. There is nothing to draw.
+      THE THIRD ONE RESOLVED ITSELF AND IS WORTH RECORDING AS SETTLED. changedChunks looked blocked
+      too - the replica holds no terrain heights and Net/Records.h sends none - until the reason
+      turned up in that file: "a snapshot carries the landscape's flatten deltas and the wire must
+      not, because the terrain under an unscouted base is not public (§5.2)". It is a fog boundary,
+      not an omission. The client generates the landscape from the definition it was given at the
+      join and flattens it under the structures it can SEE, which is exactly why StructureState
+      carries `y`, "the flattened height under the footprint". So the builder computes the changed
+      chunks from the structures it applied this frame, and the terrain a commander has not scouted
+      stays unflattened on his machine, which is the point.
+      RenderViewBuilder IS WRITTEN for the four sources that have data: devices at the pose
+      Interpolation gives, structures at their footprint's CENTRE (a model is authored about its own
+      origin, and a structure whose origin sat on a corner would draw a footprint away from where
+      the simulation says it is), wrecks as one instance each - a device's wreck is its CHASSIS and
+      not its whole tree, because the drives and the modules came apart with everything else - and
+      the fog straight through, the replica's own bytes without a table.
+      IT REMEMBERS WHAT IT HAS FLATTENED, which is the one piece of state in it. The replica says
+      what structures there ARE and not which arrived this frame, and re-flattening every structure
+      every frame would rebuild every chunk of a base on every frame of the match; the builder keeps
+      what it last flattened and reports the difference, including for a structure that is GONE,
+      because a razed building leaves its ground as it left it. ForgetTerrain() exists for the full
+      frame a rejoin brings.
+      A GHOST IS DRAWN AND NOT PICKED. It is what the commander remembers of a building he cannot
+      see now, so a click on one would select something that may not be there; §5's inspection is
+      for what is visible. The fog pass darkens it like everything else.
+      TESTING IT NEEDED A DECISION AND THE DECISION IS RECORDED. Build() takes a Replica, which
+      needs a Net::Client, which needs a host to have sent a JoinAccepted - the whole stack, which
+      is what ConvergenceTests already stands up and what RenderViewTests deliberately does not. So
+      the chunk arithmetic, which is the only part that is wrong by one chunk at an edge rather than
+      wrong by a crash, is a FREE function and has eight cases; the walk itself is covered by the
+      stack, and a full-stack case for it belongs beside ConvergenceTests rather than here.
+      MUTATION TESTING FOUND THE SUITE WEAK AND THEN FOUND THE CODE REDUNDANT. Four of six survived
+      the first round. One was a real gap - every case moved x and none moved y, so taking the minus
+      one off the y line alone failed nothing - and another needed a footprint at a chunk's FIRST
+      cell to show at all. The other two survived because the code is genuinely redundant: the clamp
+      to the landscape's last cell and the off-landscape refusal both fall out of the loop bound, so
+      the comment says which guards are load-bearing and which are there to keep the rule visible.
+      THE DRAW SCALE REACHES THE SHADER, which was the gap this task's file list did not name:
+      GeometryVS.hlsl's instance attributes were origin, heading and teamColor, and every content
+      row carries a modelScaleHundredths. GeometryInstance gains three floats and the vertex shader
+      multiplies before it turns - the scale is in the model's own axes, so a row drawn at another
+      size has to be scaled where its vertices are and not after they are placed in the world.
+      A SITE RISES, AND THAT IS A READING RATHER THAN A RULING. The design says a structure under
+      construction "is a thing on the landscape" and that the panel shows it a barBuild bar; neither
+      says what it looks like in the world, and this task's acceptance says only "a construction
+      site scales". Rising is what "scales" most naturally means for a building going up, and
+      scaling all three axes would read as a small finished building rather than an unfinished one.
+      The combination is Core/RenderView.h's InstanceScale rather than two lines of HLSL, BECAUSE
+      THAT MAKES IT A UNIT TEST: it is two multiplies either way, and a shader cannot be run on a
+      machine with no GPU.
+      THE NORMAL IS NOT SCALED and that is stated rather than hidden. For a non-uniform scale the
+      correct transform is the inverse transpose, which would buy correct lighting on a building for
+      the seconds it is going up and cost an inverse transpose per instance on every instance in the
+      frame for the whole match. A construction site is lit a little flat; nothing else is wrong.
+      THE INSTANCE BUFFER'S OFFSETS ARE STATIC_ASSERTED beside the struct now. The input layout is
+      written from them and nothing checks the two agree: a mismatched element reads whatever lies
+      at that byte and DRAWS it, so the failure is a model at the wrong size rather than a
+      diagnostic. A member inserted above `scale` fails the build instead of the frame.
+      THE WALK IS COVERED FROM THE STACK, beside ConvergenceTests, which is where the fixture that
+      can build one lives: a match is run to convergence and the render view built from it, then
+      the instances, the pick candidates, the selection, the fog and the chunk list are asserted
+      against what the host actually put there. The convergence fixture's rows gained models for it
+      - a row naming no model composes nothing, and a render view that came back empty would pass a
+      case that only counted.
+      MUTATION TESTING FOUND THREE HOLES IN THAT ONE CASE, each of them a branch no match in the
+      file reached: a GHOST as a pick candidate (this match makes none, so the rule now sits in the
+      ghost case where there is one), ForgetTerrain, and a RAZED structure's chunks. All eight
+      mutations are caught now.
+      AND THE PROBE HARNESS WAS LYING. Its runner listed the cases by name, so the render-view case
+      simply did not run and the suite still reported every test passing - the same shape of fault
+      as the stale binary the Client harness had. It is generated from the file's own TEST_METHODs
+      now, so a case that is added cannot be silently skipped.
+      DONE: the four acceptance lines hold, Design/Interface.md §11 row 2 is struck, and the two
+      things this task asked for that have no content behind them are C7 and C8 with rows of their
+      own. What CI has verified: runs 112 (picking), 114 (the builder) and 115 (the draw scale and
+      the shader), the last of which is the only part this session could not compile.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals
@@ -1596,7 +1837,7 @@ tasks:
       UI-first through the router of M0, so that the game's panels are assembled rather than
       hand-drawn.
     project: Client
-    depends_on: [D1, C4]
+    depends_on: [D1, C4, C6]
     blocked_by:
       - m0-foundation/T19
       - m0-foundation/T20
@@ -1611,6 +1852,8 @@ tasks:
       - Client/BitmapFont.cpp
       - Client/UiPass.h
       - Client/UiPass.cpp
+      - Client/UiDraw.h
+      - Client/UiDraw.cpp
       - Client/UiInputSink.h
       - Client/UiInputSink.cpp
       - Client/Shaders/UiVS.hlsl
@@ -1619,10 +1862,13 @@ tasks:
       - Client/Client.vcxproj.filters
       - Tests/ClientTests/UiLayoutTests.cpp
       - Tests/ClientTests/BitmapFontTests.cpp
+      - Tests/ClientTests/UiInputSinkTests.cpp
+      - Tests/ClientTests/UiDrawTests.cpp
+      - Tests/ClientTests/ScaleModeTests.cpp
       - Tests/ClientTests/ClientTests.vcxproj
       - Tests/ClientTests/ClientTests.vcxproj.filters
     acceptance:
-      - "Panels are fixed rectangles at the authored resolution holding widgets: label, button, toggle, list, progress bar, icon, text field taking WM_CHAR characters; flat rectangles with one-pixel borders in the chrome palette of SpeciesCanvas.md §3"
+      - "Panels are fixed rectangles at the authored resolution holding widgets: label, button, toggle, list, progress bar, icon, text field taking WM_CHAR characters; flat rectangles with one-pixel borders in the chrome palette, which is READ FROM C6's GameData/Interface.json and never spelled as a constant in Client - Design/Interface.md §3 makes the look of a panel data, and a toolkit that hard-codes it leaves nobody owning the move"
       - BitmapFont loads the Spectrum atlas from its DDS through Core's TextureFile (16 by 14 cells from ASCII 32, glyph advance 0.6 of the size per SpeciesCanvas.md §4) and lays out text as quads at 1:1; UiPass draws panels, text and icons orthographically, alpha blended, after the fog pass
       - UiInputSink is the router's first sink; a widget that acts on an event consumes it, and a panel under the cursor consumes clicks so they never reach selection
       - "Tests: layout arithmetic, text measurement, the consume rule with stub events"
@@ -1633,31 +1879,154 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
     notes: >
       The toolkit's rules are documented in the header comment of UiPanel.h, not in a prose
       file: project directories are flat (AGENTS.md §2).
+      THE ACCEPTANCE AND THE DESIGN DISAGREED ABOUT THE FONT, and the design won. This task's
+      acceptance quotes SpeciesCanvas.md §4's "glyph advance 0.6 of the size"; Design/Interface.md
+      §3 rules 16 pixels a glyph box with a 16-pixel advance and states that a line of n characters
+      is exactly 16n, "which is the arithmetic every layout in this document uses", and §12 records
+      it as a ruling the owner's merge accepted. 0.6 of 16 is 9.6 - a glyph on a fraction of a pixel,
+      resampled - which is the one thing ADR-004's authored resolution and pillar 3 exist to
+      prevent. Species scaled its whole interface to the window and this game does not, so the
+      acceptance line is Species's rule quoted before §3 ruled against it. The implementation
+      follows §3 and a test pins the 16 by name so that a return to 0.6 fails rather than blurs.
+      THE AUTHORED RESOLUTION MOVED FILES. AUTHORED_WIDTH_PIXELS and AUTHORED_HEIGHT_PIXELS were in
+      SceneTarget.h, which cannot be included without Direct3D; the whole interface layout is
+      authored against them, so they are in ScaleMode.h now and SceneTarget.h includes it. That is
+      what makes the layout, the font and the consume rule testable on a machine with no GPU, which
+      is the difference between this task's first three pieces being verified and being guessed at.
+      UiLayout NAMES NO PANEL, against the obvious reading of "the M1 panels". Minimap, Selection
+      and Command are game concepts and an engine that knew them would be in the wrong layer
+      (AGENTS.md R9); §2's table of rectangles is K4's. What is here is the arithmetic any panel
+      needs.
+      A THIRD TEST FILE. The file list names UiLayoutTests and BitmapFontTests; the consume rule is
+      neither layout nor text, so it is UiInputSinkTests. ScaleModeTests grows the round trip
+      Design/Interface.md §11 row 1 asks for.
+      A TEST THAT CRASHED RATHER THAN FAILED, found by running the suite: BitmapFontTests reads the
+      shipped atlas from the tree, and the case that pokes its width field indexed a vector that was
+      empty when the file could not be read. It asserts and RETURNS now - the return is not belt and
+      braces, because a harness that only counted a failure would carry straight on into the same
+      read.
+      Verified in the session on Linux by BUILDING AND RUNNING all four test files against the real
+      sources: 41 tests, zero failures, including the shipped SpectrumFont.dds at 256x224, the §2
+      client-area and column arithmetic, AuthoredFromClient's round trip at all three scale modes
+      (lossless at Exact and Integer, within one authored pixel at Bilinear) and the whole consume
+      rule with stub events. With the atlas removed the suite fails cleanly rather than crashing.
+      AND THE GUARD ITSELF CAME BACK RED. Assert::Fail is [[noreturn]] under the framework, so the
+      `return` after it is unreachable code - MSVC's C4702, fatal under /warnaserror. The guard is
+      Assert::IsFalse followed by a reachable return now, which stops the read under a harness that
+      only counts AND satisfies a compiler that knows Fail never comes back. The session's Linux
+      harness was the thing at fault rather than the code: its stub counted a failure and carried
+      on, where the framework throws. It marks Fail [[noreturn]], throws on a failed assertion and
+      builds with -Wunreachable-code now, and reproduces C4702 on the old guard - so this class of
+      finding is caught here rather than in CI next time.
+      AND CLANG-TIDY FOUND TWO MORE, which is the third round CI caught and the session did not.
+      The five function-local constexpr rectangles in UiLayoutTests were camelCase, where
+      .clang-tidy sets ConstexprVariableCase to UPPER_CASE (R3) and every other function-local
+      constexpr in Tests already is; they are LEFT, RIGHT, AREA and BAR now. And OnPointerUp's
+      switch had TextField and the three readouts both ending in a bare break, which
+      bugprone-branch-clone reads as one branch written twice. MERGING THEM WOULD HAVE BEEN A LIE:
+      a text field is interactive and a bar is not, and a reader meeting the four kinds under one
+      label would conclude the opposite. They say different things now - the readouts clear
+      result.widget, for the reason the empty space under a list's last row does.
+      THE REAL FIX WAS TO THE SESSION, NOT THE CODE: clang-tidy runs on Linux after all, over the
+      same stripped sources the test harness builds, against this repository's own .clang-tidy with
+      ExcludeHeaderFilterRegex dropped (clang-tidy 18 does not know that key; the CI pin is 22.1.8).
+      It reproduced both findings before the fix and 217 checks come back clean over every file of
+      R1 and K3 after it. 18 is not 22 and will not catch everything 22 does, but "clang-tidy cannot
+      be run here" was wrong, and acting on it cost three CI rounds.
+      UiPass AND A FILE THE LIST DID NOT NAME. The declared files are UiPass.h/.cpp and the two
+      shaders; what is written is those four plus Client/UiDraw.h and Client/UiDraw.cpp, and the
+      split is the same one that moved AUTHORED_WIDTH_PIXELS out of SceneTarget.h. UiPass.h includes
+      d3d12.h, so everything declared beside the pass can only be exercised where that header is;
+      turning a panel into quads is rectangles, insets, thresholds and colour choices, which is
+      arithmetic that comes out wrong by one pixel rather than by a crash. UiDraw holds it, has no
+      Direct3D, and is 16 cases of UiDrawTests. UiPass is left with the upload, the pipeline and one
+      DrawInstanced. UiPanel.h's "UiPass.h turns it into quads" was updated to say UiDraw.h.
+      ONE DRAW CALL, BECAUSE ALPHA IS NOT COMMUTATIVE. Both atlases are bound at once and the pixel
+      shader branches on a flat integer the vertex carries, rather than batching by texture: a batch
+      reorders the quads, and reordering them paints a button's caption underneath the button. The
+      branch is uniform across a quad and costs a comparison.
+      TWO FIELDS ADDED TO UiWidget. A List had no row captions at all - `maximum` says how many rows
+      it has and `text` is one string - so a list was a widget kind the toolkit could not draw;
+      `rows` is them, with `maximum` still the authority the hit test and the row rectangles are
+      built on. And a ProgressBar had no way to say whether it was a build bar or a health bar,
+      which §3 needs to pick between barBuild, barHealth and barHealthLow; `barStyle` says.
+      §3 LEAVES A BAND UNNAMED and UiDraw.cpp states its reading rather than hiding it: the table
+      gives barHealth "at or over half" and barHealthLow "under a quarter" and nothing between, so
+      the quarter is the threshold and the band above it takes the ordinary colour.
+      THE ICON SHEET DOES NOT YET MATCH THE RULE IT IS DRAWN BY, and this is already tracked rather
+      than new: §3 rules an icon "a single-channel mask tinted at draw time, never a coloured
+      bitmap", while GameData\Textures\Icons.dds is the eight 64x64 Species order banners C4
+      imported unkeyed - 468 colours, alpha 255 everywhere - which ADR-010 says stand "until the
+      icon atlas is rebuilt from this game's own art" and §11 row 7 assigns to C4 as a blocker on
+      K4. UiPass implements §3 (a 32x32 cell, the red channel as the mask) and IconAtlas loads any
+      sheet that divides into 32x32 cells, so the placeholder loads as an 8x4 grid of quarter
+      banners and an icon draws as a tinted square until the sheet is re-authored. Nothing here
+      hard-codes the placeholder's geometry. The font needs no such note: it is a two-colour cutout,
+      white on transparent, so its alpha IS its coverage, which is why the two kinds read different
+      channels and UiPS.hlsl says so.
+      MUTATION TESTED, AND IT FOUND TWO HOLES. With Uppercased() removed from the title the suite
+      still passed, because the case pinned the FIRST glyph of "Selection" and that letter is
+      already a capital; it pins the second now, where 'e' becomes 'E'. With an icon's tint fixed at
+      bodyText it still passed, because nothing covered §3's "dimText where it is not available".
+      Both are cases now, and the other eleven mutations tried - the bar drawn over its own border,
+      a collapsed gradient, overlapping border corners, a half instead of a quarter, a uv edge, a
+      dropped triangle, an unchecked cell index, a selected row's caption, a down button's caption -
+      were all caught before the fix.
+      AND THE LINUX HARNESS WAS WRONG AGAIN, in a way that mattered less than the last one but was
+      worth fixing: it built every test file into one translation unit, which invented a clash
+      between two files' file-local SELECTION_PANEL that MSVC cannot have, and its compile step was
+      piped through grep so a failed build reported the previous binary's run as a pass. Each test
+      file is its own translation unit now, as it is under MSVC, and the binary is deleted before
+      the build so a stale one cannot answer for it.
+      Verified in the session on Linux: 59 tests, zero failures, over five test files; clang-tidy 18
+      clean over UiDraw, UiPanel, UiWidgets and UiDrawTests with this repository's own configuration;
+      CheckFormat, CheckProjectFiles and CheckTaskDag clean.
+      WHAT IS NOT SHOWN HERE. UiPass.cpp, UiVS.hlsl and UiPS.hlsl are Direct3D and HLSL: this
+      session can compile neither, and nothing constructs a UiPass yet - K4 builds §2's panels and
+      G2's capture is the first frame that would carry one. So the pipeline state, the root
+      signature, the blend and the two shaders are checked by CI's build and by nothing else until
+      then, and the acceptance line "UiPass draws panels, text and icons" is shown in G2's frames
+      rather than here. That is a deliberate statement of what is and is not evidence, not a request
+      to take it on trust.
+      GREEN ON RUN 35437308010 (head ebf94b1), which is what makes this done: the MSVC build with
+      /warnaserror took UiPass.cpp and both shaders, dxc took UiVS.hlsl and UiPS.hlsl, vstest ran
+      the 16 new ClientTests cases with the rest, the WARP capture and the content validation
+      passed, and clang-tidy 22.1.8 came back clean over every translation unit. The three files
+      this session could not compile compiled first time, which the local clang-tidy sweep and the
+      check of every d3dx12.h helper call against the vendored header are the reason for - that
+      check found the one real defect, <iterator> for std::begin and std::size.
 
-  - id: G1
-    title: FrontierCommander application - the client loop, the host thread over loopback, match start, camera, selection and orders
+  - id: G1a
+    title: FrontierCommander application - the client loop and the host thread over loopback
     intent: >
       The slice runs as the two loops of TechnicalDesign.md §3 in one process: a host thread
       with Sim and Net's Host over loopback, and the client loop with Net's Client, the replica,
       the render view and the passes, so that single-player is the same code path as a match
-      over the network from the first playable build (owner, 2026-09-17).
+      over the network from the first playable build (owner, 2026-09-17). This half is the one
+      the capture can witness on its own, which is why it is worked and reviewed on its own.
     project: FrontierCommander
     depends_on: [R2, N2, K1, K2, S12]
     files:
+      - Core/LoopbackTransport.h
+      - Core/LoopbackTransport.cpp
+      - Core/TickPacer.h
+      - Core/Core.vcxproj
+      - Tests/CoreTests/TickPacerTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - FrontierCommander/LocalHost.h
+      - FrontierCommander/LocalHost.cpp
+      - Replica/RenderViewBuilder.h
+      - Replica/RenderViewBuilder.cpp
       - FrontierCommander/App.h
       - FrontierCommander/App.cpp
       - FrontierCommander/LocalHost.h
       - FrontierCommander/LocalHost.cpp
       - FrontierCommander/Match.h
       - FrontierCommander/Match.cpp
-      - FrontierCommander/Selection.h
-      - FrontierCommander/Selection.cpp
-      - FrontierCommander/OrderInput.h
-      - FrontierCommander/OrderInput.cpp
       - FrontierCommander/Main.cpp
       - FrontierCommander/FrontierCommander.vcxproj
       - FrontierCommander/FrontierCommander.vcxproj.filters
@@ -1665,8 +2034,226 @@ tasks:
       - "LocalHost runs Sim, Net's Host and the AI seat on its own thread driven by wall time, mapping wall time to ticks in exactly one place, slowing the match clock rather than skipping when it falls behind; it talks to the client only through LoopbackTransport"
       - "The client loop is the seven steps of §3: pump, drain the network, apply frames, interpolate 100 milliseconds behind, build the render view, route input, draw and present; it has no simulation clock"
       - Starting the executable starts a match on GameData/Landscapes/Slice.json with the human in seat 0 and the scripted AI in seat 1 at the lobby defaults, until M2's lobby exists
+      - "The capture of G2 is what proves this task on CI, and the frames show a landscape with a base on it. NOT TWO: this line said two until G1a was written, and the fog of TechnicalDesign.md §5.2 makes it impossible - the frames are drawn from one commander's replica and the opposite base is unexplored ground. G2's own acceptance already says 'a base', singular, and that is the wording that governs"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: in_progress
+    notes: >
+      SPLIT OUT OF G1 ON 2026-09-19 (owner), with G1b. G1 was thirteen files and the whole
+      application - the host thread, the wall-time-to-tick mapping, match start, camera, selection,
+      order input, the pause menu, the end-of-match overlay and a measured click-to-move - with five
+      dependencies and everything downstream of it, and ImplementationPlan.md §2 says no session can
+      build or run it: only CI sees it. The split makes G2's capture the witness for this half
+      rather than for the whole, so the capture and G1b proceed at the same time instead of one
+      behind the other, and it halves the largest single diff of the milestone.
+      THE TRANSPORT WAS NOT THREAD SAFE AND THIS TASK IS WHERE THAT BITES (owner ruled 2026-09-19,
+      on being shown it). This acceptance says LocalHost runs on its own thread and talks to the
+      client "only through LoopbackTransport", and TechnicalDesign.md §3 says the same - "a host
+      thread in the same process talking to the client through the loopback transport". But
+      Core/LoopbackTransport had no mutex and no atomic anywhere: two deques, the counters and the
+      fault Random, all touched by both ends, and an end's Poll reaches into the OTHER end's queue
+      through Carry. That is a data race of the kind that survives every test and corrupts a shipped
+      build. One coarse lock over the whole object now, because an end never touches only itself.
+      PROVED RATHER THAN ASSERTED. A probe runs a host thread and a client thread over one transport
+      under ThreadSanitizer: 32 data races reported with the lock taken out, and none with it in.
+      The probe is not committed (ImplementationPlan.md §2), and TSan came from g++ 13 because the
+      clang-18 runtime is not installed here.
+      Faults() and Statistics() return BY VALUE now. A const reference into state another thread may
+      be writing is a race the caller cannot see; both are a handful of integers, and no caller bound
+      a reference to either. Host() stays unlocked and says why: it reads the one element the
+      constructor put there, which nothing moves and nothing erases. Connect() locks, because it
+      grows the vector every End holds a reference into.
+      THE DETERMINISM PROMISE IS UNCHANGED WHERE IT IS MADE. "The same seed and the same traffic lose
+      the same datagrams" is a promise to the tests, which drive both ends from one thread in a fixed
+      order; two threads interleave their Sends and no lock makes that repeatable. Local play runs
+      with no faults at all.
+      LocalHost IS WRITTEN: the host thread, started explicitly rather than by the constructor -
+      a thread started there can reach a member the constructor has not finished writing - stopped
+      and joined by Stop(), which the destructor calls so a match that throws on its way up leaves
+      no thread behind. Pass(elapsed) is public so the capture path can run a match as fast as it
+      can rather than in real time, and so a test can step it exactly.
+      THE AI SEAT IS SIM'S. Sim::Advance runs it at stage 11 (AdvanceAiSeats), so a host that ticks
+      the simulation has already run every AI commander; this acceptance names the AI seat because
+      the host thread is what makes it run at all, not because the host drives it.
+      THE PACING IS IN Core AND NOT IN THE EXECUTABLE, which is TechnicalDesign.md §2's rule rather
+      than a preference: "code in an executable cannot be linked into a test DLL, so anything in one
+      that deserves a test is code that belongs in a library". Turning wall time into ticks is the
+      arithmetic that is wrong only on a machine that stutters, months later, unreproducibly - so it
+      is Core/TickPacer.h with ten cases in CoreTests, and what stays in FrontierCommander is the
+      thread and the wiring, which have nothing to get wrong. Every one of seven mutations is
+      caught, and the guard against a zero step is caught as a DIVIDE BY ZERO rather than a failed
+      assertion, which is as load-bearing as a guard gets.
+      IT SLOWS AND IT DOES NOT SKIP, which is the rule the whole file exists for: when the debt runs
+      past the ceiling what is thrown away is WALL TIME, never a tick. Every tick the match owes is
+      still run, later than real time asked for; the match takes longer in real seconds and is
+      otherwise identical. A skipped tick would be a different match, and on a simulation whose hash
+      both ends compare that is not something anybody recovers from. §3 also asks that a slowed host
+      TELL its clients and that the lobby show it; M1 has no lobby (this task's own acceptance says
+      "until M2's lobby exists"), so it is counted in SlowedTicks() and BehindTicks() and left for
+      whoever grows one.
+      NO WINDOWS HEADER ANYWHERE IN IT, which makes it the one part of G1a that is not CI's alone:
+      Sim, Net, Core and a thread. It builds and runs outside CI, and it did before it was pushed.
+      Match IS WRITTEN: the host thread on one side, this commander's client and replica on the
+      other, and the loopback between them. Of the client loop's seven steps it runs 2 to 5 - drain
+      the network, apply frames, interpolate, build the render view - and App will run 1, 6 and 7,
+      the window's messages, the input routing and the drawing, because those need a window and a
+      device and these do not. So Match, like LocalHost, has no Windows or Direct3D header in it and
+      is not CI's alone. Client/TerrainChunk.h's CHUNK_CELLS is PASSED IN rather than included for
+      exactly that reason, which is the same choice RenderViewBuilder already makes.
+      THE CLIENT HAS NO SIMULATION CLOCK AND STILL NEEDS A CLOCK. §3 says the client "has no
+      simulation clock; it has the replica's timeline", and Net's Client takes a tick for heartbeats
+      and timeouts. That is a LIVENESS clock, and it has to come from wall time rather than from the
+      replica: a host that stopped sending stops advancing the replica's tick, which is exactly the
+      moment a timeout has to fire. It is Core's TickPacer again, allowed to run every tick it owes,
+      because a liveness counter that ran four at a time would make a timeout late by however long
+      the frame hitched.
+      RUN END TO END, WHICH NOTHING IN THIS MILESTONE HAD BEEN. A probe stands up a Match on the
+      real GameData and the real Slice landscape and runs it for a second and a bit: the host thread
+      reached tick 24 in 1.2 seconds (20 Hz, to the tick), the client made 147 passes, the join was
+      accepted, the replica adopted the landscape and the render view carried the fog, with nothing
+      behind and no wall time given away. Not committed (ImplementationPlan.md §2).
+      AND THE SAME MATCH IS CLEAN UNDER ThreadSanitizer: zero data races with a real host thread and
+      a real client thread over the loopback, which is the lock added earlier in this task verified
+      where it actually matters rather than in a synthetic probe.
+      THE CLIENT GENERATES ITS OWN LANDSCAPE, AND THIS IS WHERE THAT BOUNDARY IS EASIEST TO LOSE.
+      Match holds a Landscape of its own, built from the definition the host sent with the join, and
+      NOT the host's - whose own is flattened under every structure in the match, including the
+      bases this commander has never scouted. TechnicalDesign.md §5.2: "the terrain under an
+      unscouted base is not public". In a local match the host's Landscape is one member away and
+      reading it would be a wallhack that shipped, so the client generates and App draws that.
+      It arrives with the join, so it is empty until the client is Playing (TerrainReady() says),
+      and it is generated AFTER Client::Advance rather than before, because Advance is what reads
+      the JoinAccepted. App therefore cannot build its terrain, water and fog passes at startup the
+      way M0 did: they wait for the landscape, which is a state M0's loop did not have.
+      APP IS WRITTEN AND IT IS THE ONE PART OF THIS TASK CI ALONE CAN COMPILE. It loads GameData,
+      finds Slice by its file stem in the content tree - M0's hard-coded recipe is gone and a
+      missing landscape is refused rather than substituted for - holds a Match, and draws the render
+      view. The passes that need a landscape are built when it arrives and not at startup; the
+      frames before it does present the cleared target, which is the Species sky, and the log says
+      once if the join has still not landed after ten seconds, because a window of nothing but sky
+      is otherwise indistinguishable from a window that hung. ModelBuffers and the geometry pass are
+      built at startup, since models and commander colours are content and need no join.
+      THE CAPTURE WAITS FOR THE JOIN BEFORE IT COUNTS FRAME 0, and the window deliberately does not.
+      A window shows sky for a frame or two and nobody minds; a capture whose frame 0 is the cleared
+      target has written a BLACK BMP as its first artefact, and those files are the only look anyone
+      gets at this game. The wait is bounded and a join that never lands is reported.
+      TWO MISTAKES CAUGHT IN THE WRITING, BOTH WORTH RECORDING. The terrain pass's constants address
+      is set INSIDE Draw, from the slot that Draw wrote, so hoisting it above the call to satisfy
+      R16 would have bound the previous frame's constants - the hoist of FrameOf next to it is real
+      and that one was not. And the probe's first check of the command post's height compared a wire
+      value against a subunit one and failed by a factor of 64; the code was right and the check was
+      wrong, which is the failure a probe exists to make loud.
+      THE BASE LEVEL WAS NOBODY'S AND IS NOW THIS TASK'S. Tests/SimTests/AiTests.cpp has carried the
+      note since S12: "NOTHING IN THE TREE OWNS BASE-LEVEL PLACEMENT YET - it is the application's
+      (m1-vertical-slice/G1), and until G1 lands a match is set up by whoever starts one". So
+      FrontierCommander/StartingBase places GameDesign.md §2's Nothing level - a command post and a
+      builder - before the host thread starts, because a base placed on a running simulation is a
+      structure that appeared out of nothing in a frame somebody was watching. Small and Established
+      are refused rather than silently reduced: a commander who chose an established base and got a
+      builder would read it as the game losing his settings, and the lobby that can ask for them is
+      M2's. The builder's design is the AI designer's choice of builder even for the human seat,
+      which is not a shortcut - it is the same truck the scripted opponent starts with, so neither
+      commander begins a chassis ahead.
+      IT FLATTENS AND THE TEST FIXTURE NEVER DID. Sim/Construction.cpp levels the ground under a
+      footprint the moment construction begins and writes the mean into Structure::y; AiTests skips
+      that step, so every command post in that suite stands at y = 0, which is sea level. No test
+      there draws, so nothing noticed. StartingBase runs the same FlattenDelta and the same mean,
+      and the probe confirms the post at 84 world units against ground the client generated at 86 -
+      the footprint's mean against the point under its centre, which is exactly the difference there
+      should be.
+      PROVED END TO END AGAINST THE REAL CONTENT: the commander sees exactly his own command post
+      and his own builder and nothing else, because the opposite base is unexplored - §5.2 working
+      rather than asserted - and the render view has four instances to draw. ThreadSanitizer finds
+      no race in a match that now has objects to publish every tick, which the empty world of the
+      earlier run could not have exercised.
+      A CLIENT CANNOT BE SEATED ON AN AI SEAT, found here and recorded against G2. Net/Host.cpp's
+      FreeSeat hands a joining client only a seat whose kind is Human, so the all-AI lobby G2's
+      acceptance asks for refuses the join with NoSeat and leaves no replica to draw. Tried, not
+      reasoned about: six failures and an empty view. The capture therefore watches an unattended
+      human seat whose base stands still while the AI opposite it plays, and G2 decides between a
+      scripted order stream and an observer connection in Net.
+      AND THE FLATTEN NEVER REACHES THE CLIENT AT ALL, which became K6 by the owner's ruling on
+      2026-09-19. changedChunks has no consumer, Match never calls Landscape::ApplyDelta, and
+      TerrainPass cannot re-mesh a chunk; K6 carries the whole finding. Sequenced before G2, so that
+      the frames G2 uploads do not show bases half-buried in hillsides.
+      AND THE FIRST CAPTURE OF A REAL MATCH CAME BACK 100% BLACK ON A GREEN BUILD, which turned out
+      to be a Net defect that had been in the tree since N2. DescribeCapture said it plainly - "mean
+      colour (0, 0, 0); near-black 100.0%" for every frame - and the job passed anyway, because the
+      capture's exit code reports debug-layer messages and nothing else. M0's frames showed the
+      island because M0 had no fog pass; M1's multiplies every pixel by FOG_SHADES[shade], and an
+      all-unexplored grid multiplies the whole frame by zero. So the fog pass was right and the fog
+      was wrong.
+      NARROWED BY PROBES RATHER THAN BY READING. The host's own grid: 166 cells visible from tick 1,
+      so Sim and the base placement were fine. The replica's: all 16,384 unexplored, so the copy into
+      the render view was fine too. The whole stack single-threaded, printing both sides every pass:
+      the replica had the right fog at passes 3 and 4 and lost it at pass 5, permanently.
+      THE DEFECT. Every list in a frame is the difference between what the commander can see NOW and
+      the baseline he ACKNOWLEDGED, so a frame he drops costs nothing - the next one carries the
+      same difference again. The fog was the one field encoded against a rolling per-client grid
+      that advanced on every ENCODE. And Net/Client.cpp drops any delta whose baseline is not
+      exactly the frame it last applied, which is not a lossy-link case: it happens whenever a
+      publish outruns an acknowledgement, which at a 10 Hz publish rate is most of them. Every
+      dropped frame took its fog runs with it and those cells were never sent again.
+      THE FIX GIVES THE FOG THE SAME SEMANTICS AS EVERYTHING ELSE. FrameRecord carries the runs its
+      frame sent; ClientView::fog is now the grid the client is KNOWN to hold, advanced only when a
+      baseline it acknowledged is folded in; and a full frame encodes against an empty grid, because
+      the replica clears everything it holds on one. Runs per record rather than a grid per record,
+      so the memory is ADR-008's O(cells) a client and not O(cells x history).
+      THE TEST HOLE WAS THE REAL FINDING. ConvergenceTests is the suite whose whole purpose is "the
+      replica holds exactly what the host would send", and the only fog it compared was its SIZE -
+      which an all-black grid passes. AssertConverged now compares it cell for cell, which put the
+      failure count at 12,070 over six cases before the fix and 0 after, and a case named for the
+      bug walks the publishes one at a time so a failure says which one lost the map.
+      MUTATION TESTING FOUND THE FIX HALF-TESTED. Three ways to break it: advancing the grid on
+      encode again, never folding the acknowledged baseline, and diffing a full frame against what
+      the client had. The first and third went red; the SECOND SURVIVED, because a host that never
+      folds re-sends the whole grid every publish and is still correct - the replica agrees with it
+      every time. That is a bandwidth defect a correctness suite cannot see, so the case also
+      asserts that a settled match publishes no fog runs at all, which kills it.
+      ONE EDGE LEFT AS IT IS, DELIBERATELY. A minimised window blocks in WaitMessage while the host
+      thread keeps ticking, so the liveness clock falls behind and, past Match's thousand-tick debt
+      ceiling, wall time is written off. Pausing the local host is G1b's Escape menu and that is the
+      right place to fix it; spinning the loop instead would burn a core to avoid a case a pause
+      handles properly.
+
+  - id: G1b
+    title: Selection, orders, the pointer's two modes and the match overlays
+    intent: >
+      The operator drives the slice: picking things, giving them orders, and being told the match
+      is over. Every order becomes an OrderMessage and nothing in the executable touches Sim,
+      which is what makes the panels of K4 a matter of emitting the same messages.
+    project: FrontierCommander
+    depends_on: [G1a, N4]
+    files:
+      - Replica/Selection.h
+      - Replica/Selection.cpp
+      - Replica/OrderInput.h
+      - Replica/OrderInput.cpp
+      - Replica/Replica.vcxproj
+      - Replica/Replica.vcxproj.filters
+      - Tests/ReplicaTests/SelectionTests.cpp
+      - Tests/ReplicaTests/OrderInputTests.cpp
+      - Tests/ReplicaTests/ReplicaTests.vcxproj
+      - Tests/ReplicaTests/ReplicaTests.vcxproj.filters
+      - FrontierCommander/CameraController.h
+      - FrontierCommander/CameraController.cpp
+      - FrontierCommander/App.cpp
+      - FrontierCommander/FrontierCommander.vcxproj
+      - FrontierCommander/FrontierCommander.vcxproj.filters
+      - Design/Interface.md
+    acceptance:
       - "Selection by click and drag rectangle through Replica's picking; orders by right click (Move, or Attack on an enemy), by hotkey (attack-move, stop, stances) and, until K4's panels, by hotkey plus click for structure placement with the footprint ghost; every order becomes an OrderMessage and nothing in the executable touches Sim"
+      - "The pointer has two modes and AIM is the default (Design/Interface.md §4 and §12 ruling 3, rewritten by the owner on 2026-09-19): in aim the mouse turns the camera with no button held, from Client/RawMouse.h's relative counts at 0.005 radians a count, Windows' pointer is hidden, and the ray a click casts goes through the CENTRE of the screen; in point there is an ordinary pointer and the camera does not turn"
+      - "Escape swaps the modes, after peeling an armed order and then a modal panel, and the pause menu moves to F10 - a key that both released the mouse and opened a menu would do one of the two by accident every time"
+      - "The drag rectangle, the panels, the minimap and the six screen cursors are point mode's alone, and the camera's arrow keys and screen edges with them; everything else works in both, because §5 and §6 are written about the RAY and not about the mouse"
+      - "The camera is not held at a height: Client/Camera.h's floor pushes it up out of the terrain and never pulls it down onto it, which is Species's own MIN_GROUND_CLEARANCE of 10 and MAX_HEIGHT of 5000 (SpeciesLook.md §7), and nothing in this task changes it"
       - "The end of the match shows a win or loss overlay; Escape pauses the local host and shows a menu with resume and quit; Alt+F4 quits"
+      - "A rejected order shows N4's reason as one line of warning text for two seconds, per Design/Interface.md §6"
       - A click moves a unit in about 250 milliseconds over loopback, measured with the log and recorded in the notes
     verify:
       - python3 Tools/CheckTaskDag.py
@@ -1676,6 +2263,45 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: todo
+    notes: >
+      SELECTION AND ORDERINPUT ARE IN Replica AND NOT IN THE EXECUTABLE, which is a change from the
+      file list this task was written with and not a preference. Build/CheckProjectFiles.py refuses
+      any project that lists a source outside its own flat directory, and FrontierCommander is an
+      Application, so an .exe exports nothing a test DLL can link against: a suite for logic that
+      lives in the executable cannot be built at all. The repository's rules therefore say that
+      logic worth testing lives in a library, and these two are the most intricate logic in M1 -
+      seven rows of a default-order table, a drag threshold, an armed-order state machine. Replica
+      is the right library on its own merits: Design/Interface.md §5 calls this code "R2's picking
+      functions, as pure functions over the replica and the camera matrices", Picking.h is already
+      there, and no layering edge is new, because Replica is built on Core, Content, Sim and Net and
+      this needs only Picking and Sim/Order.h. What stays in the executable is what needs a device:
+      App's wiring, the overlays and the camera.
+      THE CAMERA LOST ITS LETTER KEYS BY THE OWNER'S RULING ON 2026-09-19. Design/Interface.md §7's
+      hotkey table and M0's CameraController collided on two: S was Stop as well as backward, and R
+      was Attack-move as well as pitch down. §7 is the document that specifies the game's controls
+      and the camera's letters were placeholders from SpeciesLook.md §7 that predate any order
+      existing, so the orders win. The camera keeps the arrow keys, the screen's edges, the wheel,
+      PageUp and PageDown.
+      AND IT LOST THE MIDDLE BUTTON TOO, LATER THE SAME DAY. The owner asked for Species's
+      arrangement - the mouse connected to the camera the whole time, Escape releasing it - so
+      aiming comes off the buttons altogether. What was weighed against it is that an aimed mouse
+      has no pointer, and §5's rectangle, §7's panels and §9's minimap all need one; hence two
+      modes rather than Species's single one.
+      DO NOT PORT SPECIES'S FREE-MOVEMENT CAMERA, which is a trap this task should not walk into.
+      Species has no yaw and no pitch: it moves a virtual cursor, ray-casts it onto the terrain,
+      rotates the camera's forward vector toward that world point, and then WARPS the operating
+      system's pointer back so it stays glued to it, the screen edge's clamp being what makes the
+      turn continue (SpeciesLook.md §7.2). Client/Camera.h stores yaw and pitch, Client/RawMouse.h
+      already reads relative counts because TechnicalDesign.md §6.5 wanted them unclamped by the
+      screen's edge, and a per-frame SetCursorPos is the thing that behaves worst across two
+      monitors and a high-DPI display. Species's own editor camera is the delta camera and is what
+      this task ports, at its 0.005 radians a pixel.
+      SHIFT-QUEUED ORDERS ARE NOT DONE AND ARE NOT SILENTLY DROPPED. Design/Interface.md §6 and §12
+      ruling 5 describe them as a client-side convenience the simulation knows nothing about; no
+      acceptance line of this task asks for them, so they are not here. They belong with K4's orders
+      panel or with a line of their own, and this note is so that the next reader of §6 does not
+      look for them in OrderInput and conclude they were forgotten.
+
 
   - id: G2
     title: FrontierCommander --capture replays a scripted match and CI uploads its frames
@@ -1684,16 +2310,27 @@ tasks:
       M0 capture grows into a headless AI-versus-AI match whose frames show bases, devices,
       combat and fog, and the CI job runs it on every pull request.
     project: FrontierCommander
-    depends_on: [G1]
+    depends_on: [G1a, K6]
     files:
       - FrontierCommander/App.cpp
       - FrontierCommander/Capture.h
       - FrontierCommander/Capture.cpp
+      - Net/Messages.h
+      - Net/Messages.cpp
+      - Net/Host.h
+      - Net/Host.cpp
+      - Net/Client.h
+      - Net/Client.cpp
+      - Tests/NetTests/HostTests.cpp
+      - Tests/NetTests/ClientTests.cpp
       - .github/workflows/build.yml
     acceptance:
-      - "--warp --capture <landscape> <ticks> <directory> runs LocalHost with two AI seats for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
+      - "--warp --capture <landscape> <ticks> <directory> runs LocalHost for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
+      - "AN OBSERVER CONNECTION IN NET, which is how seat 0 comes to be playing at all: 'two AI seats' cannot be had as G1 wrote it, because Net/Host.cpp's FreeSeat gives a joining client only a seat whose kind is Human, so an all-AI lobby refuses the join with NoSeat and leaves no replica to draw from - proved by G1a's probe, six failures and an empty view. SETTLED BY THE OWNER ON 2026-09-19: a client may join as an OBSERVER of a seat that is already AI. It receives that seat's frames through the ordinary interest and fog path, sees exactly what that commander sees and no more, and its orders are refused rather than applied. The rejected alternative was a scripted order stream for the human seat, which means hand-writing gameplay that exists only for the capture, beside an AI that already plays a match to a decided end"
+      - "The observer is a wire change and carries its own tests: a join that asks to observe an AI seat is accepted and one that asks to observe a seat a human holds is refused; an observer's orders are refused with a reason and never reach stage 1; an observer sees the fog of the seat it watches and nothing outside it, which is the §5.2 assertion NetTests already makes for a player"
       - "The CI step runs --warp --capture Slice 6000 Captures and uploads the sixty frames; the frames at ticks 2,000, 4,000 and 6,000 show a base, devices in transit and fog"
       - The capture's wall time in CI is recorded in the notes, and the tick count is reduced if it exceeds five minutes
+      - "C2's last acceptance line is settled here: this is the first capture that runs with GameData mirrored beside the executable, so the frames confirm the terrain is coloured by the biome's LandscapeDefault.dds and not by the built-in gradient, or C2 is reopened"
     verify:
       - python3 Tools/CheckTaskDag.py
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
@@ -1707,7 +2344,7 @@ tasks:
       the fixed panels Design/Interface.md specifies, reading the replica and emitting orders, so
       that the slice is playable without hotkey lore.
     project: FrontierCommander
-    depends_on: [K3, G1]
+    depends_on: [K3, G1b]
     files:
       - FrontierCommander/Hud.h
       - FrontierCommander/Hud.cpp
@@ -1847,3 +2484,371 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: done
+
+  - id: C6
+    title: The chrome palette and the eight commander colours as content - GameData/Interface.json and its loader row
+    intent: >
+      Design/Interface.md §3 specifies the panel palette as a table so that the look of a panel is
+      data, and GameDesign.md §11 now names the eight commander colours; neither exists as a file.
+      ADR-006 recorded the gap and gave it to C2, and C2 landed done without it - its acceptance
+      lines never mentioned it - so K3 would spell the palette as constants and nobody would own
+      the move to data, and R2 would have no table to resolve a colour index against.
+    project: Content
+    depends_on: [C1]
+    files:
+      - GameData/Interface.json
+      - Content/InterfaceDesc.h
+      - Content/ContentTree.h
+      - Content/ContentLoader.h
+      - Content/ContentLoader.cpp
+      - Content/ContentValidator.cpp
+      - Content/Content.vcxproj
+      - Content/Content.vcxproj.filters
+      - Tests/ContentTests/InterfaceDescTests.cpp
+      - Design/ADR/ADR-006-content-format.md
+    acceptance:
+      - "GameData/Interface.json carries the seventeen chrome roles of Design/Interface.md §3 with the values that document gives, in 8-bit RGBA, and the eight commander colours of GameDesign.md §11 in seat order"
+      - "Content/InterfaceDesc.h is a plain row aggregate (AGENTS.md R8): the seventeen roles as named fields and the commander colours as an array of MAX_SEATS; ContentTree holds one, loaded with the other tables by the same loader"
+      - "The loader refuses, with the file and line ContentLoader already gives: a missing role, an unknown role, a channel outside 0 to 255, and a commander list that is not exactly eight long"
+      - FrontierHost --validate passes over the tree with the new file, and fails with a located diagnostic when a role is removed from it
+      - ADR-006's open point that nothing loads Interface.json is struck, dated, naming this task
+      - "ContentTests covers: every role parsed to the value §3 gives, the eight commander colours in seat order, and each of the four refusals"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: done
+    notes: >
+      THE FILE LIST WAS WRONG IN BOTH DIRECTIONS. Content/ContentValidator.cpp is NOT touched: the
+      validator is for rules that span files and the palette has none - every fault it can have is
+      inside its own document, which is the loader's half. Four files it did not name are:
+      Tests/ContentTests/BrokenFixtures.h, because LoadContent now requires Interface.json and every
+      fixture tree in the suite would otherwise stop loading; the two ContentTests project files; and
+      Sim/Sim.cpp, for the static_assert below.
+      THE SEAT COUNT IS IN TWO PLACES AND HAS TO BE. Content may not include Sim (AGENTS.md R9), so
+      Content/InterfaceDesc.h declares COMMANDER_COLOR_COUNT and Sim/Sim.cpp static_asserts it
+      against MAX_SEATS - the first translation unit where both are visible. Without it, raising
+      MAX_SEATS would draw the new seats in whatever the array was initialised to.
+      THE READER CHECKS FOR MEMBERS IT WAS NOT ASKED FOR, which no other table does. Every other
+      table is a list of rows with ids; this one is a fixed set of names, so a misspelled role is
+      not a row that fails to resolve but a field left at its default and a panel drawn in a colour
+      nobody chose. The second pass over the object is what turns that into a diagnostic.
+      THE MEMBER IS CALLED ui AND NOT interface, because the Windows SDK defines `interface` as a
+      macro for `struct`. It compiles everywhere except the platform this game is built on.
+      Verified in the session on Linux: CheckTaskDag, CheckFormat (18.1.3) and CheckProjectFiles
+      clean - the last of which caught three test names spelling 'colour' against R11; a
+      -fsyntax-only pass over ContentLoader.cpp and Sim.cpp; and the loader itself built against
+      Core/Json.cpp and run over the real GameData, which reads all seventeen roles and all eight
+      seats, and over five broken copies, which give:
+        missing role      Interface.json(3,13): the member 'accent' is missing
+        unknown role      Interface.json(21,16): 'acccent' is not a chrome role of Design/Interface.md 3
+        channel 256       Interface.json(11,22): 'accent' is between 0 and 255
+        seven commanders  Interface.json(22,17): 'commanders' holds one colour a seat, which is 8
+        empty chrome      Interface.json(3,13): the member 'panelFill' is missing
+      Line 21 for the unknown role is 4 + CHROME_ROLE_COUNT, which is what the test computes rather
+      than counts, so adding a role does not silently move an assertion.
+      ONE COLOUR PAIR IS CLOSE AND IS NOT THIS TASK'S TO FIX. Seat 2's yellow is 93 from the chrome
+      accent over the three channels, where every other seat is at least 200; seat 2 is Species's
+      team 2 kept byte for byte and the accent is Design/Interface.md 3's own, so neither end was
+      this table's to move. It is asserted at 93 by name rather than hidden under a low threshold,
+      and GameDesign.md 11 records that the accent moves if a running build shows it too weak. The
+      three chosen colours were moved from the first draft to get the closest commander pair up to
+      145, which is now seat 3 against seat 7 - both Species's - so the limit is the lineage's.
+      CI IS GREEN on 5393ba3, run 98, dispatched onto this branch: the workflow triggers on main
+      and on pull requests, so a branch that has neither needs workflow_dispatch to be read at all.
+      The MSVC build, every suite, clang-tidy, the format job, the plan validation and the capture
+      all passed, and FrontierHost --validate passed over the tree with Interface.json in it.
+
+  - id: N4
+    title: The order-rejection wire record - a seat's last refusal reaches the commander who sent it
+    intent: >
+      Sim records why it dropped an order - Sim/Order.h's RejectReason, collected into Sim/Seat.h's
+      rejections - and Design/Interface.md §6 draws it as one line of warning text for two seconds.
+      SeatState carries no such field: Interface.md §11 gave the record to N1 and N1 landed done
+      without it, so the operator gets no answer when an order does nothing and K4 cannot be
+      finished.
+    project: Net
+    depends_on: [N1, N2]
+    files:
+      - Net/Records.h
+      - Net/Records.cpp
+      - Net/FrameEncoder.h
+      - Net/FrameEncoder.cpp
+      - Net/Host.h
+      - Net/Host.cpp
+      - Tests/NetTests/RecordsTests.cpp
+      - Tests/NetTests/HostTests.cpp
+      - Design/Interface.md
+    acceptance:
+      - "SeatState carries the seat's most recent rejection as three FIXED-SIZE fields - a wrapping rejectSequence, the OrderKind and the RejectReason - and not as a list: §6 draws one line and replaces it, and a variable-length field in a record the delta encoder compares by value costs every frame for a display that shows one line at a time"
+      - "Host latches each seat's rejections in Advance, on every tick, because Sim clears them at the start of every stage 1 (Sim/Sim.cpp:244) and publishes only on even ticks (Sim/Sim.cpp:599) - reading the vector at publish time drops every odd tick's refusals outright"
+      - "The reader refuses an OrderKind at or over ORDER_KIND_COUNT, a RejectReason at or over REJECT_REASON_COUNT, and Accepted as a reason, the way Read(SeatState) already refuses a seat and a victory state"
+      - "rejectSequence changes on a repeat of the same rejection, so a commander who asks twice for what he cannot afford sees the line restart rather than appearing not to have been heard"
+      - "NetTests covers: the round trip, the three refusals, a rejection raised on an odd tick reaching the next frame, and two identical rejections yielding two different sequences"
+      - Design/Interface.md §11 row 3 is struck
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: done
+    notes: >
+      THE PROTOCOL VERSION IS BUMPED TO 2 and SEAT_STATE_BYTES from 34 to 38. Records.h's own rule
+      is that any layout change in it bumps the version, and nothing has shipped against 1, but the
+      bump is not skipped for that: a version bumped only when someone might notice is a version
+      nobody can reason about.
+      THE FIELDS ARE FIXED-SIZE AND THERE ARE THREE. Design/Interface.md 6 draws one line and
+      replaces it, so a list would be compared and sent every frame for a display that shows one at
+      a time. The third field is the sequence, and it is the one that earns its place: two identical
+      refusals are equal field for field, so without it the line would not restart and a commander
+      asking twice for what he cannot afford would read it as not having been heard. It counts
+      refusals rather than naming a tick, so the client compares it for inequality and never for
+      order, and it steps over 0 when it wraps because 0 is how a seat that has had none says so.
+      THE READER REFUSES A REASON THAT DISAGREES WITH ITS SEQUENCE, both ways round: Accepted with
+      a sequence, and a real reason without one. A host that sent either has an encoder that is
+      wrong, and the alternative is a client drawing a line of warning text with nothing in it.
+      THE LATCH IS ON ClientView AND NOT BESIDE THE SIMULATION'S SEAT. A refusal is reported to the
+      commander who sent the order: a seat playing under AI has nobody to tell, and a client that
+      joins has no business being handed a refusal from before it arrived. Both fall out of the
+      latch starting empty with the view rather than needing a rule.
+      Verified in the session on Linux: CheckTaskDag, CheckFormat and CheckProjectFiles clean;
+      -fsyntax-only over Host.cpp, Records.cpp and FrameEncoder.cpp; and Records.cpp built against
+      a stub and run, which prints the 38 bytes the test pins - they match byte for byte - confirms
+      the round trip is equal, and confirms all four refusals refuse and that a seat with no refusal
+      still reads. The two host tests need the real Sim and are CI's.
+      THE HOST TEST RUNS THE SCENARIO AT BOTH PARITIES rather than asserting one. Which tick stage 1
+      judges an order on depends on when the reliable stream delivered it, and a test that assumed
+      a parity would pass while proving half of what it is for; it asserts instead that across the
+      two runs both an odd and an even tick were seen, and fails if they were not.
+      CI IS GREEN on 0b9d01e, run 99, dispatched onto this branch: the MSVC build, every suite,
+      clang-tidy, the format job, the plan validation and the capture all passed, which is where
+      the two host tests and the round-trip tests were actually run.
+
+  - id: C8
+    title: What a shot looks like - the projectile's appearance, so that combat is visible
+    intent: >
+      TechnicalDesign.md §5.3 sends projectiles and effects "as short-lived events rather than
+      objects", which is what m1-vertical-slice/R2's acceptance means by "short-lived projectile
+      instances from events" - but nothing anywhere says what a shot LOOKS like. ModuleDesc carries
+      a model whose MarkerMuzzle is where the shot leaves, and no projectile model, no tracer and no
+      lifetime, so there is nothing for the render view to draw. Found while writing
+      RenderViewBuilder (R2's notes).
+    project: Content
+    depends_on: [C1, R2]
+    files:
+      - Content/ComponentDesc.h
+      - Content/ContentLoader.cpp
+      - Content/ContentValidator.cpp
+      - GameData/Components.json
+      - Replica/RenderViewBuilder.h
+      - Replica/RenderViewBuilder.cpp
+      - Tests/ReplicaTests/RenderViewTests.cpp
+      - Design/Interface.md
+      - Design/TechnicalDesign.md
+    acceptance:
+      - "A weapon row says what its shot looks like and for how long - at the least a model and a lifetime in ticks - validated like every other row, so that a Shot event has something to draw"
+      - "SETTLED BY THE OWNER ON 2026-09-19: a shot is a short-lived INSTANCE of a placeholder projectile model, travelling from the firing module's MarkerMuzzle toward its target, drawn by K1's geometry pass like anything else. Core/RenderView.h's RenderInstanceKind::Projectile already exists and the pass already draws instances, so what this task adds is one authored model, a lifetime, and the event-to-instance walk - no new pass and no new shader. The rejected alternative was a tracer beam: no model content, but a world-space line pass that does not exist, which is more renderer work rather than less"
+      - "GameData/Models gains the placeholder projectile, authored like the twenty-two C4 already ships, and the weapon row names it"
+      - "RenderViewBuilder turns a Shot event into instances of kind Projectile between the muzzle and the target for the stated lifetime, placed from the event's own tick so that it is not drawn a frame early or late, with a ReplicaTests case"
+      - "G2's capture shows a shot in flight in at least one frame, which is what makes combat visible in the artefact the agent reads (OpenQuestions.md R1)"
+      - Design/Interface.md §11's projectile row is struck
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+
+  - id: K6
+    title: The client applies the flatten and re-meshes the chunks the render view names
+    intent: >
+      Core/RenderView.h's `changedChunks` has no consumer and never has had one. RenderViewBuilder
+      works out which terrain chunks the structures this commander can SEE have flattened - the one
+      piece of state it keeps, and correct, including for a razed building - and hands them over;
+      nothing reads them. Nor does anything write the flatten into the client's own Landscape:
+      Sim/Landscape.h has ApplyDelta, and Match never calls it, because RenderViewBuilder holds no
+      landscape and only reports the change. So every structure in M1 stands on unflattened ground
+      on the client, and the capture - the only picture anyone reviews - shows bases half-buried in
+      hillsides. Found while writing App (G1a); the owner ruled on 2026-09-19 that it is its own
+      task and that it comes before G2, so that the frames G2 uploads are worth accepting.
+    project: Client
+    depends_on: [G1a]
+    files:
+      - FrontierCommander/Match.h
+      - FrontierCommander/Match.cpp
+      - Client/TerrainPass.h
+      - Client/TerrainPass.cpp
+      - Client/TerrainChunk.h
+      - Client/TerrainChunk.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/TerrainChunkTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ReplicaTests/ConvergenceTests.cpp
+    acceptance:
+      - "Match levels its own landscape under every structure the replica holds, from the footprint of the structure's row and the flattened height StructureState carries, using Sim/Placement.h's FlattenDelta and Landscape::ApplyDelta - the same arithmetic Sim/Construction.cpp runs on the host, so the two agree sample for sample"
+      - "The flatten follows the fog and nothing else: a structure this commander cannot see does not flatten his ground, and a ghost flattens it exactly as the structure did when he last saw it, because that is what he remembers (TechnicalDesign.md §5.2 - 'the terrain under an unscouted base is not public')"
+      - "TerrainPass re-meshes the chunks the render view names, at all four strides, into the ranges those chunks already own: a chunk's vertex and index counts are fixed by its stride and only the heights move, so the buffers keep their layout and a rebuild is an upload and a copy rather than a reallocation"
+      - "A rebuild costs only the chunks that changed: a base of a dozen structures standing still rebuilds nothing on the frame after it arrived, which is what RenderViewBuilder's remembered flatten is for"
+      - "Tests: the chunk rebuild against a synthetic height change, on the CPU, with no device; and a full-stack ConvergenceTests case that a structure the client can see leaves his landscape agreeing with the host's under its footprint, while one he cannot see leaves it untouched"
+      - The capture of G2 shows structures standing on level ground
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      WHY IT FELL BETWEEN THE TASKS, recorded so the next gap is found earlier. S4 flattens on the
+      HOST and stops there, correctly - the wire carries no height deltas, because they would hand
+      a commander the shape of ground he has never scouted. R2 computes the changed chunks and says
+      in its own notes that "the client generates the landscape from the definition it was given at
+      the join and flattens it under the structures it can SEE" - which describes work and assigns
+      it to nobody. K1 is the geometry pass and K2 is the fog pass, and neither touches terrain.
+      G1a's acceptance is the two loops and says nothing about ground. Four tasks each did their own
+      half correctly and the seam between them was never anybody's.
+      THE RE-MESH IS THE REAL WORK AND THE SHAPE OF IT IS ALREADY DECIDED BY K1's BUFFERS.
+      TerrainPass builds every chunk at four strides once, in its constructor, into one vertex and
+      one index buffer, and holds only offsets afterwards; there is no rebuild path at all. What
+      makes it tractable is that a flatten changes HEIGHTS and not TOPOLOGY: a chunk at a given
+      stride has the same vertex and index counts whatever the ground does, so the rebuilt mesh
+      fits the range it already occupies and the index buffer never moves. An upload heap and a
+      CopyBufferRegion per changed chunk per stride is the whole mechanism.
+      DO NOT REACH FOR THE HOST'S LANDSCAPE. It is one member away through Match and it is
+      flattened under every structure in the match. Using it would make this task trivial and ship
+      a wallhack; the point of the client holding its own Landscape is exactly this moment.
+
+  - id: S13
+    title: The viewer's eye, and the builder deadlock it uncovers
+    intent: >
+      A viewer's line of sight runs from its own ground height, and Sim/Landscape.h's CellHeight is
+      a cell's TALLEST sample, so on any ground with relief every swell between two cells occludes.
+      Measured over six positions of GameData/Landscapes/Slice.json, a structure with a 12-cell
+      sight radius sees 27.7% of its own disc: the fog that reaches the screen is moth-eaten, with
+      holes through ground the commander is standing next to, and the renderer draws it faithfully -
+      which is what the owner saw and reported on 2026-09-19. The owner ruled the same day that the
+      viewer looks out from 16 world units above its own ground, a quarter of a cell and half the
+      32 GameDesign.md §8 already uses as its height step, which takes the same six positions to
+      82.2%.
+      THAT ONE-CONSTANT CHANGE BREAKS THE SCRIPTED COMMANDER, WHICH IS WHY THIS IS A TASK AND NOT A
+      LINE. Measured: with the eye raised and nothing else changed, AiTests' acceptance match fails
+      on every one of eight seeds - seat 0 never builds a factory and seat 1 never builds a
+      generator - where the tree as it stands passes all eight. The mechanism is understood and is
+      a defect of S12 rather than of the sight rule.
+    project: Sim
+    depends_on: [S9, S12]
+    files:
+      - Sim/Visibility.h
+      - Sim/Visibility.cpp
+      - Sim/AiSeat.cpp
+      - Sim/Placement.h
+      - Sim/Placement.cpp
+      - Sim/Construction.cpp
+      - Tests/SimTests/VisibilityTests.cpp
+      - Tests/SimTests/AiTests.cpp
+    acceptance:
+      - "A viewer's line of sight leaves from VIEWER_EYE_WORLD_UNITS above its own ground and reaches the TARGET cell at ground level, because what has to be seen is the ground a target stands on and not the top of the target; the constant is 16 and is stated in Sim/Visibility.h with the measurement that chose it"
+      - "A test asserts the fraction of its own disc a viewer sees over the slice landscape, so that a future change to CellHeight or to the sight radius cannot quietly take the fog back to moth-eaten without a number moving"
+      - "AiSeat's Finish behaviour never orders a builder onto a site's own footprint: a structure occupies its cells from the tick construction begins (Sim/Plan.h's Occupies), the planner refuses a destination the drive cannot stand on, the device falls back to Stop, and the behaviour orders it there again on the next decision - for the rest of the match, starving the generator, the factory and the lab that answer after it. The destination is a cell BESIDE the footprint, within the builder module's reach of it, chosen deterministically"
+      - "A site no builder can be got to is passed over rather than waited on, so that the slack roomToBuild already carries for 'a deposit on a summit no drive can climb' is reachable; today Finish answers first and that slack can never be used"
+      - "AiTests' acceptance match passes with the eye raised, on the plan's seed and on at least eight others, and the multi-seed run is a test rather than a probe"
+      - "Stage 5's reach rule and the AI's reading of it are one function: DistanceSquaredTo(footprint, x, z) moves to Sim/Placement.h and both call it, so a builder the AI sends is a builder stage 5 counts"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      WHAT IS ALREADY MEASURED, so that the next reader starts from the evidence and not from the
+      code. The eye height alone: 0 of 8 seeds meet S12's acceptance, against 8 of 8 on the tree as
+      it stands. Do not read that as "the AI is seed-fragile" - the landscape is fixed and the seed
+      turns out to perturb the opening very little, so the eight runs are nearly the same match; it
+      says the sight change breaks it deterministically, and says nothing either way about
+      robustness to the seed. A Finish that walks the builder to a cell beside the footprint moves
+      the failure from "no factory" to "no lab" rather than curing it, and the remaining stall is a
+      builder that cannot get back to a lab its own base has since been built around. That last one
+      may be a third defect - placement that seals a gap - and this task should measure it before
+      deciding whether it is in scope.
+      THE DEADLOCK IS A CLASS AND NOT AN INSTANCE. Every behaviour in AiSeat that issues a Move and
+      returns true starves everything below it when the Move cannot succeed: Finish has it and
+      Scout has the same shape. Whatever guard this task settles on belongs in one place that both
+      call, not copied into each.
+      DO NOT GUARD IT WITH COMPONENT EQUALITY. ClusterGraph::ComponentAt returns a component that is
+      local to a 16x16 cluster, so two cells a truck can drive between are in different components
+      as soon as they are in different clusters; using equality as a reachability test refuses
+      almost every real site. Reachability over the graph is a planner question and the planner
+      answers it over several ticks, which one decision cannot wait for.
+
+  - id: K7
+    title: The ground cursor - a ring that lies on the landscape and tilts with it
+    intent: >
+      The owner asked on 2026-09-19 for Species's cursor: not a quad at the pointer but a ring drawn
+      ON the ground, tilted to the slope, so that pointing at a hillside points at the hillside.
+      Design/Interface.md §4 specifies it and §12 ruling 3 makes it the cursor of aim mode, where
+      there is no pointer and the ring sits at the centre of the screen. It is the one part of that
+      ruling that is drawing rather than input, and it needs something the tree does not have: an
+      answer to where a ray meets the landscape, and to which way the ground faces there
+      (Design/Interface.md §11 row 14).
+    project: Client
+    depends_on: [K1, K6]
+    files:
+      - Core/HeightView.h
+      - Client/GroundRay.h
+      - Client/GroundRay.cpp
+      - Client/CursorPass.h
+      - Client/CursorPass.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/GroundRayTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Replica/OrderInput.cpp
+      - Tests/ReplicaTests/OrderInputTests.cpp
+      - GameData/Textures/GroundRing.dds
+      - GameData/Textures/GroundRingBlur.dds
+      - Design/Interface.md
+    acceptance:
+      - "A ray against the heightfield: clip the ray to the landscape rectangle, march the sample grid cell by cell, and test the two triangles of each cell in the same split the terrain mesh uses, so that the cursor lands on the triangle the commander can see and not on the other diagonal; the nearest hit, and a clean miss when the ray leaves the landscape"
+      - "A normal at a world point, bilinear over the four surrounding samples from central differences, with the DEGENERATE CASE branched explicitly: flat ground gives a normal of exactly (0,1,0), its cross product with world up is zero, XMVector3Normalize of a zero vector is zero, and the quad collapses to a point - which is a live fault in Species today (SpeciesLook.md §7.1) and would show on most of M1's landscape"
+      - "Off the landscape the cursor is HIDDEN and the last position is not reused; Species falls back to a sphere thousands of units out and gets away with it because terrain fills its view, and M1 draws a horizon"
+      - "Over water the hit's height is raised to at least one world unit, so the ring floats on the sea rather than sinking to the seabed the mesh carries on into"
+      - "A pass that draws it: one four-vertex quad on the basis up = the normal, front = normalize(up x worldUp), right = normalize(front x up), sized 30 world units times sqrt(the camera's distance) / 40; depth tested and not written, no culling, and a slope-scaled depth bias toward the camera because it is coplanar with the ground - Species nudges its near plane out 5% for the cursor pass and that is a GL trick with no clean D3D12 equivalent"
+      - "The blurred pass then the sharp one, at SRC_ALPHA/INV_SRC_COLOR and SRC_ALPHA/ONE, which is what makes a bright ring readable over bright sand; the six meanings of §4 choose the tint rather than a different bitmap"
+      - "The ring's own texture and its pre-blurred twin ship with it, through C4's importer and at C4's provenance rules, because they are not cells of Icons.dds and C4 is done - Design/Interface.md §11 row 15, and its heading is the reason the row does not name C4"
+      - "Replica/OrderInput.cpp's GroundPoint uses the same ray, so that the point a right click orders and the point the ring is drawn at are one point - today it intersects a flat plane at y = 0 and over ground 200 units up at the default 26.6 degree pitch that is 400 world units out, six cells"
+      - "Tests on the CPU with no device: the ray against a synthetic heightfield with a known hill, including a grazing ray, a ray that leaves the landscape, and a ray down a valley whose first CELL hit is not its nearest TRIANGLE hit; the normal at a flat cell, at a slope of known gradient, and at the edge; and the basis on flat ground, which is the degenerate case"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      IT DEPENDS ON K6 AND THE REASON IS THE POINT OF K6. A cursor that lies on the client's
+      landscape is only in the right place if the client's landscape is the right shape, and until
+      K6 lands the client's ground is unflattened under every structure - so the ring would float
+      above a levelled base, or sink into it, by exactly the flatten K6 applies.
+      THE RAY IS NOT Replica/Picking.h's. That one is ray-versus-sphere over the render view's
+      objects and never touches the ground; this one is ray-versus-heightfield. They meet in App,
+      which casts one ray and asks both: Picking answers what is under it, GroundRay answers where
+      the ground under it is. Neither grows a dependency on the other, and GroundRay sits in Client
+      beside the terrain mesh whose triangle split it has to match.
+      MATCH THE MESH'S DIAGONAL OR THE CURSOR WILL LIE. Client/TerrainChunk.cpp decides how a cell
+      is split into two triangles, and a ray test that splits it the other way answers with a
+      surface that is not the one on the screen - by up to the cell's relief, which on this
+      landscape is tens of units. The test for it is the third ray case above, and it is written
+      against TerrainChunk's split rather than against a guess.

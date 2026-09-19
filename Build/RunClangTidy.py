@@ -38,7 +38,16 @@ import sys
 import time
 from pathlib import Path
 
-from CheckProjectFiles import COMPILED_SHADER_DIRECTORY, VENDORED, find_solution, parse_project, repository_root, solution_projects
+from CheckProjectFiles import (COMPILED_SHADER_DIRECTORY, PLATFORMS, VENDORED, find_solution, parse_project, repository_root,
+                              solution_projects)
+
+# THE SLICE THE LINT READS. A project's settings are keyed by configuration AND platform since
+# ADR-001 gained ARM64 (2026-09-19), and asking for "Debug" alone stopped finding anything - which
+# is how this file went from linting the tree to raising KeyError in CI. clang-tidy reads sources
+# rather than objects, so one slice is enough and it is the one the x64 job builds: the defines and
+# the include directories are the same on both platforms, and the one setting that is not - the
+# instruction set - is not a switch this file passes.
+LINTED_SLICE = f"Debug|{PLATFORMS[0]}"
 
 FIXED_SWITCHES = ["--driver-mode=cl", "/std:c++latest", "/EHsc", "/permissive-", "/arch:AVX2", "/fp:precise", "/DUNICODE", "/D_UNICODE"]
 WORKFLOW = Path(".github") / "workflows" / "build.yml"
@@ -94,7 +103,7 @@ def translation_units(root: Path, selected_projects: set[str] | None, selected_f
         project = parse_project(root, file)
         if selected_projects is not None and project.name not in selected_projects:
             continue
-        debug = project.configurations["Debug"]
+        debug = project.configurations[LINTED_SLICE]
         definitions = [d for d in (debug.compile("PreprocessorDefinitions") or "").split(";") if d and not d.startswith("%(")]
         if "_DEBUG" not in definitions:
             definitions.append("_DEBUG")

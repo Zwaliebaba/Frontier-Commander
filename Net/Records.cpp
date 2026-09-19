@@ -241,6 +241,9 @@ void Write(Neuron::ByteWriter& _writer, const SeatState& _record)
   _writer.Write(_record.deviceCap);
   _writer.Write(_record.structureCount);
   _writer.Write(_record.structureCap);
+  _writer.Write(_record.rejectSequence);
+  _writer.Write(_record.rejectKind);
+  _writer.Write(_record.rejectReason);
 }
 
 bool Read(Neuron::ByteReader& _reader, SeatState& _out)
@@ -249,11 +252,23 @@ bool Read(Neuron::ByteReader& _reader, SeatState& _out)
   if (!_reader.Read(record.seat) || !_reader.Read(record.powerHundredths) || !_reader.Read(record.stockpileCapHundredths) ||
       !_reader.Read(record.extractedHundredths) || !_reader.Read(record.researchItem) || !_reader.Read(record.researchRemainingTicks) ||
       !_reader.Read(record.victory) || !_reader.Read(record.deviceCount) || !_reader.Read(record.deviceCap) ||
-      !_reader.Read(record.structureCount) || !_reader.Read(record.structureCap))
+      !_reader.Read(record.structureCount) || !_reader.Read(record.structureCap) || !_reader.Read(record.rejectSequence) ||
+      !_reader.Read(record.rejectKind) || !_reader.Read(record.rejectReason))
   {
     return false;
   }
   if (record.seat >= MAX_SEATS || record.victory >= VICTORY_STATE_COUNT)
+  {
+    return false;
+  }
+  if (record.rejectKind >= ORDER_KIND_COUNT || record.rejectReason >= REJECT_REASON_COUNT)
+  {
+    return false;
+  }
+  // Accepted is not a refusal, so it can only appear on a seat that has had none. A host claiming
+  // "your order was refused: it was accepted" is a host whose encoder is wrong, and the reader says
+  // so here rather than leaving the client to draw a line with nothing in it.
+  if ((record.rejectSequence == 0) != (record.rejectReason == static_cast<std::uint8_t>(RejectReason::Accepted)))
   {
     return false;
   }

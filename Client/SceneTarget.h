@@ -7,6 +7,7 @@
 #include <winrt/base.h>
 
 #include "DescriptorHeap.h"
+#include "ScaleMode.h" // AUTHORED_WIDTH_PIXELS and AUTHORED_HEIGHT_PIXELS moved here (m1/K3)
 
 #include <array>
 #include <cstdint>
@@ -16,9 +17,6 @@ namespace Neuron
 
 class GraphicsDevice;
 
-/// The authored resolution (ADR-004): every pass draws at this size, whatever the window's.
-inline constexpr std::uint32_t AUTHORED_WIDTH_PIXELS = 1920;
-inline constexpr std::uint32_t AUTHORED_HEIGHT_PIXELS = 1080;
 /// The scene target's multisampling (ADR-004); a device without it draws single-sampled and says so.
 inline constexpr std::uint32_t SCENE_SAMPLE_COUNT = 4;
 inline constexpr DXGI_FORMAT SCENE_COLOR_FORMAT = DXGI_FORMAT_R8G8B8A8_UNORM;

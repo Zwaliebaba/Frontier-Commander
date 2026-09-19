@@ -177,6 +177,44 @@ A `CheckOpenGLState` that asserted all of this exists and is disabled; the comme
 
 The free camera is a fly camera with a ground floor, not an RTS camera with a fixed pitch: yaw and pitch are free, height is what the mouse wheel and the vertical keys change, and the height rule keeps it out of the terrain.
 
+### 7.1 The ground cursor
+
+`Species/GameCursor.cpp:1129`, `Species/UserInput.cpp:203`, `GameLogic/Landscape.cpp:447` and `:624`. Read while the owner was asking for this cursor in Frontier Commander (2026-09-19); `Design/Interface.md` §4 is what it became.
+
+It is **one terrain-aligned textured quad**, four vertices, drawn twice. There is no decal projection, no ring of generated geometry and no mesh: the circle is the bitmap's alpha.
+
+| Step | What Species does | Where |
+|---|---|---|
+| The point | `RecalcMousePos3d` unprojects the cursor pixel at the near and far planes, normalises the difference, and marches the height map | `UserInput.cpp:203`; `Camera.cpp:2387` |
+| The march | Clip the 2D ray to the map rectangle, then a DDA over cells, two triangles a cell split `(0,0)-(0,1)-(1,0)` and `(0,1)-(1,0)-(1,1)`, **first** hit wins, no back-face rejection | `Landscape.cpp:628`, `:755`, `:882` |
+| The tilt | A normal map built once at load from four-neighbour central differences — two face normals, each normalised, then averaged — sampled **bilinearly** in world space | `Landscape.cpp:447`; `2dSurfaceMap.h:167` |
+| The basis | `up` = that normal; `front` = `normalize(up × worldUp)`; `right` = `normalize(front × up)`, computed inside `Render3D` | `GameCursor.cpp:509`, `:1132` |
+| The quad | `pos ± right × scale`, `pos ± front × scale`, hotspot `(0.5, 0.5)` so it is centred | `GameCursor.cpp:1152` |
+| The scale | `30.0f × sqrt(distance to the camera) / 40.0f` | `GameCursor.cpp:1143` |
+| The passes | blurred copy at `SRC_ALPHA, ONE_MINUS_SRC_COLOR` with colour `(1,1,1,0)`, then the sharp copy additively at `SRC_ALPHA, ONE` in the cursor's tint | `GameCursor.cpp:1163`, `:1180` |
+| The depth | test on, **write off**, culling off; the near plane is pushed out 5% for the whole cursor pass to bias it toward the camera | `GameCursor.cpp:1146`, `:289` |
+| Water | `mousePos.y = max(1.0f, mousePos.y)` — the mesh continues under the sea, so the disc is lifted to float rather than the water plane being intersected | `GameCursor.cpp:294` |
+| Off the map | the ray misses, and Species falls back to a sphere of `worldSize × 40`; the normal map then wraps its index to zero rather than clamping | `UserInput.cpp:232`; `2dSurfaceMap.h:183` |
+| Pulse | `size × (1 + \|sin(4t)\| × 0.6)` while animating; on for placement and move-here, off for the plain disc | `GameCursor.cpp:1047` |
+| Which disc | the plain ground cursor is `MouseHighlight.bmp` at size **30**, drawn when nothing is selected and nothing is highlighted | `GameCursor.cpp:506` |
+
+**Two faults not to carry over.** `front = normalize(up × worldUp)` is **zero on flat ground**, because `GenerateNormals` writes exactly `(0, 1, 0)` there and `XMVector3Normalize` of a zero vector is zero — the disc collapses to a point, and Species gets away with it because its terrain is rarely flat. And an out-of-range sample wraps to the origin cell instead of clamping. Frontier Commander's landscape has large flat stretches and a visible horizon, so both need an explicit branch.
+
+### 7.2 The free-movement camera, and why M1 does not port it
+
+`Species/Camera.cpp:574` (`AdvanceFreeMovementMode`). Species's mouse is connected to the camera with no button held, which is what the owner asked for, but the mechanism is not a mouse-look:
+
+1. The mouse moves a **virtual screen cursor**, not the camera.
+2. That cursor is ray-cast onto the terrain each frame — the `m_mousePos3d` of §7.1.
+3. The camera's forward vector is rotated **toward that world point** by `sin(angle) × sqrt(dt)` radians, the cross product carrying both the axis and the angle.
+4. The world point is carried along by the camera's own movement, re-projected to the screen, and the operating system's pointer is **warped** so it stays glued to it, with sub-pixel accumulators; the warp is clamped to the screen rectangle, and that saturation at the edge is what makes the camera keep turning.
+
+There is no yaw and no pitch anywhere in it: only `m_front` and `m_up`, re-orthogonalised every frame from world `+Y`, which is why it cannot roll and needs no pitch limit. Movement is flattened to the horizontal plane and smoothed into position by `lerp(pos, target, 4 × dt)`; flying at a hill converts blocked horizontal motion into climbing (`Camera.cpp:662`).
+
+`Design/Interface.md` §12 ruling 3 takes Species's *arrangement* and not this *mechanism*. The camera Frontier Commander ports is Species's own editor camera, `AdvanceDebugMode` (`Camera.cpp:73`): raw relative counts straight into yaw and pitch at **0.005 radians a pixel**, `Camera::Normalise` keeping the basis orthonormal. `Client/Camera.h` stores yaw and pitch, `Client/RawMouse.h` already reads the relative counts, and a per-frame `SetCursorPos` is the thing that behaves worst across two monitors and a high-DPI display.
+
+**Escape in Species is not a mode key.** There is no mode flag at all: Escape registers an Eclipse window, and `EclGetWindows()->size() > 0` is what uncaptures the mouse, freezes the camera and swaps the ground disc for the 2D arrow (`Main.cpp:380`; `Camera.cpp:2113`; `GameCursor.cpp:308`). Frontier Commander needs the released pointer for panels, the minimap and the drag rectangle as well as for a menu, so §4 names the two modes instead of deriving one from whether a window happens to be open.
+
 ---
 
 ## 8. Sprites, particles and debris
