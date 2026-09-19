@@ -4,6 +4,7 @@
 
 #include "FixedPoint.h"
 #include "GraphicsDevice.h"
+#include "RenderView.h"
 #include "Log.h"
 
 #include <algorithm>
