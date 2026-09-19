@@ -1622,9 +1622,35 @@ tasks:
       carries `y`, "the flattened height under the footprint". So the builder computes the changed
       chunks from the structures it applied this frame, and the terrain a commander has not scouted
       stays unflattened on his machine, which is the point.
-      STILL TO WRITE: Replica/RenderViewBuilder for devices, structures, wrecks, the changed chunks
-      and the fog - the four of five that have data - and the draw scale's way through
-      GeometryInstance and Client/Shaders/GeometryVS.hlsl.
+      RenderViewBuilder IS WRITTEN for the four sources that have data: devices at the pose
+      Interpolation gives, structures at their footprint's CENTRE (a model is authored about its own
+      origin, and a structure whose origin sat on a corner would draw a footprint away from where
+      the simulation says it is), wrecks as one instance each - a device's wreck is its CHASSIS and
+      not its whole tree, because the drives and the modules came apart with everything else - and
+      the fog straight through, the replica's own bytes without a table.
+      IT REMEMBERS WHAT IT HAS FLATTENED, which is the one piece of state in it. The replica says
+      what structures there ARE and not which arrived this frame, and re-flattening every structure
+      every frame would rebuild every chunk of a base on every frame of the match; the builder keeps
+      what it last flattened and reports the difference, including for a structure that is GONE,
+      because a razed building leaves its ground as it left it. ForgetTerrain() exists for the full
+      frame a rejoin brings.
+      A GHOST IS DRAWN AND NOT PICKED. It is what the commander remembers of a building he cannot
+      see now, so a click on one would select something that may not be there; §5's inspection is
+      for what is visible. The fog pass darkens it like everything else.
+      TESTING IT NEEDED A DECISION AND THE DECISION IS RECORDED. Build() takes a Replica, which
+      needs a Net::Client, which needs a host to have sent a JoinAccepted - the whole stack, which
+      is what ConvergenceTests already stands up and what RenderViewTests deliberately does not. So
+      the chunk arithmetic, which is the only part that is wrong by one chunk at an edge rather than
+      wrong by a crash, is a FREE function and has eight cases; the walk itself is covered by the
+      stack, and a full-stack case for it belongs beside ConvergenceTests rather than here.
+      MUTATION TESTING FOUND THE SUITE WEAK AND THEN FOUND THE CODE REDUNDANT. Four of six survived
+      the first round. One was a real gap - every case moved x and none moved y, so taking the minus
+      one off the y line alone failed nothing - and another needed a footprint at a chunk's FIRST
+      cell to show at all. The other two survived because the code is genuinely redundant: the clamp
+      to the landscape's last cell and the off-landscape refusal both fall out of the loop bound, so
+      the comment says which guards are load-bearing and which are there to keep the rule visible.
+      STILL TO WRITE: the draw scale's way through GeometryInstance and
+      Client/Shaders/GeometryVS.hlsl, and a full-stack case for the walk.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals

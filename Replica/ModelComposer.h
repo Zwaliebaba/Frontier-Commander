@@ -79,12 +79,24 @@ public:
   void ComposeSingle(std::uint32_t _modelIndex, float _scale, const Pose& _pose, const ObjectAppearance& _appearance,
                      Neuron::RenderInstanceKind _kind, std::vector<Neuron::RenderInstance>& _outInstances) const;
 
+  /// How far a row's model reaches from its own origin, in world units and at the row's own draw
+  /// scale: the sphere Replica/Picking.h tests a click against.
+  ///
+  /// A CHASSIS'S RADIUS IS THE WHOLE DEVICE'S, near enough. The drives and the modules sit ON the
+  /// chassis, so its own reach covers them but for a long barrel, and a click has a pixel of slop
+  /// in it anyway - the alternative is composing every part to pick one object, which is the work
+  /// of drawing done twice a frame for a gesture.
+  [[nodiscard]] float ChassisRadius(std::uint32_t _row) const noexcept;
+  [[nodiscard]] float StructureRadius(std::uint32_t _row) const noexcept;
+
   /// The model index and draw scale a row resolved to, for the callers that place one themselves.
   [[nodiscard]] std::uint32_t ChassisModel(std::uint32_t _row) const noexcept;
   [[nodiscard]] std::uint32_t DriveModel(std::uint32_t _row) const noexcept;
   [[nodiscard]] std::uint32_t ModuleModel(std::uint32_t _row) const noexcept;
   [[nodiscard]] std::uint32_t StructureModel(std::uint32_t _row) const noexcept;
   [[nodiscard]] std::uint32_t StructureModuleModel(std::uint32_t _row) const noexcept;
+  [[nodiscard]] float ChassisScale(std::uint32_t _row) const noexcept;
+  [[nodiscard]] float StructureScale(std::uint32_t _row) const noexcept;
 
   /// Rows whose model id names nothing in the tree. A content fault, counted rather than thrown:
   /// ContentValidator is what reports one with a file and a line, and a renderer that refused to
@@ -100,6 +112,7 @@ private:
   {
     std::uint32_t model = NO_MODEL;
     float scale = 1.0f;
+    float radius = 0.0f; ///< The furthest vertex from the model's origin, already scaled
   };
 
   const ContentTree* m_content;

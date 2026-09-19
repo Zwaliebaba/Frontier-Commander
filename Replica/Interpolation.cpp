@@ -19,12 +19,9 @@ namespace
 constexpr float WORLD_UNITS_PER_WIRE_UNIT =
   static_cast<float>(SUBUNITS_PER_WIRE_UNIT) / static_cast<float>(Neuron::SUBUNITS_PER_WORLD_UNIT);
 
-/// A heading is interpolated at 256 substeps to each of the wire's 256 steps, which multiplies back
-/// out to the 65,536 of a full binary angle (Core/BinaryAngle.h) - the resolution the simulation
-/// turns at before the wire coarsened it. Without the substeps the intermediate would round to one
-/// of the two endpoints and a device would snap through its turn in 1.4-degree jumps however many
-/// frames were drawn inside the interval.
-constexpr std::int64_t HEADING_SUBSTEPS = 256;
+// HEADING_SUBSTEPS is Interpolation.h's. Without the substeps the intermediate would round to one
+// of the two endpoints and a device would snap through its turn in 1.4-degree jumps however many
+// frames were drawn inside the interval.
 /// The wire's headings to a full turn: Net/Records.h carries the high byte of a binary angle.
 constexpr std::int32_t HEADINGS_PER_TURN = 256;
 

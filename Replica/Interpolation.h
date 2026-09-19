@@ -2,6 +2,8 @@
 
 #include "Records.h"
 
+#include "RenderView.h"
+
 #include <cstdint>
 
 // Where a moving thing is drawn between two frames (TechnicalDesign.md §3 step 4, §6.3).
@@ -31,9 +33,23 @@ inline constexpr std::int32_t INTERPOLATION_DELAY_TICKS = 2;
 /// same position and the interpolation would do nothing. A thousandth of a tick is 50 microseconds.
 inline constexpr std::int64_t RENDER_TIME_SCALE = 1000;
 
+/// A heading is interpolated at 256 substeps to each of the wire's 256 steps, which multiplies back
+/// out to the 65,536 of a full binary angle (Core/BinaryAngle.h) - the resolution the simulation
+/// turns at before the wire coarsened it.
+inline constexpr std::int64_t HEADING_SUBSTEPS = 256;
+
 [[nodiscard]] constexpr std::int64_t RenderTimeOfTick(std::uint32_t _tick) noexcept
 {
   return static_cast<std::int64_t>(_tick) * RENDER_TIME_SCALE;
+}
+
+/// A WIRE heading in radians. The wire carries the high byte of a binary angle (256 headings to the
+/// turn), so this scales it back to the full 65,536 before converting - which is one line and is
+/// exactly the line a caller writing it again would get subtly wrong. Interpolation.cpp and
+/// RenderViewBuilder.cpp both need it and neither owns it.
+[[nodiscard]] constexpr float RadiansOfWireHeading(std::uint8_t _heading) noexcept
+{
+  return Neuron::RadiansOfBinaryAngle(static_cast<std::int64_t>(_heading) * HEADING_SUBSTEPS);
 }
 
 /// Where one object was at one frame's tick, in the wire's own units. A sample is what a frame

@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "ModelComposer.h"
+#include "RenderViewBuilder.h"
 
 #include <cmath>
 #include <cstdint>
@@ -323,6 +324,121 @@ public:
     composer.ComposeStructure(post, Frontier::Pose{}, Frontier::ObjectAppearance{}, instances);
     Assert::AreEqual(std::size_t{1}, instances.size(), L"no modules mounted");
     Assert::AreEqual(std::uint8_t{100}, instances[0].buildPercent);
+  }
+
+  /// THE CHUNKS A STRUCTURE FLATTENS. Computed on the client and never received: the wire carries
+  /// no flatten deltas on purpose, because "the terrain under an unscouted base is not public"
+  /// (Net/Records.h, TechnicalDesign.md §5.2), so a commander's own machine flattens only under the
+  /// structures he can see. Wrong by one chunk at an edge is a seam of unflattened ground beside a
+  /// building, which is why the edges are what these cases are about.
+  TEST_METHOD(AFootprintInsideOneChunkTouchesOnlyThatChunk)
+  {
+    std::vector<std::uint32_t> chunks;
+    // 128 cells a side at 32 cells a chunk is 4 by 4 chunks.
+    Frontier::ChunksOfFootprint(4, 4, 3, 3, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size());
+    Assert::AreEqual(std::uint32_t{0}, chunks[0]);
+
+    chunks.clear();
+    Frontier::ChunksOfFootprint(33, 65, 2, 2, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size());
+    Assert::AreEqual(std::uint32_t{2 * 4 + 1}, chunks[0], L"chunk (1, 2), row major over four a side");
+  }
+
+  TEST_METHOD(AFootprintAcrossABoundaryTouchesEveryChunkItLiesOn)
+  {
+    std::vector<std::uint32_t> chunks;
+    Frontier::ChunksOfFootprint(31, 4, 2, 1, 128, 32, chunks); // cells 31 and 32: two chunks across
+    Assert::AreEqual(std::size_t{2}, chunks.size());
+    Assert::AreEqual(std::uint32_t{0}, chunks[0]);
+    Assert::AreEqual(std::uint32_t{1}, chunks[1]);
+
+    chunks.clear();
+    Frontier::ChunksOfFootprint(31, 31, 2, 2, 128, 32, chunks); // a corner: four chunks
+    Assert::AreEqual(std::size_t{4}, chunks.size());
+    Assert::AreEqual(std::uint32_t{0}, chunks[0]);
+    Assert::AreEqual(std::uint32_t{1}, chunks[1]);
+    Assert::AreEqual(std::uint32_t{4}, chunks[2]);
+    Assert::AreEqual(std::uint32_t{5}, chunks[3]);
+  }
+
+  /// A footprint running off the edge is clamped to the landscape rather than naming a chunk that
+  /// does not exist, which the consumer would index an array with.
+  TEST_METHOD(AFootprintRunningOffTheEdgeNamesNoChunkThatDoesNotExist)
+  {
+    std::vector<std::uint32_t> chunks;
+    Frontier::ChunksOfFootprint(126, 126, 8, 8, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size());
+    Assert::AreEqual(std::uint32_t{15}, chunks[0], L"the last chunk of four by four");
+
+    chunks.clear();
+    Frontier::ChunksOfFootprint(200, 4, 2, 2, 128, 32, chunks);
+    Assert::IsTrue(chunks.empty(), L"a cell off the landscape entirely");
+  }
+
+  /// THE LAST CELL IS INCLUSIVE, and this is the case that says so. A footprint of two cells at 30
+  /// covers 30 and 31 - both in chunk 0 - and NOT cell 32, which is the next chunk. Every other
+  /// case here passes whether the minus one is there or not, which mutation testing showed by
+  /// removing it and failing nothing.
+  TEST_METHOD(AFootprintEndingExactlyOnABoundaryDoesNotTouchTheNextChunk)
+  {
+    std::vector<std::uint32_t> chunks;
+    Frontier::ChunksOfFootprint(30, 0, 2, 1, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size(), L"cells 30 and 31, both in chunk 0");
+    Assert::AreEqual(std::uint32_t{0}, chunks[0]);
+
+    chunks.clear();
+    Frontier::ChunksOfFootprint(30, 0, 3, 1, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{2}, chunks.size(), L"and one cell more reaches 32, which is chunk 1");
+
+    // AND THE SAME DOWN THE Y AXIS. The two are separate expressions and a test that moves only x
+    // proves only x: with the minus one taken off the y line alone, everything above still passed.
+    chunks.clear();
+    Frontier::ChunksOfFootprint(0, 30, 1, 2, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size(), L"rows 30 and 31, both in chunk 0");
+    Assert::AreEqual(std::uint32_t{0}, chunks[0]);
+
+    chunks.clear();
+    Frontier::ChunksOfFootprint(0, 30, 1, 3, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{2}, chunks.size());
+    Assert::AreEqual(std::uint32_t{4}, chunks[1], L"the chunk below, which is four a side away");
+  }
+
+  /// A landscape that is not a whole number of chunks still rounds UP, because the last partial
+  /// chunk is drawn like any other.
+  TEST_METHOD(ALandscapeThatIsNotAWholeNumberOfChunksRoundsUp)
+  {
+    std::vector<std::uint32_t> chunks;
+    Frontier::ChunksOfFootprint(96, 0, 1, 1, 100, 32, chunks); // 100 cells is 4 chunks a side
+    Assert::AreEqual(std::size_t{1}, chunks.size());
+    Assert::AreEqual(std::uint32_t{3}, chunks[0]);
+  }
+
+  /// A zero footprint is a content fault and is treated as one cell, so the structure's own chunk
+  /// is still rebuilt rather than silently left with the landscape's ground under it.
+  /// A zero footprint is a content fault and is treated as one cell, so the structure's own chunk
+  /// is still rebuilt rather than silently left with the landscape's ground under it. AT A CHUNK'S
+  /// FIRST CELL, because that is the only place it shows: at cell 40 the arithmetic lands on the
+  /// same chunk either way, and at cell 32 it names none at all without the clamp to one.
+  TEST_METHOD(AZeroFootprintStillTouchesTheChunkItStandsOn)
+  {
+    std::vector<std::uint32_t> chunks;
+    Frontier::ChunksOfFootprint(32, 32, 0, 0, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size(), L"chunk (1, 1), which a footprint of zero cells would miss");
+    Assert::AreEqual(std::uint32_t{5}, chunks[0]);
+
+    chunks.clear();
+    Frontier::ChunksOfFootprint(40, 40, 0, 0, 128, 32, chunks);
+    Assert::AreEqual(std::size_t{1}, chunks.size());
+    Assert::AreEqual(std::uint32_t{5}, chunks[0]);
+  }
+
+  TEST_METHOD(ANonsenseChunkSizeNamesNothing)
+  {
+    std::vector<std::uint32_t> chunks;
+    Frontier::ChunksOfFootprint(4, 4, 2, 2, 128, 0, chunks);
+    Frontier::ChunksOfFootprint(4, 4, 2, 2, 0, 32, chunks);
+    Assert::IsTrue(chunks.empty(), L"rather than dividing by zero or naming chunk 0 of no landscape");
   }
 
   /// A wreck and a projectile are one model each and carry their kind, which is what picking and

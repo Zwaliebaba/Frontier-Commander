@@ -4,6 +4,7 @@
 
 #include "BinaryAngle.h"
 
+#include <algorithm>
 #include <cmath>
 #include <string_view>
 
@@ -32,6 +33,21 @@ constexpr std::string_view MARKER_MUZZLE = "MarkerMuzzle";
 [[nodiscard]] float ScaleOf(std::int32_t _hundredths) noexcept
 {
   return _hundredths > 0 ? static_cast<float>(_hundredths) / 100.0f : 1.0f;
+}
+
+/// The furthest a model's vertices reach from its own origin, in world units. The same number
+/// Client/ModelBuffers.h computes for a cull, worked out here because Replica may not include it.
+[[nodiscard]] float ModelRadiusWorldUnits(const ModelDesc& _model) noexcept
+{
+  std::int64_t furthestSquared = 0;
+  for (const ModelVertex& vertex : _model.vertices)
+  {
+    const std::int64_t x = vertex.x;
+    const std::int64_t y = vertex.y;
+    const std::int64_t z = vertex.z;
+    furthestSquared = std::max(furthestSquared, x * x + y * y + z * z);
+  }
+  return Neuron::WorldUnitsOfSubunits(static_cast<std::int32_t>(std::llround(std::sqrt(static_cast<double>(furthestSquared)))));
 }
 
 } // namespace
@@ -72,6 +88,7 @@ ModelComposer::ModelComposer(const ContentTree& _content)
     // The index into ContentTree::models, which IS the model id a RenderInstance carries: pointer
     // arithmetic over the vector the tree holds, because FindModel gives back a pointer into it.
     resolved.model = static_cast<std::uint32_t>(model - m_content->models.data());
+    resolved.radius = ModelRadiusWorldUnits(*model) * resolved.scale;
     return resolved;
   };
 
@@ -100,6 +117,26 @@ ModelComposer::ModelComposer(const ContentTree& _content)
   {
     m_structureModules.push_back(resolve(row.model, row.modelScaleHundredths));
   }
+}
+
+float ModelComposer::ChassisScale(std::uint32_t _row) const noexcept
+{
+  return _row < m_chassis.size() ? m_chassis[_row].scale : 1.0f;
+}
+
+float ModelComposer::StructureScale(std::uint32_t _row) const noexcept
+{
+  return _row < m_structures.size() ? m_structures[_row].scale : 1.0f;
+}
+
+float ModelComposer::ChassisRadius(std::uint32_t _row) const noexcept
+{
+  return _row < m_chassis.size() ? m_chassis[_row].radius : 0.0f;
+}
+
+float ModelComposer::StructureRadius(std::uint32_t _row) const noexcept
+{
+  return _row < m_structures.size() ? m_structures[_row].radius : 0.0f;
 }
 
 std::uint32_t ModelComposer::ChassisModel(std::uint32_t _row) const noexcept
