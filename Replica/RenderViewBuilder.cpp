@@ -41,6 +41,12 @@ RenderViewBuilder::RenderViewBuilder(const ContentTree& _content, const ModelCom
 {
 }
 
+void RenderViewBuilder::Settings(const RenderViewSettings& _settings)
+{
+  m_settings = _settings;
+  ForgetTerrain();
+}
+
 void RenderViewBuilder::ForgetTerrain()
 {
   m_flattened.clear();

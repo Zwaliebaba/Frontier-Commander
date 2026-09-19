@@ -92,6 +92,11 @@ public:
     return m_lastUnresolved;
   }
 
+  /// The landscape's size is not known when a match is built - Sim is what validates and holds the
+  /// landscape - so the settings can arrive afterwards. Setting them forgets the flattened terrain
+  /// too: a chunk index computed against another landscape means nothing.
+  void Settings(const RenderViewSettings& _settings);
+
   /// Forgets every structure it has flattened, so that the next Build reports them all again. What
   /// a full frame needs: the replica cleared itself, and a chunk list that assumed otherwise would
   /// leave the terrain under a rejoined commander's own base flat-looking and never rebuilt.

@@ -2006,6 +2006,8 @@ tasks:
       - Tests/CoreTests/CoreTests.vcxproj
       - FrontierCommander/LocalHost.h
       - FrontierCommander/LocalHost.cpp
+      - Replica/RenderViewBuilder.h
+      - Replica/RenderViewBuilder.cpp
       - FrontierCommander/App.h
       - FrontierCommander/App.cpp
       - FrontierCommander/LocalHost.h
@@ -2083,8 +2085,30 @@ tasks:
       whoever grows one.
       NO WINDOWS HEADER ANYWHERE IN IT, which makes it the one part of G1a that is not CI's alone:
       Sim, Net, Core and a thread. It builds and runs outside CI, and it did before it was pushed.
-      STILL TO WRITE: Match (the two loops joined) and App's change from M0's landscape viewer to a
-      match on Slice.json - both of which are genuinely CI's alone.
+      Match IS WRITTEN: the host thread on one side, this commander's client and replica on the
+      other, and the loopback between them. Of the client loop's seven steps it runs 2 to 5 - drain
+      the network, apply frames, interpolate, build the render view - and App will run 1, 6 and 7,
+      the window's messages, the input routing and the drawing, because those need a window and a
+      device and these do not. So Match, like LocalHost, has no Windows or Direct3D header in it and
+      is not CI's alone. Client/TerrainChunk.h's CHUNK_CELLS is PASSED IN rather than included for
+      exactly that reason, which is the same choice RenderViewBuilder already makes.
+      THE CLIENT HAS NO SIMULATION CLOCK AND STILL NEEDS A CLOCK. §3 says the client "has no
+      simulation clock; it has the replica's timeline", and Net's Client takes a tick for heartbeats
+      and timeouts. That is a LIVENESS clock, and it has to come from wall time rather than from the
+      replica: a host that stopped sending stops advancing the replica's tick, which is exactly the
+      moment a timeout has to fire. It is Core's TickPacer again, allowed to run every tick it owes,
+      because a liveness counter that ran four at a time would make a timeout late by however long
+      the frame hitched.
+      RUN END TO END, WHICH NOTHING IN THIS MILESTONE HAD BEEN. A probe stands up a Match on the
+      real GameData and the real Slice landscape and runs it for a second and a bit: the host thread
+      reached tick 24 in 1.2 seconds (20 Hz, to the tick), the client made 147 passes, the join was
+      accepted, the replica adopted the landscape and the render view carried the fog, with nothing
+      behind and no wall time given away. Not committed (ImplementationPlan.md §2).
+      AND THE SAME MATCH IS CLEAN UNDER ThreadSanitizer: zero data races with a real host thread and
+      a real client thread over the loopback, which is the lock added earlier in this task verified
+      where it actually matters rather than in a synthetic probe.
+      STILL TO WRITE: App's change from M0's landscape viewer to a match on Slice.json - the window,
+      the input routing and the drawing, which are genuinely CI's alone.
 
   - id: G1b
     title: Selection, orders, the camera's buttons and the match overlays
