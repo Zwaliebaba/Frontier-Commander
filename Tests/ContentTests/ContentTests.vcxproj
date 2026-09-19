@@ -109,6 +109,7 @@
     <ClCompile Include="ContentHashTests.cpp" />
     <ClCompile Include="ContentValidatorTests.cpp" />
     <ClCompile Include="DesignStatsTests.cpp" />
+    <ClCompile Include="InterfaceDescTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

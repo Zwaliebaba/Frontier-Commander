@@ -1944,6 +1944,44 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      THE FILE LIST WAS WRONG IN BOTH DIRECTIONS. Content/ContentValidator.cpp is NOT touched: the
+      validator is for rules that span files and the palette has none - every fault it can have is
+      inside its own document, which is the loader's half. Four files it did not name are:
+      Tests/ContentTests/BrokenFixtures.h, because LoadContent now requires Interface.json and every
+      fixture tree in the suite would otherwise stop loading; the two ContentTests project files; and
+      Sim/Sim.cpp, for the static_assert below.
+      THE SEAT COUNT IS IN TWO PLACES AND HAS TO BE. Content may not include Sim (AGENTS.md R9), so
+      Content/InterfaceDesc.h declares COMMANDER_COLOR_COUNT and Sim/Sim.cpp static_asserts it
+      against MAX_SEATS - the first translation unit where both are visible. Without it, raising
+      MAX_SEATS would draw the new seats in whatever the array was initialised to.
+      THE READER CHECKS FOR MEMBERS IT WAS NOT ASKED FOR, which no other table does. Every other
+      table is a list of rows with ids; this one is a fixed set of names, so a misspelled role is
+      not a row that fails to resolve but a field left at its default and a panel drawn in a colour
+      nobody chose. The second pass over the object is what turns that into a diagnostic.
+      THE MEMBER IS CALLED ui AND NOT interface, because the Windows SDK defines `interface` as a
+      macro for `struct`. It compiles everywhere except the platform this game is built on.
+      Verified in the session on Linux: CheckTaskDag, CheckFormat (18.1.3) and CheckProjectFiles
+      clean - the last of which caught three test names spelling 'colour' against R11; a
+      -fsyntax-only pass over ContentLoader.cpp and Sim.cpp; and the loader itself built against
+      Core/Json.cpp and run over the real GameData, which reads all seventeen roles and all eight
+      seats, and over five broken copies, which give:
+        missing role      Interface.json(3,13): the member 'accent' is missing
+        unknown role      Interface.json(21,16): 'acccent' is not a chrome role of Design/Interface.md 3
+        channel 256       Interface.json(11,22): 'accent' is between 0 and 255
+        seven commanders  Interface.json(22,17): 'commanders' holds one colour a seat, which is 8
+        empty chrome      Interface.json(3,13): the member 'panelFill' is missing
+      Line 21 for the unknown role is 4 + CHROME_ROLE_COUNT, which is what the test computes rather
+      than counts, so adding a role does not silently move an assertion.
+      ONE COLOUR PAIR IS CLOSE AND IS NOT THIS TASK'S TO FIX. Seat 2's yellow is 93 from the chrome
+      accent over the three channels, where every other seat is at least 200; seat 2 is Species's
+      team 2 kept byte for byte and the accent is Design/Interface.md 3's own, so neither end was
+      this table's to move. It is asserted at 93 by name rather than hidden under a low threshold,
+      and GameDesign.md 11 records that the accent moves if a running build shows it too weak. The
+      three chosen colours were moved from the first draft to get the closest commander pair up to
+      145, which is now seat 3 against seat 7 - both Species's - so the limit is the lineage's.
+      CI HAS NOT RUN. The workflow triggers on main and on pull requests only; the suite, the
+      MSVC build and clang-tidy are still to be read off it before this goes to done.
 
   - id: N4
     title: The order-rejection wire record - a seat's last refusal reaches the commander who sent it

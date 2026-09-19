@@ -117,6 +117,7 @@
     <ClInclude Include="ContentValidator.h" />
     <ClInclude Include="DamageTable.h" />
     <ClInclude Include="DesignStats.h" />
+    <ClInclude Include="InterfaceDesc.h" />
     <ClInclude Include="ModelDesc.h" />
     <ClInclude Include="ResearchItemDesc.h" />
     <ClInclude Include="SoundEventDesc.h" />

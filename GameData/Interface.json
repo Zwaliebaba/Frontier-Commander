@@ -1,0 +1,33 @@
+{
+  "_comment": "The chrome palette of Design/Interface.md 3 and the eight commander colours of GameDesign.md 11 (owner, 2026-09-19). Every colour is 8-bit RGBA and is written as authored: a chrome colour is never lit, and the ruling of GameDesign.md 11 draws a commander's colour unlit too. The commander list is in seat order and is exactly as long as Sim's MAX_SEATS. Seats 0 to 3 are Species's own team colours from GameLogic/Location.cpp:248, byte for byte; Species could not supply the other four, because of the eight it declares it comments four out and those four repeat three of the first: its team 4 is team 3's blue, its team 5 is team 0's green, its team 6 is team 2's yellow. Grey is Species's team 7 lifted from 150, because it is read at one pixel on the minimap against fog-darkened terrain rather than as a billboard. The three new colours are placed as far from the inherited five as those allow: the closest pair of the eight is seat 3 against seat 7, both Species's, at 145 over the three channels. Every seat but 2 stands at least 200 from accent (255, 196, 64), which Interface.md 7 draws the selection in over whatever colour the object had; seat 2 stands 93 from it, and that pair is fixed by the two decisions either side of it - Species's yellow and the document's amber.",
+  "version": 1,
+  "chrome": {
+    "panelFill": [24, 10, 12, 245],
+    "panelBorder": [199, 214, 220, 255],
+    "panelTitleFrom": [199, 214, 220, 255],
+    "panelTitleTo": [112, 141, 168, 255],
+    "titleText": [255, 255, 150, 255],
+    "bodyText": [222, 226, 230, 255],
+    "dimText": [128, 132, 136, 255],
+    "accent": [255, 196, 64, 255],
+    "warning": [232, 96, 72, 255],
+    "buttonFill": [107, 37, 39, 255],
+    "buttonFillHover": [140, 52, 54, 255],
+    "buttonFillDown": [199, 214, 220, 255],
+    "buttonDisabled": [60, 32, 34, 255],
+    "barEmpty": [40, 20, 22, 255],
+    "barBuild": [120, 180, 220, 255],
+    "barHealth": [96, 200, 108, 255],
+    "barHealthLow": [232, 96, 72, 255]
+  },
+  "commanders": [
+    [100, 255, 100, 255],
+    [200, 50, 50, 255],
+    [200, 200, 30, 255],
+    [120, 180, 255, 255],
+    [160, 80, 240, 255],
+    [30, 210, 200, 255],
+    [250, 90, 160, 255],
+    [170, 170, 170, 255]
+  ]
+}

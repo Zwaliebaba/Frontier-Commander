@@ -20,6 +20,12 @@
 namespace Frontier
 {
 
+// The one translation unit where Sim's seat count and Content's commander-colour count are both
+// visible. Content may not include Sim (AGENTS.md R9: Sim reads Content, never the reverse), so
+// Content/InterfaceDesc.h repeats the number and this is what keeps the two honest - without it,
+// raising MAX_SEATS would leave the last seats drawn in whatever the array was initialised to.
+static_assert(COMMANDER_COLOR_COUNT == static_cast<std::size_t>(MAX_SEATS), "GameData\\Interface.json carries one commander colour a seat");
+
 Sim::Sim(const MatchSettings& _settings, const ContentTree& _content)
 {
   // Assigned rather than initialised in a list, because the members are a private base's

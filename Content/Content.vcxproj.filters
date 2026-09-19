@@ -58,6 +58,9 @@
     <ClInclude Include="DesignStats.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="InterfaceDesc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="ModelDesc.h">
       <Filter>Header Files</Filter>
     </ClInclude>
