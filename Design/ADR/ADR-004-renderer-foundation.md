@@ -40,7 +40,7 @@
 
 ## Measurements
 
-- **`FXCompile` drives `dxc` for shader model 6.0 on the pinned toolset**: CI's Windows job (`.github/workflows/build.yml`, the run this ADR lands in) built `PresentVS.hlsl` and `PresentPS.hlsl` with `ShaderModel` 6.0 from a clean checkout on the `windows-latest` image, and `fxc` cannot compile a 6.x target, so a green build with that setting is the evidence. The run number and the toolset it printed are in `tasks/m0-foundation.yaml`, T18's notes.
+- **`FXCompile` drives `dxc` for shader model 6.0 on the pinned toolset**: CI's Windows job (`.github/workflows/build.yml`, the run this ADR lands in) built `PresentVS.hlsl` and `PresentPS.hlsl` with `ShaderModel` 6.0 from a clean checkout on the `windows-latest` image, and `fxc` cannot compile a 6.x target, so a green build with that setting is the evidence. The run number and the toolset it printed are in `tasks/Archive/m0-foundation.yaml`, T18's notes.
 - **The vendored header's hashes** were computed with `sha256sum` over `Client/d3dx12.h` in the checkout (CRLF) and over the same bytes with the carriage returns removed (the release's LF form).
 - **The scene target's memory** is arithmetic on the formats above, not a measurement.
 - **WARP on the CI runner**: the first capture job (`m0-foundation/T21`, CI run 35) reported `Microsoft Basic Render Driver (WARP), debug layer on` and a scene target of four samples on the `windows-latest` image, so the runner has both the software rasteriser and the SDK layers, and a debug-layer message there fails the job as §10 asks; three hundred frames at 1920×1080 took 3.7 seconds. The capture log is printed in every run's job log.

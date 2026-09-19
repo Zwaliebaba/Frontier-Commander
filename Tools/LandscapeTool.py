@@ -124,7 +124,7 @@ class Tile:
 
 def recipe(size_class: str, seed: int) -> list[Tile]:
     """The tile list of a size class for a seed. Tuned against --report on 2026-09-17: variant H of the
-    tuning notes in tasks/m0-foundation.yaml (island 80-100 shifted 32 with a 64-sample edge falloff,
+    tuning notes in tasks/Archive/m0-foundation.yaml (island 80-100 shifted 32 with a 64-sample edge falloff,
     hills by classic diamond-square with a 32-sample falloff, ridges by the Species random-pair method)
     passed 100 of 100 Small seeds where the first draft passed 1 of 6."""
     cells = SIZE_CLASSES[size_class]

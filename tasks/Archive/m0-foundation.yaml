@@ -1,4 +1,4 @@
-# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/m0-foundation.yaml
+# Schema: Design/ImplementationPlan.md §3    Validate: python3 Tools/CheckTaskDag.py tasks/Archive/m0-foundation.yaml
 #
 # Commands under `verify` that name msbuild, vstest or RunClangTidy are what CI runs on the pull
 # request; an agent session runs on Linux and reads their result off the PR (ImplementationPlan.md §2).
@@ -1233,7 +1233,7 @@ tasks:
       - A Small landscape is on screen, the camera flies, and the frame time at 1920x1080 is recorded in this task's notes
       - "DEFERRED to m2-skirmish/T8 by the owner on 2026-09-18, which already re-makes ADR-005's two frames: the fog ruling. It needed a frame drawn under ADR-007's absolute range AND under the Sandbox rig of OpenQuestions.md Q21, neither of which the frame of 2026-09-18 had; and ADR-005's own evidence was the horizon band, which is exactly where the sky layers land and nothing draws a sky before T8. M0 is archived with this line unmet and named, not silently"
       - Every M0 line of GameDesign.md §12 is true, and this plan is moved to tasks/Archive/
-    status: todo
+    status: done
     notes: >
       Owner's task. An agent prepares the PR that archives the plan once the owner reports.
       Frame time, reported by the owner on 2026-09-18: 8 to 16 ms at 1920x1080, which is 60 to
@@ -1248,3 +1248,53 @@ tasks:
       here is not a baseline. For the scale it leaves either way: the capture's orbit draws 161,730 to 220,152
       triangles a frame on the Small landscape (T20), and the Frontier landscape of ADR-007 is 64
       times the area.
+      THE OWNER'S RUN, 2026-09-19, and M0 is accepted. The machine is not the one the plan
+      assumed: a Snapdragon X, so ARM64, with a Qualcomm Adreno X1-85 on driver 31.0.137.0 behind a
+      2880x1920 display at 60 Hz, and the x64 build runs on it under Prism emulation. Nothing in
+      AGENTS.md §3 moves for that -- x64 stays the only platform -- but every figure below is an
+      emulated x64 process driving an Adreno, and a later run on an x64 machine with a discrete
+      card is a different measurement and not a regression.
+      BUILD. Debug and Release both from the solution with /t:Rebuild, 39 s and 49 s, zero warnings
+      at /W4 with warnings as errors, and the Release link did its whole-program optimisation pass.
+      Every suite in both configurations through vstest: 398 tests, 398 passed, twice. The checkers: CheckProjectFiles clean over 14 projects and its self-test's
+      27 rules each firing where expected; CheckFormat 320 files all formatted; RunClangTidy 150
+      translation units clean in 25 s; CheckTaskDag OK over all five plans. Two of those ran on the
+      wrong version and say so -- clang-format 22.1.3 where CI pins 18, clang-tidy 22.1.3 where CI
+      pins 22.1.8 -- so CI remains the answer that counts, and it is green on this tree.
+      THE FRAME TIME, which is what this task existed for. With m1-vertical-slice/K5's readout and
+      unlocked present now in the tree, the figure is finally the renderer's and not the display's.
+      Release, --novsync on an output that allows tearing, camera flying with W and E held: mean
+      0.62 to 0.86 ms, median 0.54 to 0.81, 99th percentile 1.15 to 1.88, over 28,104 to 176,754
+      triangles in 1 to 15 chunks. That is 1,200 to 1,600 frames a second. TAKE THE MEDIAN OF
+      ROUGHLY 0.7 ms AT ~180,000 TRIANGLES AS THE BASELINE. Debug is the same within noise -- mean
+      0.68 to 0.86, median 0.64 to 0.80, 99th 1.29 to 2.36 -- and two configurations that differ
+      only in optimisation costing the same frame says the frame is the GPU's and the CPU side of
+      it is free, which is the useful part: there is no CPU headroom to recover here, and the
+      budget of ADR-007 is the thing to watch when the landscape grows 64 times.
+      And the 2026-09-18 figure is now settled rather than suspected. The same build with the
+      default present reports mean 16.64 ms, median 16.59 to 16.66, UNCHANGED from 28,104 to
+      176,754 triangles -- a number that does not move with the triangle count is not a cost, it is
+      the 60 Hz interval. The warning above was right; the old 8-to-16 band was two monitors.
+      THE PICTURE. A Small landscape is on screen: terrain under the Sandbox pair of
+      OpenQuestions.md Q21, water, a snow-capped peak, the far field desaturating under ADR-007's
+      absolute range, black above the horizon because nothing draws a sky before m2-skirmish/T8.
+      The 16:9 scene target letterboxes into the 3:2 client area with bars top and bottom, so
+      Neuron::FitAuthored is right on an aspect ratio nobody had tried it on.
+      THE DEBUG LAYER ON REAL SILICON, which CI could not establish: --capture 300 on the hardware
+      adapter from the Debug build, debug layer on, exit 0 and 0 messages. The Adreno's driver is
+      as quiet as WARP is.
+      WARP AND THE HARDWARE DRAW THE SAME SCENE, and this is measured rather than assumed, which
+      matters because GameDesign.md §12 rests the whole M0 capture story on it. The same 300-frame
+      capture run twice on this machine, once on the Adreno and once on WARP: the CPU side is
+      identical (513 samples a side, highest 130, 664,912 triangles built, 16 chunks), and the
+      frames differ by a mean of 0.07 to 0.11 of 255 per channel, worst single channel 70, with
+      fewer than 0.005% of pixels differing by more than 8. Two rasterisers and an MSAA resolve
+      apart, and no more than that. Tools/DescribeCapture.py was run over the hardware frames and
+      reads as the WARP accounts in the job logs do -- a black upper third, the terrain below it,
+      the same band statistics -- but the byte comparison above is the evidence, not that reading.
+      The landscape tool's guarantees, re-run here: Small over 20 seeds, 20/20 on starts, connected,
+      deposits and passable.
+      WHAT IS NOT MET, and it is named rather than quietly dropped: the fog ruling, deferred above
+      to m2-skirmish/T8. The frame the owner looked at is drawn under DEFAULT_FOG_MODE, which is
+      FogMode::Desaturation (Client/Lighting.h:72), and ADR-005 stands unconfirmed until there is a
+      sky behind the horizon band its evidence rests on.
