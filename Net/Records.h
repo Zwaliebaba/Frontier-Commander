@@ -54,7 +54,7 @@ inline constexpr std::int32_t SUBUNITS_PER_WIRE_UNIT = Neuron::SUBUNITS_PER_WORL
 /// +1 subunit must not both become wire 0 while every other step is 64 wide.
 [[nodiscard]] constexpr std::int32_t WireFromSubunits(std::int32_t _subunits) noexcept
 {
-  return Neuron::FloorDiv(_subunits, SUBUNITS_PER_WIRE_UNIT);
+  return static_cast<std::int32_t>(Neuron::FloorDiv(_subunits, SUBUNITS_PER_WIRE_UNIT));
 }
 
 /// The middle of the quarter-unit the wire named, so that the round trip's error is half a step
