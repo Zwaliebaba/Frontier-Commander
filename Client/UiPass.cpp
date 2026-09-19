@@ -14,6 +14,7 @@
 #include <climits>
 #include <cstddef>
 #include <cstring>
+#include <iterator>
 #include <string>
 
 namespace Neuron
