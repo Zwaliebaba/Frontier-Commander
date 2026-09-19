@@ -6,6 +6,7 @@
 #include "UiWidgets.h"
 
 #include "InterfaceDesc.h"
+#include "RenderView.h"
 #include "TextureFile.h"
 
 #include <cstddef>
@@ -26,8 +27,8 @@
 // rather than wrong by a crash, which is exactly what a unit test catches and an eye does not. It
 // is the same reason AUTHORED_WIDTH_PIXELS moved out of SceneTarget.h in this task.
 //
-// A COLOUR IS RGBA8 WITH RED IN THE LOW BYTE, which is Core/RenderView.h's teamColor convention and
-// the byte order DXGI_FORMAT_R8G8B8A8_UNORM reads a vertex attribute in. One packing, named once.
+// A COLOUR IS RGBA8 WITH RED IN THE LOW BYTE, which is Core/RenderView.h's PackedRgba8 - the one
+// packing in the tree, and the byte order DXGI_FORMAT_R8G8B8A8_UNORM reads a vertex attribute in.
 //
 // THE PALETTE IS THE GAME'S DATA AND THAT IS ALLOWED. Frontier::ChromePalette is Content's
 // (GameData\Interface.json, m1-vertical-slice/C6) and Client is built on Content
@@ -62,11 +63,10 @@ struct UiQuad
   [[nodiscard]] constexpr bool operator==(const UiQuad&) const noexcept = default;
 };
 
-/// A palette colour as a quad carries it.
+/// A palette colour as a quad carries it: Core's one packing, given Content's colour type.
 [[nodiscard]] constexpr std::uint32_t PackedColor(const Frontier::Rgba8& _color) noexcept
 {
-  return static_cast<std::uint32_t>(_color.red) | (static_cast<std::uint32_t>(_color.green) << 8) |
-         (static_cast<std::uint32_t>(_color.blue) << 16) | (static_cast<std::uint32_t>(_color.alpha) << 24);
+  return PackedRgba8(_color.red, _color.green, _color.blue, _color.alpha);
 }
 
 /// The icon sheet: 32x32 authored pixels a cell (Design/Interface.md §3), checked on load for the

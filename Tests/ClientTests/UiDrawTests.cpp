@@ -106,7 +106,7 @@ constexpr Neuron::UiRect SELECTION_PANEL{288, 792, 512, 288};
 TEST_CLASS(UiDrawTests)
 {
 public:
-  /// The one packing, pinned: Core/RenderView.h's teamColor and a vertex attribute declared
+  /// The one packing, pinned: Core/RenderView.h's PackedRgba8 and a vertex attribute declared
   /// R8G8B8A8_UNORM both read red out of the low byte, and a swap here is eight roles drawn blue.
   TEST_METHOD(AColorIsRgba8WithRedInTheLowByte)
   {
