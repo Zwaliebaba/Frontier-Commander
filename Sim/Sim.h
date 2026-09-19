@@ -1,12 +1,22 @@
 #pragma once
 
+#include "ClusterGraph.h"
+#include "Damage.h"
+#include "Economy.h"
 #include "HeightDelta.h"
 #include "Landscape.h"
 #include "MatchSettings.h"
 #include "Order.h"
 #include "OrderQueue.h"
+#include "PathPlanner.h"
 #include "Seat.h"
+#include "Victory.h"
+#include "Visibility.h"
+#include "World.h"
 
+#include "ContentTree.h"
+
+#include "Assertion.h"
 #include "Random.h"
 
 #include <cstdint>
@@ -24,11 +34,73 @@ namespace Frontier
 
 class Snapshot;
 
-class Sim
+namespace Detail
+{
+
+/// Everything a Sim holds, as a base rather than as Sim's own members, and that is not a matter of
+/// taste. Two of these systems hold a pointer INTO this object - the cluster graph holds the
+/// landscape and the planner holds the graph - so a copy or a move has to re-aim both afterwards,
+/// and a copy constructor that runs a line after copying is a copy constructor that lists every
+/// member by hand. Listing twenty members is exactly the fault Sim's own constructor guards
+/// against, where a positional list "would put the next one in the wrong place in silence". A base
+/// gets the compiler's member-by-member copy and Sim's own copy then runs the one line that must
+/// follow it.
+class SimState
+{
+protected:
+  // Protected rather than public: Sim reaches them as a derived class does, and Snapshot reaches
+  // them as Sim's friend. Nothing else can, which is what they were when they were Sim's own.
+  MatchSettings m_settings{};
+  const ContentTree* m_content = nullptr;
+  std::uint32_t m_tick = 0;
+  Neuron::Random m_random{0}; ///< The seed the constructor gives it replaces this on the first line
+  std::vector<Seat> m_seats;
+  World m_world;
+  Landscape m_landscape;
+  Economy m_economy;
+  Visibility m_visibility;
+  ClusterGraph m_clusters;
+  PathPlanner m_planner;
+  OrderQueue m_orders;
+  std::vector<Order> m_thisTick;     ///< Stage 1's scratch; empty between ticks and never state.
+  std::vector<DamageEvent> m_damage; ///< Stages 8 and 9's scratch, spent by stage 10; never state.
+  std::uint32_t m_lastRoll = 0;      ///< Stage 8's draw, kept so that the hash covers the stream.
+  std::uint32_t m_appliedOrders = 0;
+  std::uint32_t m_droppedOrders = 0;
+  bool m_finished = false;
+  std::uint8_t m_winningAlliance = NO_ALLIANCE;
+  bool m_publishDue = false;
+  std::uint64_t m_hash = 0;
+};
+
+} // namespace Detail
+
+class Sim : private Detail::SimState
 {
 public:
-  /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed.
-  explicit Sim(const MatchSettings& _settings);
+  /// A match at tick 0: the seats from the lobby, the simulation Random seeded from the match seed,
+  /// and the tables every system reads (OpenQuestions.md Q20, owner 2026-09-18). The tree is held
+  /// by reference and never written: ADR-006 has one process hold one tree that nothing writes to
+  /// after loading, so the simulation reads rows and owns none. **The tree must outlive the Sim**,
+  /// which is why binding a temporary is deleted rather than left to be discovered at runtime.
+  Sim(const MatchSettings& _settings, const ContentTree& _content);
+  Sim(const MatchSettings& _settings, ContentTree&& _content) = delete;
+
+  /// A Sim is a value: Snapshot::Read hands one back and the tests pass them about. Copying or
+  /// moving one re-aims the two systems that hold a pointer into it, because the compiler's own
+  /// copy would carry a pointer to the Sim that was copied FROM - and a reloaded match then plans
+  /// against a landscape that has been destroyed, which is a crash rather than a wrong answer.
+  Sim(const Sim& _other);
+  Sim(Sim&& _other) noexcept;
+  Sim& operator=(const Sim& _other);
+  Sim& operator=(Sim&& _other) noexcept;
+  ~Sim() = default;
+
+  /// The tables this match is played by. Never null.
+  [[nodiscard]] const ContentTree& Content() const noexcept
+  {
+    return *m_content;
+  }
 
   /// Generates the landscape from its definition: the heightfield the systems of M1 read. False,
   /// with no landscape, for a definition the generator refuses.
@@ -43,12 +115,53 @@ public:
     return m_landscape;
   }
 
+  /// Stage 2's system (GameDesign.md §4): the deposit index, the service assignment the last tick
+  /// computed, and the transactions every system that spends power calls. It holds nothing the
+  /// hash or the snapshot needs, because everything in it is a function of the landscape's
+  /// definition and of the world.
+  [[nodiscard]] const Economy& Power() const noexcept
+  {
+    return m_economy;
+  }
+
+  /// Stage 7's system (TechnicalDesign.md §4.6): the fog of war, which is also the replication
+  /// filter. The grids and the ghost stores live on the seats; what lives here is the stamps, the
+  /// record of which disc each viewer currently has counted, and the refresh's measurements.
+  [[nodiscard]] const Visibility& Sight() const noexcept
+  {
+    return m_visibility;
+  }
+
+  /// The abstraction the planner searches (TechnicalDesign.md §4.5): clusters, the entrances
+  /// between them, and the per-drive-class passability the two rest on.
+  [[nodiscard]] const ClusterGraph& Clusters() const noexcept
+  {
+    return m_clusters;
+  }
+
+  /// Stage 6's planner. Mutable for the same reason the world is: S8 is what will ask it for
+  /// routes, and until it exists the host and the tests are what put a request in.
+  [[nodiscard]] const PathPlanner& Planner() const noexcept
+  {
+    return m_planner;
+  }
+  [[nodiscard]] PathPlanner& Planner() noexcept
+  {
+    return m_planner;
+  }
+
+  /// Writes a cell's obstruction byte and tells the cluster graph, which is the one path by which
+  /// passability changes after a landscape is made. S4 is what will call it for every structure.
+  void SetObstruction(std::uint32_t _cellX, std::uint32_t _cellY, std::uint8_t _obstruction);
+
   /// Enqueues an order. One for a tick already advanced is moved to the next tick, so that a late
   /// order is applied rather than lost, and the queue keeps its arrival order.
   void Submit(Order _order);
 
   /// One tick: the fourteen stages of TechnicalDesign.md §4.8, in order. The tick counter and the
-  /// simulation Random advance here and nowhere else.
+  /// simulation Random advance here and nowhere else. **A finished match does nothing here**: the
+  /// outcome stage 12 decided is the end of the simulation's work, so this returns at once and the
+  /// tick, the stream, the world and the hash are left exactly as the deciding tick left them.
   void Advance();
 
   [[nodiscard]] std::uint32_t Tick() const noexcept
@@ -77,6 +190,40 @@ public:
     return m_seats;
   }
 
+  /// Every device, structure, projectile, feature and wreck of the match (TechnicalDesign.md §4.3).
+  [[nodiscard]] const World& Objects() const noexcept
+  {
+    return m_world;
+  }
+
+  /// This tick's damage: what stages 8 and 9 decided and stage 10 applies (Sim/Damage.h). Scratch
+  /// and not state - it is filled and emptied inside one Advance - so it is neither hashed nor
+  /// carried by a snapshot, exactly as stage 1's order scratch is not.
+  [[nodiscard]] std::vector<DamageEvent>& Damage() noexcept
+  {
+    return m_damage;
+  }
+
+  /// The mutable world and a mutable seat exist for the same reason FlattenTerrain does: the
+  /// systems that will own them are S2 to S11, and until they exist the host and the tests are
+  /// what put a match into a state worth hashing. Every stage of Advance reaches m_world and
+  /// m_seats directly, so these two narrow to nothing once the systems arrive.
+  [[nodiscard]] World& Objects() noexcept
+  {
+    return m_world;
+  }
+  [[nodiscard]] Seat& SeatAt(std::uint8_t _seat) noexcept
+  {
+    FRONTIER_ASSERT(_seat < m_seats.size());
+    return m_seats[_seat];
+  }
+
+  /// One draw from the simulation's stream, uniform in [0, _bound), and the record of it that the
+  /// state hash covers. EVERY roll the simulation makes goes through here: the stream is the one
+  /// thing two hosts must advance identically, so there is one door to it rather than a search for
+  /// every call of Random::Below. _bound is at least 1.
+  [[nodiscard]] std::uint32_t Roll(std::uint32_t _bound) noexcept;
+
   [[nodiscard]] const Neuron::Random& Stream() const noexcept
   {
     return m_random;
@@ -98,6 +245,11 @@ public:
   {
     return m_droppedOrders;
   }
+
+  /// Stage 12's one writer (Sim/Victory.h): the match is over, and this alliance won or
+  /// NO_ALLIANCE for a draw. Every seat still playing becomes Won or Lost by it, and a seat that
+  /// had already left keeps Eliminated. Nothing else in the tree ends a match.
+  void Decide(std::uint8_t _winningAlliance) noexcept;
 
   [[nodiscard]] bool Finished() const noexcept
   {
@@ -138,20 +290,10 @@ private:
   /// Validates and applies one order; false when it is dropped.
   [[nodiscard]] bool Apply(const Order& _order);
 
-  MatchSettings m_settings;
-  std::uint32_t m_tick = 0;
-  Neuron::Random m_random;
-  std::vector<Seat> m_seats;
-  Landscape m_landscape;
-  OrderQueue m_orders;
-  std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
-  std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.
-  std::uint32_t m_appliedOrders = 0;
-  std::uint32_t m_droppedOrders = 0;
-  bool m_finished = false;
-  std::uint8_t m_winningAlliance = NO_ALLIANCE;
-  bool m_publishDue = false;
-  std::uint64_t m_hash = 0;
+  /// Aims the cluster graph at THIS Sim's landscape and the planner at THIS Sim's graph. Called
+  /// after every copy and every move, and nowhere else: the two pointers are set for the first
+  /// time when a landscape is created.
+  void Rebind() noexcept;
 };
 
 } // namespace Frontier

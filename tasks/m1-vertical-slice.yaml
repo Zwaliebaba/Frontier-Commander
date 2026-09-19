@@ -140,6 +140,10 @@ tasks:
       that every simulation task reads content rather than literals and rebalancing is an edit.
     project: Content
     depends_on: [C1]
+    # The placeholder models C4 generates are a prerequisite in fact: ContentValidator refuses a
+    # row naming a model no file defines, and CI runs FrontierHost --validate the moment
+    # GameData/Components.json exists. C2 therefore landed Tools/MakePlaceholderModels.py and its
+    # output with the tables (2026-09-18); C4 keeps the importers and the provenance ADR.
     files:
       - GameData/Components.json
       - GameData/Structures.json
@@ -165,7 +169,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
 
   - id: C3
     title: Write Tools/CheckBalance.py, the cost-efficiency script
@@ -177,6 +181,8 @@ tasks:
     depends_on: [C2]
     files:
       - Tools/CheckBalance.py
+      - GameData/Components.json
+      - Design/GameDesign.md
     acceptance:
       - Reads Components.json, Damage.json, Research.json and Structures.json; enumerates every design (chassis, drive, one module set) available at each research tier; derives its statistics by the same formulas as Content/DesignStats
       - "For each pair of designs computes the expected time to kill in both directions from damage, rate, hit chance at short range, the matrix, armorFactor and hit points, and a power-normalised score; prints per tier the designs that beat every other design of equal or lower cost, which is the dominance finding, and the best three designs per role"
@@ -186,7 +192,36 @@ tasks:
       - python3 Tools/CheckTaskDag.py
       - python3 Tools/CheckBalance.py GameData
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      ONE TABLE EDIT: the medium chassis was underpriced at 150 and is now 170, in
+      GameData/Components.json and in GameDesign.md 6's table. At tier 2, with tracks not yet
+      researched, MediumI/HalfTrack/MachineGun beat every design costing no more at equal power
+      spent, the light cannon included - and the light cannon is the anti-armour answer that tier
+      is meant to have. 288 hit points behind 12 armour outlast 100 behind 5 by more than the
+      extra power, and 12 armour floors a machine gun's 8 damage to a third, so nothing cheap
+      could punish it either. 160 clears every tier; 170 is taken for margin, because a table
+      that only just passes fails on the next edit.
+      THE COMPARISON IS AT EQUAL POWER SPENT, not one against one. The first run compared duels
+      and reported 48 dominators, every one of them a heavier thing beating a lighter one, which
+      is true and useless. Each side now fields cost-many of its design for the same budget and
+      the budget cancels, which is what "per power spent" in the acceptance means.
+      TWO BLIND SPOTS ARE DECLARED RATHER THAN LEFT TO FIRE. There is no movement in the model,
+      so a pair of designs differing only in drive cannot be compared - the drive is bought for
+      speed, slope and water - and such a pair is excluded from what a design must BEAT, though
+      it still counts as a COUNTER: without the first the script reports that tracks dominate
+      half-tracks dominate wheels, its own blind spot restated; without the second it reports
+      that a tracked cannon dominates its tier while a wheeled cannon of the same price beats it
+      outright. And GameDesign.md 8 says an indirect weapon decides its hit at impact "against
+      whatever is in the splash radius at the predicted landing cell, so a moving target can walk
+      out from under a mortar" - the table states the hit chance against the landing cell and
+      carries no shell flight time to work the difference out from, so a design armed only with
+      indirect weapons is listed and left unranked rather than counted a dominator on its stated
+      100 percent.
+      The arithmetic is Content/DesignStats.cpp's and Content/DamageTable.h's, reimplemented
+      because the acceptance asks for Linux and the standard library. Two implementations that
+      disagree would be a finding in itself, and DesignStatsTests re-derives GameDesign.md 6's
+      worked examples from the same tables, so both ends are pinned.
 
   - id: C4
     title: Importers, placeholder models, the Species textures and font as DDS; the provenance ADR
@@ -250,7 +285,38 @@ tasks:
       - python3 Tools/MakePlaceholderModels.py GameData/Models
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      ADR-010 is the provenance ADR, with a table naming every Species-derived file in the tree,
+      the Species path it came from and the tool that converted it. The exclusions - the
+      soundtrack, the branding, the narration - are enforced in Tools/ImportSounds.py as a refusal
+      rather than left to a reader's memory, because that is the one part of the decision that
+      must not fail quietly.
+      THE COLOUR KEY IS NOT MAGENTA EVERYWHERE, which SpeciesLineage.md 4's opening line said and
+      C4 found to be wrong when converting. Magenta is the SPRITES' key; the font is white glyphs
+      on black so its key is black; the order icons are glyphs on an opaque dark-blue field that is
+      part of the icon and take no key at all. Measured before converting; the line is corrected.
+      ImportShp.py reads all 106 Species shapes, both encodings, and the one that failed first -
+      BattleCannonBase.shp - turned out to be markers with no geometry at all, which is a real file
+      and not a broken one: a set of mount points for other shapes. It now comes across as a model
+      with no geometry and says so.
+      ImportSounds.py copies nothing, as the acceptance says, and it found that a SOUNDNAME is
+      often a GROUP rather than a file: 0lasers is not Sounds/0lasers.wav, it is Laser1 through
+      Laser11. 163 names resolve to 54 files exactly and 41 groups covering 316 more, which the
+      tool reports as guesses rather than as matches. Which alternative an event wants is
+      m2-skirmish/T9's to decide.
+      ImportObj.py takes the team-colour slot from a material's DISSOLVE of zero rather than from a
+      name: zero opacity is the one thing an artist can set in any tool and that no real surface
+      wants, where a naming convention breaks on a rename. Tools/Fixtures/MarkerCube.obj is the
+      committed round trip, and its output loads in the real C++ loader.
+      ImportTextures.py writes the DDS header and pixels itself rather than taking a dependency for
+      ninety bytes. Core's TextureFile reads both files it produced.
+      The plan's file list names the models as ChassisLight.json and so on; C2 generated them as
+      ChassisLightI.json, because a model id may not be the id of the row that names it and the
+      mark is part of the row's. The list is stale rather than unmet.
+      MakePlaceholderModels.py now takes its output directory positionally as well, because this
+      task's own verify line spells it that way and a tool whose documented invocation fails is a
+      tool nobody runs.
 
   - id: S1
     title: Sim world objects and seats
@@ -296,7 +362,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
 
   - id: S2
     title: Sim orders - the twenty kinds, validation with reason codes, application at tick start
@@ -329,7 +395,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
 
   - id: S3
     title: Sim economy - deposits, extractors served within 48 cells, the stockpile and its cap, cost and refund, the army caps
@@ -338,14 +404,22 @@ tasks:
       the review added, so that a turtled base cannot bank an army and generators are the
       target at this game's distances.
     project: Sim
-    depends_on: [S2]
+    depends_on: [S2, C2, C5]
     files:
       - Sim/Economy.h
       - Sim/Economy.cpp
       - Sim/Deposit.h
+      - Sim/Deposit.cpp
+      - Sim/MatchSettings.h
+      - Sim/OrderValidation.h
+      - Sim/OrderValidation.cpp
+      - Sim/Sim.h
       - Sim/Sim.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - FrontierCommander/App.cpp
       - Tests/SimTests/EconomyTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
@@ -362,7 +436,38 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      The device cap had nowhere to come from: GameDesign.md 4 calls it a lobby setting and
+      MatchSettings had no field for it, so DeviceCapLevel and DEVICE_CAPS are added beside
+      PowerLevel and the snapshot is at version 7. The structure cap is STRUCTURE_CAP, one number
+      for every match, because the design gives one.
+      A deposit is NOT an object in World. Nothing ever refers to one - an extractor knows the cell
+      it stands on and that is the whole relationship - so an id would buy a sixth ObjectKind and a
+      sixth map for a record that never changes and is never pointed at. Sim/Deposit.h is the index
+      instead, rebuilt from the definition wherever a definition arrives, which is CreateLandscape
+      and Snapshot::Read; a test pins that a restored match still has its deposits and goes on
+      earning, because forgetting the second of those two would have been silent.
+      The service assignment is recomputed every tick rather than on completion and destruction as
+      the acceptance says. It satisfies the acceptance strictly (the answer is right after any such
+      event) and removes the class of bug where a system that changes a structure forgets to mark
+      the cache; the cost is bounded by the structure cap at around 20,000 squared-distance tests a
+      seat a tick, and a stale assignment two hosts agree on is a wrong economy rather than a
+      desync, which is the harder of the two to find. Caching wants a profile that asks for it.
+      The counts on the Seat are filled by one walk of the world in stage 2 rather than by running
+      totals. Seat.h says they are kept rather than counted "because the cap is tested on every
+      production tick"; the field stays and the test stays a subscript, but nothing has to remember
+      to decrement.
+      GameDesign.md 4's cap collides with its own lobby: PowerLevel::High starts a commander at
+      2,500 against a base cap of 1,000. The cap is on what ACCUMULATES - the section's own words
+      are "income accumulates into a stockpile capped at" and "any refund that would exceed the cap
+      is lost" - so a stockpile already over its cap is left alone and simply stops growing. The
+      alternative, clipping the balance, deletes three fifths of a lobby setting on the first tick.
+      Raised for the owner rather than settled here.
+      S2 left two checks deliberately loose for this task and both are exact now: a placement is
+      priced by its row's costHundredths rather than by "the stockpile is empty", and an extractor
+      is refused anywhere but a deposit. OrderContext gained the content tree and the deposit field
+      for them, both optional, so a suite that cares about ownership still needs neither.
 
   - id: S4
     title: Sim structures - placement, plans, construction by builders, flatten, modules, demolition, wrecks
@@ -378,13 +483,24 @@ tasks:
       - Sim/Construction.h
       - Sim/Construction.cpp
       - Sim/Plan.h
-      - Sim/Landscape.cpp
+      - Sim/Structure.h
+      - Sim/Order.h
       - Sim/OrderValidation.cpp
+      - Sim/Visibility.h
+      - Sim/Visibility.cpp
+      - Sim/StateHash.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
       - Sim/Sim.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - GameData/Structures.json
       - Tests/SimTests/PlacementTests.cpp
       - Tests/SimTests/ConstructionTests.cpp
+      - Tests/SimTests/EconomyTests.cpp
+      - Tests/SimTests/VisibilityTests.cpp
+      - Tests/SimTests/WorldTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
     acceptance:
@@ -401,7 +517,47 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE SLOPE RULE WAS BUILT THE OTHER WAY FIRST AND THE MEASUREMENT TURNED IT ROUND. "The slope
+      across the footprint is under 25%" reads as the relief over how far the footprint reaches, and
+      that is what was written; Landscape::Cell's slopePercent - the steepest step between two
+      adjacent samples - was rejected in a comment as "much harsher". Measured over the 795 dry
+      three-by-three sites of the built-in Small landscape, the average gradient refuses 4 of them
+      and the steepest cell refuses 31, so the harshness was 3.4% of the map rather than a wall, and
+      the objection was arithmetic nobody had done. Two things then decide it: 25 is the same number
+      and the same unit GameData\Components.json gives Wheels for maxSlopePercent, which is read per
+      cell; and what the steepest cell refuses and the average waves through is a footprint
+      straddling a CLIFF EDGE, eight gentle cells and one vertical one, which is exactly the site a
+      factory must not stand on. PlacementTests pins the reading with a case the other one accepts.
+      THE FLATTEN NO LONGER BLACKS OUT THE MAP. S9 dropped every stamp and every fog grid on a
+      height delta and left the narrowing to this task, which is the one that actually flattens - and
+      it flattens every time a structure goes up, so the explored history of every commander would
+      have gone with it. Visibility::InvalidateRegion un-counts only the discs that REACH the
+      changed cells, before the heights move; a disc that does not reach them cannot have a cell
+      changed by them, so it is exact and not an approximation. VisibilityTests now pins both halves.
+      THE BUILD ACCUMULATOR IS EFFORT AND NOT A PERCENTAGE. Structure::buildProgressHundredths
+      became buildEffortHundredths because a percentage per tick does not divide: a hundred percent
+      over a 1,200-tick factory is 8.33 hundredths a tick, and a truncated percentage reaches 9,600
+      and stops. The builders' own contribution accumulates exactly, and the percentage the hit
+      points and the refund want is a function of it. Snapshot version 9 carries it and the two
+      module fields.
+      HOW A BUILD TIME AND A BUILD RATE MEET. The tables state a time per structure (GameDesign.md
+      §5, "over the build time") and a rate per builder (§6, ten power a second), and neither says
+      what a faster builder does to a stated time. A structure needs buildTimeTicks times the
+      REFERENCE rate of effort and each builder puts in its own a tick, so today's only builder
+      module is the reference and a structure takes exactly the time its row states. Stated but not
+      corrected: the rows' build times are about 1.5 times what cost-divided-by-ten-power-a-second
+      would give, four of six at exactly 1.5, and S5's acceptance builds DEVICES by that other rule -
+      so structures and devices genuinely build at different paces in the tables as authored.
+      A builder is not ordered to build. There is no build order in the order table, so a device
+      carrying a builder module attends every plan and site of its own seat within that module's
+      range, which makes moving a builder the way a commander directs one.
+      One content fix: GameData\Structures.json gave LabModule 25 percent where GameDesign.md §5 and
+      this task's acceptance both say 30. The table was wrong, not the design.
+      Module effects: the generator's +2 was already live (S3 reads it where it serves), and the
+      factory's and the lab's have no consumer until S5 and S6 - ModuleTimeReductionPercent is here
+      so that when they arrive they read it from one place rather than two.
 
   - id: S5
     title: Sim devices and production - designs, derived statistics, factories, spawning, ranks
@@ -418,12 +574,19 @@ tasks:
       - Sim/Device.h
       - Sim/Seat.h
       - Sim/OrderValidation.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Sim/StateHash.cpp
       - Sim/Sim.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - Content/DesignStats.h
+      - Content/DesignStats.cpp
+      - Design/OpenQuestions.md
       - Tests/SimTests/ProductionTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
+      - Tests/ContentTests/DesignStatsTests.cpp
     acceptance:
       - "A Design is per seat: a name, a chassis, a drive and modules the seat has researched, saved by SaveDesign and validated against research; its statistics come from Content/DesignStats and are stored on the device at spawn with the class-upgrade percentages of the seat applied"
       - SetProduction and CancelProduction manage a factory's queue; build time is cost divided by 10 per second less the factory's module reduction; a factory whose seat is at the device cap pauses; a completed device spawns at the factory's exit cell with the seat's default stances
@@ -436,7 +599,38 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      TWO TYPES CALLED Frontier::DeviceDesign, AND THIS IS THE TASK THAT HAD TO SEE BOTH. Content's
+      named its parts by id for the design screen and for saving between matches; Sim's named them
+      by row index because a design is hashed and sent every tick. Neither file included the other,
+      so the collision sat there from C1 and S1 - Sim/Visibility.cpp even has a comment about the
+      two - until this task needed one translation unit to derive a seat's design from Content's
+      tables. Content's is now DesignRecipe. RecipeFor is the one conversion, so the simulation and
+      the design screen answer with one implementation and ProductionTests reaches the design's own
+      two worked numbers through the seat's index path.
+      THE ACCEPTANCE CONTRADICTS ITSELF ABOUT STORED STATISTICS AND THE SECOND HALF WINS. It asks for
+      the statistics "stored on the device at spawn" and then for "an upgrade researched later
+      changes fielded devices"; a stored maximum satisfies the first and breaks the second, and
+      Sim/Device.h had already written the rule the other way. What is stored is the CURRENT hit
+      points, because damage is state; everything else - the maximum included - is derived from the
+      design and the seat's upgrades wherever it is wanted, so a retroactive upgrade reaches the
+      field without walking it. S6's "hit points keeping their fraction" is then the one rescale it
+      does have to do. Seat gained a ClassUpgrades for S6 to fill and S5 to read.
+      A DEVICE IS PRICED AND TIMED BY ITS PARTS AND A STRUCTURE BY ITS ROW, which is two rules and
+      the tables as authored: the acceptance says a device's build time is "cost divided by 10 per
+      second" and GameDesign.md §5 says a structure is built "over the build time" its row states.
+      Both are implemented as written and S4's notes carry the 1.5x gap between them.
+      The device cap was checked on SetProduction and no longer is: GameDesign.md §4's cap is on what
+      stands in the field and the acceptance says a factory at it PAUSES, so a commander may queue
+      against a cap and the factory waits. Better play than a refusal, and it is what stage 4 does.
+      THE RANK NUMBERS ARE THIS TASK'S PROPOSAL AND OpenQuestions.md Q22 IS NOW OPEN. GameDesign.md
+      §8 gives the count and the word "small" and no figures, and the acceptance asks for "the
+      percentages the design proposes". Eight ranks, thresholds doubling to 160 weighted kills,
+      accuracy and damage reaching 24 percent - argued in the header and in the question, measured
+      against nothing, which is why it is a question rather than a decision. C3's script cannot
+      settle it, because it compares at equal power spent and a rank is not bought with power.
+      Snapshot version 10 carries the upgrades and the queues.
 
   - id: S6
     title: Sim research - labs in parallel, unlocks and retroactive class upgrades, auto-research
@@ -449,11 +643,19 @@ tasks:
       - Sim/Research.h
       - Sim/Research.cpp
       - Sim/Seat.h
+      - Sim/MatchSettings.h
       - Sim/OrderValidation.cpp
+      - Sim/Economy.h
+      - Sim/Economy.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Sim/StateHash.cpp
       - Sim/Sim.cpp
       - Sim/Sim.vcxproj
       - Sim/Sim.vcxproj.filters
+      - Content/DesignStats.h
       - Tests/SimTests/ResearchTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
       - Tests/SimTests/SimTests.vcxproj
       - Tests/SimTests/SimTests.vcxproj.filters
     acceptance:
@@ -468,7 +670,34 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      PROGRESS BELONGS TO A LAB AND NOT TO A SEAT. "Each lab researches one item" and "a destroyed
+      lab loses the progress" are both rules, and a list that does not say WHOSE progress it is can
+      enforce neither, so ResearchProgress gained the lab. The countdown stays in that record rather
+      than on the structure - which is where a factory's is - because a lab has one item and a
+      factory has a queue, so for a factory the entry cannot say which countdown is its.
+      TWO UPGRADE EFFECTS HAD NOWHERE TO GO. ResearchEffect has ExtractorRate and StructureHitPoints
+      and ClassUpgrades had a slot for neither, so they are two more fields on it rather than two
+      more places an upgrade can live: one home for "what research has done to this commander" is
+      what makes a derivation trustworthy. Economy reads the first where an extractor yields;
+      Research reads the second where a structure's maximum is wanted.
+      THE UNLOCK EFFECT DOES NOTHING, AND THAT IS NOT AN OMISSION. A row says what unlocks it and an
+      item says what it unlocks; the simulation reads the first (UnlockedFor), so an item joining
+      researchComplete IS the unlock. The other direction is what the research panel lists and what
+      ContentValidator checks, and a second mechanism would be a second thing to keep in step.
+      WHAT AN UPGRADE WALKS THE WORLD FOR is one thing only: the current hit points. Everything
+      derived is read from the seat's upgrades wherever it is wanted (S5), so a percentage landing
+      there already reaches every fielded device; what has to be rescaled is the damage a device is
+      carrying, because a device at half health must still be at half health when its maximum grows.
+      Maximums are taken before and after and the fraction is multiplied through.
+      Auto-research is a per-seat lobby option, so SeatSettings gained a bool and the snapshot is at
+      version 11. It fills every idle lab at the start of the tick with the cheapest available item,
+      ties broken by the lower row index so two hosts pick the same pair.
+      SnapshotTests now furnishes its seats AFTER the ticks rather than before: stages 2, 3 and 4
+      own several of those fields now, and a fixture that filled them first was measuring what the
+      tick left rather than what the stream carries. Its research entries were being erased by stage
+      3, which made one assertion read an empty vector.
 
   - id: S7
     title: Sim pathing - cluster graph, hierarchical A*, budgeted planning and refinement
@@ -503,7 +732,42 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE ABSTRACTION IS COMPONENTS, NOT ENTRANCES, and the flood-fill test is why. The acceptance
+      asks for boundary crossings as nodes, which is the textbook hierarchical abstraction; it was
+      built that way twice and it is NOT EXACT, which the test caught both times. One node in the
+      middle of a run reports unreachable where a flood fill walks through, when a wall inside the
+      cluster separates the middle cell from the rest of the run (fixture seed 2, drive 0). Making
+      the whole run interchangeable fixes that and breaks the other way: a run that spans a wall
+      inside its own cluster then merges two places a drive cannot get between, and the graph
+      reports a route through the wall (fixture seed 9, drive 4; then a wall at x=20 routed
+      through at zero cost). A node is now a CONNECTED COMPONENT of a cluster's passable cells,
+      which cannot have either fault because a component is by definition what a flood fill
+      reaches. Reachability is exact by construction. Agreed with the flood fill on 4,785 requests
+      across the twenty fixtures and all six drive classes.
+      WHAT THAT GIVES UP is the abstract cost: a component is a region and has no one length, so
+      the search costs the octile distance between representative cells, an estimate. The
+      refinement is exact - a cell search inside each cluster - so a route is optimal in the small
+      and approximate in the large. TechnicalDesign.md 12 leaves hierarchical A* against flow
+      fields to be settled by measurement, and this is one of the numbers that weighs.
+      MEASURED on the session's Linux harness: 38 full Small-landscape requests in 5.1 ms, 17
+      components expanded a request over 64 components, 77 cell searches.
+      INVALIDATION IS THE WHOLE GRAPH, not the clusters a cell touches, which is coarser than the
+      acceptance asks. A wall across a cluster splits a component, and a split changes which
+      components a NEIGHBOURING cluster's are joined to, so the blast radius is not local the way
+      an entrance's was. It is one flood fill of 256 cells per cluster per class in use, on an
+      event that happens when a structure is placed rather than every tick, and the test pins that
+      a write leaving the grid as it was rebuilds nothing.
+      NOTHING HERE IS IN THE SNAPSHOT, and that leaves a question for S8. A path is a pure function
+      of the graph and the request, so a reloaded host that re-requested would compute the same
+      one. What it would not reproduce is the TICK the path arrives on, because the budget starts
+      again - and if a device's movement depends on when its path arrives, that is a divergence.
+      S8 decides: either the pending queue joins the snapshot, or a device re-requests on load and
+      the arrival tick is made not to matter. Written down rather than discovered there.
+      The budget is in NODES and not in milliseconds, because a budget in time makes the result of
+      a tick depend on how fast the machine is, which is a desynchronisation dressed as an
+      optimisation.
 
   - id: S8
     title: Sim movement and steering
@@ -536,7 +800,58 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Sim/Movement.h and .cpp walk the routes, Sim/Steering.h and .cpp keep devices apart, and
+      stage 6 is planning then the walk then the separation, in that order.
+      WHAT SLOPE COSTS was a hole in the design and not a number to look up: GameDesign.md 2 says
+      slope costs movement and 6 says a drive "sets speed as a function of terrain", and the drive
+      table has a speed factor, a max slope, a water flag and a hit-point factor and no terrain
+      column at all. Put to the owner as OpenQuestions.md Q23 and answered 2026-09-18: full speed
+      on the flat falling LINEARLY to half at the drive's OWN maximum, impassable beyond. Scaling
+      to the drive's own limit is the point of the answer - tracks keep 75 percent of their speed
+      on a 20 percent slope where wheels keep 60 - so the max slope column buys handling on ground
+      both can cross and not only reach on ground one cannot. GameDesign.md 6 records it.
+      MEASURED, and it is the number the design is sized by: a light on wheels with a machine gun
+      crosses a flat Small landscape, 8,128 world units between the middles of the end cells, in
+      1,563 ticks against the 1,563 its 1,331 subunits a tick allow. It cost two things to get
+      there. The first is that a tick's distance is spent ACROSS legs: stopping short at a cell's
+      middle and losing the remainder costs a twentieth of the speed on cell-sized legs, which is a
+      crossing time that no longer matches what the design screen printed. The second is the row
+      the test crosses on - a cluster's own first row, where the graph's doorways sit; half a
+      cluster higher the same drive takes 1,804 ticks, all of it two diagonals to the doorway and
+      back, which is S7's abstraction and is S7's suite to measure.
+      SEPARATION IS AWAY-PLUS-A-QUARTER-TURN, not away. A purely radial push between two devices
+      meeting head-on is exactly a brake, and they grind to a halt facing each other; turning the
+      push a quarter turn - always the same way round - is antisymmetric in a second sense, so each
+      takes the side the other does not and they pass. Measured: they close to 1,278 subunits and
+      pass 357 subunits either side of the line they met on. The id tie-break is needed for exactly
+      one case, two devices at the same point, where there is no direction to push along.
+      Bucketed by cell rather than pair by pair: the radius is a quarter of a cell, and the
+      eight-seat device cap is 2,400, which pair by pair is 2.9 million tests a tick.
+      THE SNAPSHOT QUESTION S7 LEFT is answered the first way: the planning queue joins the
+      snapshot, carrying each request and the route it has reached but never the search's working.
+      A request still being searched is replayed for the nodes it had already spent, which
+      Path::nodesExpanded already records, so a Frontier-sized open set never goes on the wire and
+      the tick a route lands on is the tick it would have landed on. Version 12, with a device's
+      patrol anchor, how far along its route it has walked and how long it has been stuck.
+      TWO BUGS THIS TASK EXPOSED RATHER THAN CAUSED, both of which crash or silently break a
+      reloaded match the moment a device moves. The snapshot never rebuilt the obstruction grid or
+      the cluster graph, so a reloaded match's buildings were walked straight through - obstruction
+      is derived from the standing structures and is in neither the landscape's definition nor its
+      deltas, so Construction gained MarkStandingObstructions and the read calls it. And a Sim was
+      not safely copyable at all: the cluster graph holds a pointer to the landscape and the
+      planner a pointer to the graph, so the Sim that Snapshot::Read hands back planned against the
+      landscape of the Sim it was moved out of. It segfaulted on the first tick after a reload.
+      Sim's members are now a private base and its copy and move re-aim the two pointers; a
+      hand-written member list would have put the next member added in the wrong place in silence.
+      ALSO ADDED: Neuron::AngleOf, the inverse of Sin and Cos, found by bisecting the SAME table
+      those two read rather than by a polynomial - a device turns to what it says and then drives
+      along Sin and Cos of it, and an inverse that disagreed by a unit is a device that turns back
+      and forth for ever. Measured round trip: exact, zero units, over the whole turn.
+      NOT DONE, and it is S10's: a destroyed device must have its request cancelled. Nothing
+      removes a device yet; PathPlanner::Cancel is what S10 calls when something does, and
+      Sim/Movement.h says so where the next reader will look.
 
   - id: S9
     title: Sim visibility - fog grids with viewer counts, the budgeted refresh, height-extended sight, occlusion, the ghost store
@@ -574,7 +889,41 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      MEASURED, AND IT IS THE FINDING. A full refresh of 200 viewers at a 20-cell radius costs
+      4,215,706 cell-height reads, 21,078 a viewer, and took 140 ms on the session's Linux harness
+      - nearly three times the whole 50 ms tick. The cause was Visibility::CellHeight rescanning a
+      cell's 25 samples on every query, so Landscape::Cell now carries highestSample, derived where
+      the slope and the water bit are derived, and the same refresh takes 16.4 ms. That is still a
+      third of the tick for one system and the figure to beat; the next easy win is the scan box,
+      which is twice the sight radius on each side because height may extend the radius, and so
+      scans 6,561 cells to light about 1,257 on ground where no viewer is raised at all. G3's
+      measurement on the owner's hardware decides whether it is worth taking.
+      THE VIEWER COUNT IS A uint16, NOT THE BYTE THE ACCEPTANCE ASKED FOR. Allied seats share one
+      grid and an alliance may be all eight seats at 200 devices and 300 structures each, so 4,000
+      viewers can hold one cell at a chokepoint. A byte saturating there could never be decremented
+      back to zero and the cell would stay lit for the rest of the match - a fog that wrongly
+      reveals is the worst failure this system has, and the second byte buys it away outright. The
+      snapshot's run encoder is templated on the value type for it.
+      ALLIED VISION IS SHARED BY WRITING, NOT BY UNION AT READ, which the acceptance left open. A
+      viewer stamps its disc into every seat of its own alliance. Union at read was rejected
+      because explored is history: a commander would otherwise not see ground their ally scouted an
+      hour ago unless the history were unioned too, and unioning history on every read costs more
+      than writing it once.
+      STAMPS ARE NEW STATE and they are the heart of it. A cell is visible while its count is
+      positive, so a viewer that moves must un-count exactly the disc it counted, and the only way
+      to un-count exactly is to remember - the cell, and the radius, since a sight upgrade changes
+      it. They are in the hash and in the snapshot at version 8.
+      A HEIGHT DELTA DROPS THE WHOLE FOG. A stamped disc was worked out against the heights as they
+      were; un-counting it against new ones takes viewers off cells that were never counted. So
+      Sim::FlattenTerrain resets visibility and the budget refills it over the next ticks. The cost
+      is that the explored history goes with it, which a test pins as a known consequence rather
+      than a surprise; narrowing the reset to the cells the delta touches is work for S4, which is
+      what will actually be calling it.
+      Seat.h's fogViewers/fogState and its ghost vector became FogGrid and GhostStore, so the
+      invariants - two arrays of one size, ghosts ascending by id - live with the data instead of
+      with every caller. Seat.cpp is gone; SizeFog is FogGrid::Resize.
 
   - id: S10
     title: Sim combat - targeting, stances, hit rolls, projectiles and splash, the damage formula, destruction, experience, retreat
@@ -615,7 +964,74 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Stages 8, 9 and 10 of the tick are no longer empty. Sim/Targeting acquires and fires,
+      Sim/Weapons holds what a weapon is and flies the shells, Sim/Damage applies what the two
+      decided, Sim/Retreat decides who leaves, and Sim/Experience says what a kill is worth.
+      DAMAGE IS A QUEUE AND NOT A WRITE AT THE SHOT, which is the one structural decision here.
+      Two shooters that both fire at one device in a tick both fired while it was alive, because
+      both fired before either shot landed; a write at the shot makes the second shooter's tick
+      depend on which of the two the walk reached first. Stages 8 and 9 queue, stage 10 applies,
+      and the order of the walk stops mattering. The queue is scratch - filled and emptied inside
+      one Advance - so it is neither hashed nor carried.
+      ONE VISIBILITY TEST IS BOTH THE SIGHT RULE AND THE SPOTTER RULE. GameDesign.md 8 asks that a
+      target be visible to someone on the commander's side, and that indirect fire "additionally"
+      need a spotter. The fog grid of S9 is already the union of every viewer of the alliance, so
+      the two are one subscript. What makes them bite differently is the tables: a cannon reaches
+      16 cells on a chassis that sees 20, so a direct shooter always sees its own target; a mortar
+      reaches 28 and sees 20, so it cannot fire at its longest range unless something else of its
+      commander's is looking. The test that proves it is the one that takes the spotter away.
+      THE OPTIMAL RANGE STANCE HAD TO BE DEFINED AND NOT JUST IMPLEMENTED, and the mortar is why.
+      Optimal means "hold fire until the short band", and the mortar's short range IS its minimum
+      range - both six cells - so the first rule written made it unable to fire at all. A weapon
+      with no short band to close into opens at its long range under both stances: "engage at
+      optimal range" cannot mean "engage inside the range you may not fire within". Caught by the
+      spotter test, not by reading.
+      THE TARGET PRIORITY IS THIS TASK'S AND IT IS NOW OpenQuestions.md Q24, OPEN. GameDesign.md 8
+      says structures "take a target-priority stance only" and never says what the priorities are,
+      and there is no such axis in the four the order set carries. The rule shipped is one for
+      every shooter: keep the target you have while it is alive, visible and in range - a weapon
+      that re-chose every tick would spray a crowd and kill nothing - and otherwise the nearest,
+      devices before structures, ties to the lower id. Whether a commander may CHOOSE a priority
+      is the open half, and it is an axis, an operand and a panel control, so it is m2-skirmish's.
+      SPLASH HITS ENEMIES AND NOT THE SHOOTER'S OWN SIDE. The acceptance says an impact "damages
+      everything within its splash radius", which reads as area-rather-than-target; GameDesign.md
+      nowhere names friendly fire, and an area weapon is not where one arrives by implication. One
+      condition in Sim/Weapons.cpp if the owner wants it the other way, and it is called out there.
+      A SHELL CARRIES WHAT IT WAS FIRED WITH rather than looking it up when it lands: the chance
+      and the damage are on the Projectile, so a shot fired by a device that dies in the two
+      seconds it is in the air still lands as it was fired. Snapshot version 13, which also brings
+      a structure's weapon reload - a field of its own and not a second use of the production
+      countdown, which a mod that armed a factory would otherwise have the two share.
+      MEASURED: two scouts four cells apart settle it on tick 156, against the ~160 the tables
+      allow (100 hit points, 4 damage a hit through 5 armour, 80 percent every five ticks); eight
+      scouts in a line fight down to four in 400 ticks, and two Sims agree on every one of them.
+      SimTests is 134 methods and green; the snapshot of the three-seat fixture is 1,689 bytes.
+      TWO INHERITED TESTS HAD TO CHANGE, both because a placeholder became real. SimTests asserted
+      "stage 8 draws once a tick", which was the unconditional draw S1 put there to exercise the
+      stream from M0; stage 8 now draws only when it has a hit to roll for, so the test asserts
+      that instead and that Sim::Roll is the one door to the stream. And SnapshotTests' fixture
+      gave its projectile nine ticks of flight and then ran fifty ticks, so stage 9 landed it and
+      the hash test dereferenced a shell that was gone - the same class of fault as the furnishing
+      S6 had to move after the ticks. It carries nine hundred now, and the fixture covers the two
+      fields version 13 added.
+      THE MORTAR TEST IS WHY S7's ABSTRACTION IS WORTH KNOWING ABOUT. The first version had the
+      target run north half a cluster from a doorway, so its route detoured ten cells toward the
+      mortar; a shell fired over fourteen cells leads its target by less than the splash and
+      connects, and the test read as "the miss rule is broken" when the miss rule was fine. The run
+      is along a cluster's own first column now, where the doorways are, and the test asserts the
+      device really did run straight - so the day the route changes, it says so rather than
+      quietly measuring something else.
+      ALSO DONE HERE: the duty S8 wrote down for this task - a destroyed device's planner request
+      is cancelled, so a job does not outlive its device and take budget from the ones still alive.
+      Attack and ReturnToRepair now walk, which needed Sim/Movement.cpp: what makes them different
+      from a Move is only who sets the destination, so the walk needs no case of its own.
+      NOT DONE, and it is the content's rather than this task's: M1 ships neither a repair bay nor
+      a repair module, so RepairPointNear always answers no on shipped content and every device
+      holds and fights. The rule is written and tested against a fixture that defines both, which
+      is what the acceptance asks for. The repairing itself, and the walk back to the guard
+      position afterwards, belong to the task that ships the bay.
 
   - id: S11
     title: Sim victory and match flow - annihilation, the survival clock, surrender
@@ -645,7 +1061,40 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Stage 12 is Sim/Victory.{h,cpp}. GameDesign.md §2 gives each condition a sentence and stage 12
+      needs a rule, so §2 now carries the six readings this task had to take; the two that were
+      real decisions rather than restatements are these.
+
+      SURVIVAL IS DECIDED ON WHAT WAS EXTRACTED, NOT ON WHAT IS HELD. "The side that extracted the
+      most power wins" cannot be answered by the stockpile: a commander who spent what he dug would
+      lose to one who sat on it, and the stockpile cap throws income away, so two economies that
+      differ by a factor of three can end the clock at the same number. Seat::extractedHundredths is
+      a running total that stage 2 adds the served extractors' output to before the cap and before
+      the command post's trickle - the command post generates, it does not extract. 64 bits, because
+      it only ever grows.
+
+      A SEAT THAT NEVER HELD A BASE CANNOT BE ANNIHILATED. The rule as the design states it -
+      neither a structure nor a builder - is true of a seat the lobby has just created, so without a
+      latch a match would end before its base level was placed, and so would every suite that
+      advances a tick over a world it has not filled. Seat::everHeldBase is that latch, set by the
+      same walk that tests the rule. It is also what keeps a combat test of two scouts from ending
+      as a double annihilation: neither seat ever held a structure or a builder, so neither is out.
+
+      WHAT WENT IN THE OTHER DIRECTION. Seat::defeated is gone rather than joined: the victory state
+      is the same fact spelled better, and Seat.h's own header warns against a second field that can
+      disagree with the first. Seat::Defeated() is the question spelled out, and it means Eliminated
+      - out during play - which is not Lost, which is being on the board at the end and not winning.
+      A decided match no longer advances at all: Sim::Advance returns at once, so the tick, the
+      stream, the world and the hash stay as the deciding tick left them.
+
+      Dominance still falls through to the annihilation rule. It needs 60% of a landscape's deposits
+      held for ten continuous minutes and ships with the first Large landscapes (GameDesign.md §2),
+      so a match set to it is played rather than refused.
+
+      Snapshot version 14 and ADR-003's table with it: a seat is 157 bytes and the three-seat
+      fixture 1,716. Measured: SimTests 143 passed, 0 failed; VictoryTests is 9 of them.
 
   - id: S12
     title: Sim scripted AI seat
@@ -680,10 +1129,56 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
     notes: >
+      Sim/AiBlackboard observes, Sim/AiDesigner scores and Sim/AiSeat decides, at stage 11. The
+      blackboard is entirely DERIVED and rebuilt every decision, so the AI adds nothing to the state
+      hash and nothing to the snapshot - a blackboard that were state would be a second copy of the
+      world two hosts could disagree about. No wall time, no float, no thread; two Sims from one
+      seed agree hash for hash over 3,000 ticks of a real match, which is the test that would catch
+      any of the three.
+
+      THREE ORDERINGS IN THE BEHAVIOUR LIST COST A RUN EACH TO FIND, and they are the substance of
+      this task rather than the code around them. (1) A GENERATOR GOES UP BEFORE THE SECOND
+      EXTRACTOR: GameDesign.md §4 says an extractor earns nothing until a generator reaches it, and
+      the first version claimed four deposits first - four extractors' worth of power spent on an
+      income of nothing, and a match where neither commander ever extracted a single unit. (2)
+      NOTHING NEW IS PLACED while there are more unfinished sites than builders to work them, with a
+      slack of one: without the rule one truck is spread over six plans and finishes none, and
+      without the slack a site no builder can reach - a deposit on a summit - stops the commander
+      building anything else for the rest of the match. (3) THE ATTACK BEHAVIOUR IS EVALUATED EVERY
+      DECISION rather than taking its turn: idle fighters are not a resource the base is competing
+      for, and behind the queue it never ran at all, because a factory with something to produce
+      answers first every decision for the whole match.
+
+      TWO THINGS THE SIMULATION MADE THE AI LEARN. A deposit it has never SEEN cannot be built on -
+      CheckPlacement refuses an unexplored footprint - so a builder walks to it first, which is a
+      scouting behaviour the acceptance did not ask for and the placement rule requires. And a group
+      is sent FOUR CELLS SHORT of what it attacks: the cell a commander starts on is where his
+      command post stands, a structure's cells are impassable, and a route into the middle of a base
+      comes back unreachable, so an army ordered at one stands where it was built. A group and not
+      the whole army, too: the planner's budget is 2,000 nodes a tick shared across every request,
+      so thirty cross-map searches at once each get seventy nodes and none of them finishes.
+
+      NOTHING IN THE TREE OWNS BASE-LEVEL PLACEMENT YET. GameDesign.md §2's "nothing but a builder
+      and a command post" is placed by the TEST here, because m1-vertical-slice/G1 is the task that
+      starts a match. The test also has to put the builder on ground its drive can stand on: a
+      device dropped on a cliff has no component in the cluster graph, every route it is given comes
+      back unreachable, and it stands there for the whole match - which looked like an AI fault for
+      three runs and was a placement one.
+
+      MEASURED, on GameData/Landscapes/Slice.json from seed 20260919 with the real GameData tables:
+      first contact on tick 6,003; at 12,000 ticks both commanders hold a served extractor, a
+      generator, a factory, a lab and devices they built themselves, and both have completed
+      research. The 36,000-tick run reaches a decided victory state with 20,318 and 40,533 power
+      extracted. DURATION, as the acceptance asks: 14 s for the 12,000-tick run and 54 s for the
+      36,000-tick one, on the Linux harness at -O0; CI's MSVC Debug build is the number to watch,
+      and the suite's step was 2m45s before this task.
+
       The behaviour list and the blackboard's fields are documented in the header comment of
       AiSeat.h, not in a prose file: project directories are flat (AGENTS.md §2).
+
+      Measured: SimTests 148 passed, 0 failed, of which AiTests is 5.
 
   - id: N1
     title: Net wire records and encodings
@@ -717,7 +1212,38 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Net/Records.h is the wire form of a device, a structure, a wreck, a feature, a seat, a design,
+      an event and a run of fog, and Net/Messages.h the eight datagrams they travel in. Positions
+      quantise to a quarter of a world unit by FLOOR division, so that the step is uniform across
+      zero rather than double-width at it, and come back as the middle of the quarter they named, so
+      the round trip errs by half a step either way instead of a whole step downwards.
+
+      A DEVICE'S ORDER AND ITS FOUR STANCES ARE ONE BYTE, and that is what makes TechnicalDesign.md
+      §5.7's fourteen-byte changed record fit: seven orders times three fire, two range, three
+      retreat and two movement stances is 252 of the 256 values a byte has, where the same five as
+      bit fields need nine bits and would cost a second byte on every device that turned round. The
+      four unused values are refused on read. Fourteen is then exactly the id, the six-byte position
+      delta, the heading, the hit points and that byte, which a static_assert pins. The fields NOT
+      in the mask - design, seat, rank and target - are the ones that rarely change, and a device
+      whose rank or target changed is re-sent whole rather than widening every frame's worst case.
+
+      A NAME COLLISION THAT HAD TO BE SETTLED. TechnicalDesign.md §5.3 names the wire record
+      StructureState and Sim already had an enumeration of that name; one namespace cannot hold
+      both. The simulation's is now StructurePhase, which is the better name for what it is, and the
+      wire keeps the name the design gives it. A mechanical rename over 22 files, no behaviour
+      changed, SimTests unchanged at 143 passing.
+
+      THE WIRE DOES NOT SHARE THE SNAPSHOT'S WRITER, deliberately. Net writes the settings and the
+      landscape definition itself: they are two streams with two versions, so a snapshot that gained
+      a field would otherwise break every client of a host that can save, and they carry different
+      payloads - a snapshot carries the flatten deltas and the wire must not, because the terrain
+      under an unscouted base is not public (§5.2).
+
+      Measured: NetTests 14 passed, 0 failed. Every record's bytes are pinned by hand from the
+      layout rather than recorded from a run, every record round-trips, and every prefix shorter
+      than a whole record is refused - 211 truncation cases across the nine.
 
   - id: N2
     title: Net host endpoint - interest sets, delta frames against acked baselines, history, fragmentation, join and rejoin; the network ADR
@@ -762,7 +1288,41 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Net/Host is the host end, Net/Interest the filter it publishes through, Net/FrameEncoder what
+      turns a simulation and an interest set into one client's frame, Net/ClientHistory the 32 it
+      keeps, and Net/Fragmenter what splits a frame too large for a datagram. ADR-012 records the
+      model and every number, measured.
+
+      THE INTEREST SET IS THE SECURITY BOUNDARY AND THE ENCODER IS SHAPED AROUND IT. The encoder
+      reads the simulation only for ids the interest set names, so the only way a record of an
+      unseen object could reach a frame is through a set that named it - which is what makes the
+      guarantee testable rather than reviewable. InterestTests plays a scripted match with two
+      commanders who never see each other and asserts that neither was told of a seat, a device, a
+      structure or a seat state but his own, and that the fog each was sent equals HIS OWN grid cell
+      for cell rather than the alliance's union.
+
+      ONE THING §5.3 DOES NOT HAVE AND THE PROTOCOL NEEDED. The acknowledgement rides every datagram
+      the client sends, and a frame the client DISCARDS now forces another one. Without it: the
+      client applies frame N, its acknowledgement is lost, the host goes on encoding against N-1,
+      the client goes on discarding what arrives because the baseline is not what it holds, and the
+      two talk past each other until the next heartbeat twenty ticks later. A discarded frame is
+      evidence the host's idea of this client is stale, so it is exactly what should make the client
+      say so again. Found by a test that dropped a third of the link, not by reading.
+
+      MEASURED, and it is what ADR-012 quotes: a full frame at 100 visible objects is 3,653 bytes
+      and a delta with half of them moving 637 (6 KB/s at 10 Hz); at 600 objects, 19,153 and 3,387
+      (33 KB/s). A fifth under TechnicalDesign.md §5.7's arithmetic, because a device that did not
+      move sends nothing and a changed one sends only what its mask names. The 32-frame history is
+      therefore 600 KB a client at 600 objects, which is the figure to reopen the history length
+      against.
+
+      MatchSettings gains rejoinGraceTicks, which the acceptance asks for and the lobby had no field
+      for; GameDesign.md §10 asks for a grace period and gives no number, so the default is two
+      minutes. Snapshot version 15 carries it.
+
+      Measured: NetTests 49 passed, 0 failed; SimTests still 143.
 
   - id: N3
     title: Net client endpoint - frames in, acknowledgements, the reliable order stream
@@ -796,7 +1356,37 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Net/Client is the client end, Net/Reassembler puts a fragmented frame back together and
+      Net/ReliableStream carries the orders. Both halves of the stream are one class, because a
+      conversation has a sending and a receiving half at both ends and the acknowledgement one half
+      produces is the one the other consumes; N2's Host holds the other instance.
+
+      TWO THINGS THE DESIGN DID NOT SPELL OUT AND THE CODE HAD TO. Karn's rule: an order that was
+      SENT TWICE measures no round trip, because there is no telling which copy the acknowledgement
+      answers, and taking the last send would measure a trip that never happened - a lossy link
+      otherwise talks itself into an estimate far shorter than the link, resends more, and gets
+      lossier. And the estimate is held in EIGHTHS of a tick: in whole ticks a smoothed average
+      over eight samples cannot move at all for a sample within eight of the estimate, so it would
+      sit on its initial guess for ever. Measured: it walks from the initial 8 down to 5 on a link
+      of 4.
+
+      WHEN A PARTIAL FRAME IS GIVEN UP ON. §5.3 says a frame with a fragment missing is discarded,
+      and the question it leaves is when. Two answers, both here: a third frame arriving while two
+      are part-way through displaces the older, and a frame that COMPLETES discards every partial
+      older than itself - the host encodes its next frame against what this one acknowledged, so
+      the missing piece would complete a frame nothing is a delta from any more. No timer, and
+      nothing to tune.
+
+      A frame is applied when it is full or when its baseline is exactly what this client last
+      applied; anything else is dropped and the unmoved acknowledgement is what tells the host. The
+      Join is the one message with no acknowledgement of its own, so it is the one repeated on a
+      schedule of its own; everything else rides the frame acknowledgement.
+
+      Measured: NetTests 28 passed, 0 failed. Sixty orders over a link losing a twelfth, duplicating
+      a twentieth and reordering a tenth arrive exactly once and in order; twenty orders over the
+      real LoopbackTransport dropping a fifth take 47 datagrams and 12 resends.
 
   - id: R1
     title: Replica world and interpolation, with the convergence tests
@@ -893,6 +1483,7 @@ tasks:
       - Tests/ClientTests/ModelBuffersTests.cpp
       - Tests/ClientTests/ClientTests.vcxproj
       - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Design/ADR/ADR-011-model-normals.md
       - Design/ADR/README.md
       - Design/TechnicalDesign.md
     acceptance:
@@ -906,7 +1497,35 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      ADR-011 is the decision TechnicalDesign.md 6.4 deferred: the loader splits and bakes, it does
+      not take the normal from the pixel shader's derivatives. The argument that settled it is not
+      the cost - it is that the terrain's way of fixing the derivative's sign, "if the normal points
+      down, flip it", is the ground knowing it faces up, and a model has no such rule. The cost is
+      arithmetic either way: over the twenty-two models in GameData\Models the colour alone, which a
+      derivative renderer still has to split on because a flat attribute comes from the triangle's
+      first vertex, costs 232 vertices against the descriptions' 176; keying the normal in as well
+      costs 528, which is 14.8 kB for the whole set. Measured through LoadContent and BuildModelMesh
+      rather than estimated. The outward normal turned out to be cross(c - a, b - a) and not the
+      textbook cross(b - a, c - a): the placeholder generator winds a front face clockwise seen from
+      outside, which is what Direct3D calls front by default, and all 264 triangles agree; getting it
+      backwards lights every model from inside and the symptom says nothing, so a test pins all six
+      faces of a box and ModelMesh::inwardFacingTriangles counts the disagreements for authored
+      models later. What this task does NOT have is the captured frame its acceptance asks for -
+      G2 composes devices into the capture and R2 fills the render view, so no frame with a model in
+      it exists yet. ADR-011 says so in its own measurements section and names what would overturn
+      it. The pass is written and registered but nothing calls it: App.cpp is G2's file, not this
+      one's. The acceptance's "one instance buffer per model per frame" is implemented as one buffer
+      per frame holding a contiguous run per model, one draw per run - the same batching with one
+      allocation instead of a resource per model per frame.
+      CI run 76 was red on a link error this task caused and the session's Linux harness cannot see:
+      ModelBuffers.obj is the first Client object a ClientTests test names that touches Direct3D, and
+      a named symbol drags its whole object in, so the suite suddenly needed the libraries the
+      executable links and linked none of them - unresolved WINRT_IMPL_RoOriginateLanguageException,
+      which is winrt::check_hresult's originate. ClientTests.vcxproj now carries the same
+      d3d12.lib;dxgi.lib;runtimeobject.lib FrontierCommander does. K2 would have hit it again for
+      D3D12SerializeRootSignature.
 
   - id: K2
     title: Client fog pass
@@ -923,8 +1542,15 @@ tasks:
       - Client/FogPass.cpp
       - Client/Shaders/FogVS.hlsl
       - Client/Shaders/FogPS.hlsl
+      - Client/SceneTarget.h
+      - Client/SceneTarget.cpp
       - Client/Client.vcxproj
       - Client/Client.vcxproj.filters
+      - Core/RenderView.h
+      - Tests/ClientTests/FogPassTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Design/TechnicalDesign.md
     acceptance:
       - A per-cell fog texture is updated from the render view's fog grid only for rows that changed, and a full-screen pass darkens explored cells and blacks unexplored ones after the geometry pass and before the UI
       - The capture job's frames show the three states once G2 lands
@@ -933,8 +1559,34 @@ tasks:
       - python3 Build/CheckFormat.py --clang-format clang-format-18
       - python3 Build/CheckProjectFiles.py
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      THE RENDER VIEW HAD NO FOG GRID TO READ. The acceptance says "from the render view's fog grid"
+      and Core/RenderView.h carried instances and changed chunks and nothing else, so this task added
+      FogShade and FogView to it; R2 fills them, and Interface.md 7 already promised the minimap the
+      same grid. The changed rows are part of the view rather than something the client diffs out:
+      every device that moves changes fog, so "did anything change" is true every frame and only
+      "which rows" is worth having, and the producer knows it for free. Same bargain as changedChunks.
+      HOW A PIXEL FINDS ITS CELL. The pass reads the depth buffer and runs it back through the
+      inverse view projection, because what the fog darkens is whatever was DRAWN at a pixel - ground,
+      device, structure - and the depth buffer is where that already is. The darkening is the blend
+      state, source ZERO and destination SRC_COLOR, so the colour target is never read as a texture
+      while it is a render target, which is not legal. A depth of zero is the reversed depth's far
+      value and means nothing was drawn, so the background keeps the clear colour instead of going
+      black. SceneTarget gained Bind, BindColorOnly and Depth(), because the depth buffer cannot be a
+      texture and a bound depth target at once; its own contract already said whoever moves a target's
+      state moves it back. Two depth views are declared and one is null - a Texture2DMS view of a
+      one-sample resource is not legal and neither is the reverse, and the scene target falls back to
+      one sample on an adapter without multisampling. The pass runs once per pixel and takes sample
+      0's depth, so a silhouette crossing a cell boundary gets one answer for four samples: one pixel
+      along one line, against four times the work to fix it. The shade for explored is 0.5, which is
+      Interface.md 7's "half brightness" rather than a number picked here. The grid is fetched by
+      integer coordinate with no sampler, because interpolating between two fog states would invent a
+      third. FogPassTests covers the one part of this that a test can reach without a device, which is
+      which rows a frame copies; getting that wrong leaves a row showing last frame's fog, and a
+      player reads that as vision they do not have. Nothing calls the pass yet - App.cpp is G2's.
 
   - id: K3
     title: Client UI toolkit - panels, widgets, the Spectrum font atlas, the UI pass, router integration
@@ -1087,6 +1739,62 @@ tasks:
     parallel_safe: true
     status: todo
 
+  - id: K5
+    title: Make the frame time measurable - an unlocked present and a readout
+    intent: >
+      m0-foundation/T22 asked the owner for the frame time at 1920x1080 and got 8 to 16 ms, which
+      is the display's refresh and not the renderer's cost: Client/SwapChain.cpp presents with
+      Present(1, 0) and nothing turns that off, and the client reports no frame time anywhere, so
+      the figure had to come from outside the process. A milestone whose acceptance is a measured
+      frame time needs the client able to measure one.
+    project: Client
+    depends_on: []
+    files:
+      - Client/SwapChain.h
+      - Client/SwapChain.cpp
+      - Client/FrameTimer.h
+      - Client/FrameTimer.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - FrontierCommander/App.cpp
+      - Tests/ClientTests/FrameTimerTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+    acceptance:
+      - "SwapChain::Present takes the sync interval rather than hard-coding 1, and --novsync on the command line presents with 0; tearing is allowed only where the swap chain and the output support it, and the flag says so in its help rather than failing"
+      - "A FrameTimer holds a window of recent CPU frame times and reports the mean, the median and the 99th percentile; the window is a count and not a duration, so the figures are comparable between runs"
+      - "The client puts those figures in the window title, with the triangle and chunk counts the capture already logs, so a frame time can be read off a running build without a vendor overlay"
+      - The unit test covers the timer's percentile over a known sequence, including a window not yet full
+      - "m0-foundation/T22's notes are amended with the unlocked figure once the owner has run it, and it is that figure a later regression is caught against"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: done
+    notes: >
+      THE LAST ACCEPTANCE LINE IS STILL OPEN and is the owner's: T22's notes carry the unlocked
+      figure once the owner has run with --novsync, and it is that figure a later regression is
+      caught against rather than the 8 to 16 ms band, which was two monitors.
+      Tearing is asked for when the swap chain is CREATED, not when it is presented, so it is asked
+      for wherever the machine allows it and --novsync decides per frame whether to use it; the
+      query lives on IDXGIFactory5 and GraphicsDevice holds an IDXGIFactory4, which the session's
+      Linux syntax check caught. ResizeBuffers takes the same flag or it refuses. Where the output
+      does not allow tearing, --novsync still presents on the retrace: the log says so and the
+      title bar says so, rather than reporting a refresh interval as a frame time a second time.
+      The window is a COUNT of frames and not a duration. "The last second" holds 60 samples at 60
+      frames a second and 500 at 500, so its 99th percentile means a different thing at each rate
+      and two runs cannot be compared; 240 frames always reports the same statistic. The percentile
+      is nearest-rank, so it always names a frame that actually happened.
+      Three figures rather than one because a hitch is invisible in the mean and in the median and
+      is what a player feels: a test pins that one 40 ms frame among 199 of 4 ms moves the
+      hundredth percentile and moves the mean by 180 microseconds.
+      The suite cannot be run on this session's Linux harness - ClientTests does not link there,
+      because Window.cpp needs the real Win32 - so FrameTimerTests was built and run against
+      FrameTimer.cpp alone, six passing. CI is the first run of the whole project.
+
   - id: G3
     title: The owner's run - M1 accepted, and the tick-cost measurements added to the tick ADR
     intent: >
@@ -1102,3 +1810,40 @@ tasks:
     notes: >
       Owner's task. An agent prepares the ADR addendum from the capture run's log and the PR
       that archives the plan once the owner reports.
+
+  - id: C5
+    title: The content tree in the simulation, and the snapshot's binding to it
+    intent: >
+      Every simulation system from S3 on reads rows rather than literals, which nothing made
+      possible: Sim took MatchSettings and nothing else, and no task owned the wiring
+      (OpenQuestions.md Q20, owner 2026-09-18). Sim takes the tree by reference and never writes
+      it, and a snapshot carries the digest of the tables it was written against so that reloading
+      against different rules is a refusal rather than a divergence nobody notices.
+    project: Sim
+    depends_on: [C1, S1]
+    blocked_by: []
+    files:
+      - Content/ContentHash.h
+      - Content/ContentHash.cpp
+      - Content/DamageTable.h
+      - Sim/Sim.h
+      - Sim/Sim.cpp
+      - Sim/Snapshot.h
+      - Sim/Snapshot.cpp
+      - Design/ADR/ADR-009-content-in-the-simulation.md
+      - Tests/ContentTests/ContentHashTests.cpp
+      - Tests/SimTests/SnapshotTests.cpp
+    acceptance:
+      - Sim takes the ContentTree by reference at construction and exposes it; binding a temporary is a compile error rather than a dangling pointer found at run time
+      - ContentHash digests every field of every table the simulation reads - components, structures, research, the damage matrix - and nothing the client alone reads, with strings length-prefixed so two rows whose ids run together cannot digest as one
+      - A snapshot carries the digest and Snapshot::Read refuses a tree that differs, before it reads a field; the state hash is untouched, because the digest is a precondition rather than per-tick state
+      - ContentHashTests moves one field of every table and each mutation moves the digest, so a field added to a row without a line in the digest fails a test rather than diverging in silence
+      - ADR-009 records the decision, what it forecloses - the self-describing snapshot that would outlive its tables - and what it cost
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: done

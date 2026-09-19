@@ -38,6 +38,25 @@ enum class PowerLevel : std::uint8_t
 
 inline constexpr std::array<std::int32_t, 3> STARTING_POWER_HUNDREDTHS = {40000, 100000, 250000};
 
+/// The most devices a commander may field at once: 100, 200 or 300 (GameDesign.md §4). It is a
+/// lobby setting because the cap is the brake on an army, and what that brake should be is the
+/// question a match is set up to ask.
+enum class DeviceCapLevel : std::uint8_t
+{
+  Low,
+  Medium,
+  High
+};
+
+inline constexpr std::array<std::uint32_t, 3> DEVICE_CAPS = {100, 200, 300};
+
+/// The structure cap is not a lobby setting: GameDesign.md §4 gives one number for every match,
+/// and a commander who wants more structures is answered by the stockpile cap rather than by this.
+inline constexpr std::uint32_t STRUCTURE_CAP = 300;
+
+/// Two minutes at 20 ticks a second.
+inline constexpr std::uint32_t DEFAULT_REJOIN_GRACE_TICKS = 2400;
+
 enum class VictoryCondition : std::uint8_t
 {
   Annihilation,
@@ -57,6 +76,11 @@ struct SeatSettings
 {
   SeatKind kind;
   std::uint8_t alliance; ///< Seats sharing a number share vision and victory (GameDesign.md §2).
+  /// Every idle lab picks the cheapest item it may start, at the beginning of the tick
+  /// (m1-vertical-slice/S6). A lobby option because a scripted seat wants it always and a human
+  /// wants it when they are tired of the panel, and because a setting that changes mid-match would
+  /// be an order and this is not one.
+  bool autoResearch = false;
 
   [[nodiscard]] constexpr bool operator==(const SeatSettings&) const noexcept = default;
 };
@@ -70,7 +94,14 @@ struct MatchSettings
   PowerLevel powerLevel;
   std::uint8_t technologyTiers; ///< Research tiers pre-completed: 0, 1 or 2.
   VictoryCondition victory;
-  std::uint32_t survivalTicks; ///< The clock of the Survival condition, in ticks; unread otherwise.
+  std::uint32_t survivalTicks;   ///< The clock of the Survival condition, in ticks; unread otherwise.
+  DeviceCapLevel deviceCapLevel; ///< Indexes DEVICE_CAPS; the structure cap is STRUCTURE_CAP for every match.
+
+  /// How long a seat whose player has dropped is held for him before it goes under AI control
+  /// (GameDesign.md §10: "kept as a seat under AI control for a grace period and may rejoin").
+  /// A lobby setting because how long a match waits for a player is the host's to decide and not
+  /// the protocol's; the default is two minutes, which is long enough for a router to come back.
+  std::uint32_t rejoinGraceTicks = DEFAULT_REJOIN_GRACE_TICKS;
   std::array<SeatSettings, MAX_SEATS> seats;
 
   [[nodiscard]] constexpr bool operator==(const MatchSettings&) const noexcept = default;

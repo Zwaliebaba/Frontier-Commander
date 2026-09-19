@@ -1,6 +1,6 @@
 # ADR-005 — Fog and lighting
 
-**Status:** Accepted; the fog *range* is superseded by [`ADR-007`](ADR-007-view-budget.md) (2026-09-18), which made it absolute and gave the desaturation a ceiling on the owner's frame. Everything else here stands: the lighting, the unlit team-colour slot, the far plane, the reversed depth, and the desaturation as the mode.
+**Status:** Accepted; the fog *range* is superseded by [`ADR-007`](ADR-007-view-budget.md) (2026-09-18), which made it absolute and gave the desaturation a ceiling on the owner's frame, and the built-in *light pair* is amended below by `OpenQuestions.md` Q21 (2026-09-18). Everything else here stands: the lighting model, the unlit team-colour slot, the far plane, the reversed depth, and the desaturation as the mode.
 **Date:** 2026-09-17
 **Owner:** the author, on the owner's ruling of 2026-09-17 (`Design/OpenQuestions.md` R4); the fog choice is confirmed or overridden by the owner at `m0-foundation/T22`, and an override is a superseding ADR
 
@@ -10,7 +10,7 @@ The Species look lights the world with two directional lights and no ambient (`S
 
 ## Decision
 
-**Lighting is the Species model, unchanged.** Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then clamped, one normal per triangle and one colour per triangle (`Client/Shaders/TerrainPS.hlsl`; `Client/Lighting.h`). The Garden's pair, a near-white key at 23 degrees and a horizontal orange sun at three and a half times white, is the built-in until `GameData\Biomes.json` carries one per biome. A face neither light reaches is black; that is the look, and the owner kept it.
+**Lighting is the Species model, unchanged.** Lambert only, no ambient, two directional lights whose colours may exceed one, summed and then clamped, one normal per triangle and one colour per triangle (`Client/Shaders/TerrainPS.hlsl`; `Client/Lighting.h`). The Garden's pair, a near-white key at 23 degrees and a horizontal orange sun at three and a half times white, is the built-in until `GameData\Biomes.json` carries one per biome. A face neither light reaches is black; that is the look, and the owner kept it. **Amended 2026-09-18 (`OpenQuestions.md` Q21):** the *pair* is now Species' Sandbox — two elevated near-white lights from opposite azimuths — and the Garden's is kept beside it as a biome. The model above is untouched: no ambient is added, nothing is filled, the two lights simply reach a surface facing up, which the Garden's horizontal sun does not. The Garden's pair left flat ground at 0.38 luminance and 11.1% of sampled normals fully black, and it was the rig rather than the fog that made the owner's frame of 2026-09-18 read at a median of 39/255.
 
 **A team-colour slot is neither lit nor fogged.** A vertex whose colour alpha is `VERTEX_ALPHA_UNLIT` (0) is written as it is. Lights of up to (5.0, 2.35, 0.77) would tint every team colour orange, which the owner refused; and a fog that greys or blacks the colour at distance is worse than a tint, because the commander's colour is the one thing pillar 3 wants to survive distance. Every other vertex carries `VERTEX_ALPHA_LIT` (1). The terrain shader honours the rule though the terrain never uses the slot, so that the geometry pass of `m1-vertical-slice/K1` has a reference to copy rather than a comment to interpret.
 

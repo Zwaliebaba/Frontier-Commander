@@ -1,0 +1,22 @@
+{
+  "_comment": "The Default biome carries Species's Sandbox pair and the Garden biome carries the Garden's (SpeciesLook.md 2 and 11; OpenQuestions.md Q21, owner 2026-09-18). Sandbox is the default because the Garden's sun lies on the horizon and so reaches no surface facing up, which leaves flat ground at 0.38 luminance against Sandbox's 0.95, and because Sandbox is the pair Species put on its own level 1, the first map a player sees. The palette is Species's own, measured from its level files; both maps read LandscapeDefault. The fog is ADR-005's mode with ADR-007's absolute range and ceiling, which is why the range names world units and no fraction of the landscape. The sky is black, as Species's is, with its layers over it (SpeciesLook.md 6); m2-skirmish/T8 adds the other six biomes and the cloud rows.",
+  "version": 1,
+  "biomes": [
+    {
+      "id": "Default", "name": "The Plain", "paletteTexture": "LandscapeDefault.dds",
+      "key": { "directionHundredths": [85, 52, 9], "colorHundredths": [124, 116, 104] },
+      "sun": { "directionHundredths": [-66, 30, -69], "colorHundredths": [104, 116, 124] },
+      "fogMode": "Desaturation",
+      "fogStartWorldUnits": 2048, "fogEndWorldUnits": 8192, "fogMaxDesaturationHundredths": 35,
+      "fogColorHundredths": [0, 0, 0], "skyColorHundredths": [0, 0, 0]
+    },
+    {
+      "id": "Garden", "name": "The Garden", "paletteTexture": "LandscapeDefault.dds",
+      "key": { "directionHundredths": [4, 39, -92], "colorHundredths": [106, 96, 72] },
+      "sun": { "directionHundredths": [57, 0, -82], "colorHundredths": [358, 79, 14] },
+      "fogMode": "Desaturation",
+      "fogStartWorldUnits": 2048, "fogEndWorldUnits": 8192, "fogMaxDesaturationHundredths": 35,
+      "fogColorHundredths": [0, 0, 0], "skyColorHundredths": [0, 0, 0]
+    }
+  ]
+}

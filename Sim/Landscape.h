@@ -29,6 +29,12 @@ public:
     std::uint16_t slopePercent;
     std::uint8_t flags;
     std::uint8_t obstruction;
+    /// The tallest of the cell's 5x5 samples, in whole world units. It is what the line of sight
+    /// of S9 measures against, so that a one-cell ridge blocks rather than being stepped over, and
+    /// it is cached here rather than scanned per query: a visibility refresh asks this question
+    /// about twenty thousand cells per viewer, and scanning 25 samples each time cost 140 ms a
+    /// tick against a 50 ms budget when it was measured (m1-vertical-slice/S9).
+    std::int16_t highestSample;
 
     [[nodiscard]] constexpr bool operator==(const Cell&) const noexcept = default;
   };

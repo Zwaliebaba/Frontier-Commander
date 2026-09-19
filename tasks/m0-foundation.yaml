@@ -1231,8 +1231,20 @@ tasks:
     acceptance:
       - The owner builds Debug and Release from the solution and runs FrontierCommander on hardware
       - A Small landscape is on screen, the camera flies, and the frame time at 1920x1080 is recorded in this task's notes
-      - "The fog choice of T20's ADR is confirmed or overridden, and an override is a superseding ADR; the ruling is made on a frame drawn with ADR-007's absolute range and its ceiling on the desaturation, not on the frame of 2026-09-18, whose range left 63.9% of the landscape exactly gray"
+      - "DEFERRED to m2-skirmish/T8 by the owner on 2026-09-18, which already re-makes ADR-005's two frames: the fog ruling. It needed a frame drawn under ADR-007's absolute range AND under the Sandbox rig of OpenQuestions.md Q21, neither of which the frame of 2026-09-18 had; and ADR-005's own evidence was the horizon band, which is exactly where the sky layers land and nothing draws a sky before T8. M0 is archived with this line unmet and named, not silently"
       - Every M0 line of GameDesign.md §12 is true, and this plan is moved to tasks/Archive/
     status: todo
     notes: >
       Owner's task. An agent prepares the PR that archives the plan once the owner reports.
+      Frame time, reported by the owner on 2026-09-18: 8 to 16 ms at 1920x1080, which is 60 to
+      125 frames a second. READ IT AS A CEILING AND NOT AS A COST. Client/SwapChain.cpp:55
+      presents with Present(1, 0) and nothing turns that off, so a frame cannot finish faster than
+      the display refreshes: 16.7 ms at 60 Hz, 8.3 ms at 120 Hz, which is the reported band almost
+      exactly. The client also has no frame-time readout of any kind, so the figure came from
+      outside the process. What it establishes is that the renderer keeps up with the owner's
+      display on a Small landscape; what it does not establish is what a frame costs, which is the
+      baseline a later regression would be caught against. m1-vertical-slice/K5 adds the unlocked present
+      and the readout that make the number measurable, and until the owner has run it, the figure
+      here is not a baseline. For the scale it leaves either way: the capture's orbit draws 161,730 to 220,152
+      triangles a frame on the Small landscape (T20), and the Frontier landscape of ADR-007 is 64
+      times the area.

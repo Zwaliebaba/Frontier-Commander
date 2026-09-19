@@ -41,12 +41,23 @@ public:
 
   /// Clears both targets, binds them, and sets the viewport and scissor to the authored extent.
   void Begin(ID3D12GraphicsCommandList* _list);
+  /// Binds both targets again, clearing neither: what a pass that unbound one of them calls to put
+  /// the frame back the way it found it.
+  void Bind(ID3D12GraphicsCommandList* _list) const;
+  /// Binds the colour target alone, leaving the depth buffer free to be read as a texture. The
+  /// caller transitions the depth buffer itself and calls Bind when it is done (m1-vertical-slice/K2).
+  void BindColorOnly(ID3D12GraphicsCommandList* _list) const;
   /// Resolves the samples into the single-sample texture.
   void Resolve(ID3D12GraphicsCommandList* _list);
 
   [[nodiscard]] ID3D12Resource* Resolved() const noexcept
   {
     return m_resolved.get();
+  }
+  /// The depth buffer, for a pass that reads it; its resting state is DEPTH_WRITE.
+  [[nodiscard]] ID3D12Resource* Depth() const noexcept
+  {
+    return m_depth.get();
   }
   [[nodiscard]] std::uint32_t SampleCount() const noexcept
   {

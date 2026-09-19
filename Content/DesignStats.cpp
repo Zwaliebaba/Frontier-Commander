@@ -35,7 +35,7 @@ std::int32_t WorldUnitsPerSecond(std::int32_t _subunitsPerTick) noexcept
   return static_cast<std::int32_t>((perSecond + (perSecond >= 0 ? half : -half)) / Neuron::SUBUNITS_PER_WORLD_UNIT);
 }
 
-DesignFault DeriveDesignStats(const ContentTree& _tree, const DeviceDesign& _design, const ClassUpgrades& _upgrades, DesignStats& _out)
+DesignFault DeriveDesignStats(const ContentTree& _tree, const DesignRecipe& _design, const ClassUpgrades& _upgrades, DesignStats& _out)
 {
   const ChassisDesc* chassis = _tree.FindChassis(_design.chassis);
   if (chassis == nullptr)

@@ -14,6 +14,9 @@
     <ClCompile Include="ContentLoaderTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ContentHashTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="ContentValidatorTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

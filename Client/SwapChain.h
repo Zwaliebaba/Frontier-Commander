@@ -30,8 +30,19 @@ public:
 
   /// Recreates the buffers at the new client size, after the GPU has let go of the old ones.
   void Resize(GraphicsDevice& _device, std::uint32_t _width, std::uint32_t _height);
-  /// Presents with vertical synchronisation and moves to the next back buffer.
-  void Present();
+
+  /// Presents and moves to the next back buffer. A sync interval of 1 waits for the vertical
+  /// retrace, which is what a player wants; 0 presents as fast as the renderer can, which is the
+  /// only way to measure what a frame costs (m0-foundation/T22 measured the display instead).
+  void Present(std::uint32_t _syncInterval = 1);
+
+  /// Whether this swap chain and its output can present without waiting. False on a display or a
+  /// driver that does not allow tearing, in which case Present(0) still presents on the retrace
+  /// and the frame time still reads as the refresh - so the caller says so rather than pretending.
+  [[nodiscard]] bool TearingSupported() const noexcept
+  {
+    return m_tearingSupported;
+  }
 
   [[nodiscard]] ID3D12Resource* CurrentBackBuffer() const noexcept
   {
@@ -59,6 +70,7 @@ private:
   std::uint32_t m_width = 0;
   std::uint32_t m_height = 0;
   std::uint32_t m_backBufferIndex = 0;
+  bool m_tearingSupported = false;
 };
 
 } // namespace Neuron

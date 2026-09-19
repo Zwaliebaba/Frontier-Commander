@@ -29,14 +29,24 @@ struct ClassUpgrades
   std::array<std::int32_t, WEAPON_CLASS_COUNT> weaponDamagePercent{};
   std::array<std::int32_t, WEAPON_CLASS_COUNT> weaponRatePercent{};
   std::array<std::int32_t, WEAPON_CLASS_COUNT> weaponAccuracyPercent{};
+  /// Not a class, but the same kind of thing and the same one home: ResearchEffect::ExtractorRate
+  /// and ResearchEffect::StructureHitPoints apply to every extractor and every structure a seat
+  /// has, and the derivations that read them are Sim/Economy.cpp's and Sim/Research.cpp's.
+  std::int32_t extractorRatePercent = 0;
+  std::int32_t structureHitPointPercent = 0;
 
   [[nodiscard]] bool operator==(const ClassUpgrades&) const noexcept = default;
 };
 
-/// A named combination of a chassis, a drive and modules: what the design screen commits and the
-/// factory builds. Ids rather than pointers, because a design outlives a content reload and is
-/// saved between matches (TechnicalDesign.md §9).
-struct DeviceDesign
+/// A named combination of a chassis, a drive and modules: what the design screen commits and what
+/// the derivation below reads. Ids rather than pointers, because a design outlives a content reload
+/// and is saved between matches (TechnicalDesign.md §9).
+///
+/// It is NOT what a seat holds. Sim's DeviceDesign is the same idea in row indices, because a
+/// design is hashed and sent every tick and strings are neither cheap nor fixed-layout; the two
+/// were both called DeviceDesign until m1-vertical-slice/S5 needed one translation unit to see
+/// both, which is a hard collision in one namespace rather than a naming preference.
+struct DesignRecipe
 {
   std::string id;
   std::string name;
@@ -44,7 +54,7 @@ struct DeviceDesign
   std::string drive;
   std::vector<std::string> modules;
 
-  [[nodiscard]] bool operator==(const DeviceDesign&) const noexcept = default;
+  [[nodiscard]] bool operator==(const DesignRecipe&) const noexcept = default;
 };
 
 /// What the parts add up to. Every field is in the unit its name says.
@@ -78,7 +88,7 @@ enum class DesignFault : std::uint8_t
 
 /// Derives the statistics of a design. Returns the fault when the design is not buildable, in
 /// which case _out is untouched.
-[[nodiscard]] DesignFault DeriveDesignStats(const ContentTree& _tree, const DeviceDesign& _design, const ClassUpgrades& _upgrades,
+[[nodiscard]] DesignFault DeriveDesignStats(const ContentTree& _tree, const DesignRecipe& _design, const ClassUpgrades& _upgrades,
                                             DesignStats& _out);
 
 /// The ticks a factory takes to build a design of this cost, before the factory's modules: the

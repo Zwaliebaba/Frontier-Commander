@@ -16,11 +16,13 @@
 #include "Lighting.h"
 #include "Log.h"
 #include "MatchSettings.h"
+#include "ContentLoader.h"
 #include "Paths.h"
 #include "PresentPass.h"
 #include "ScaleMode.h"
 #include "SceneTarget.h"
 #include "Sim.h"
+#include "FrameTimer.h"
 #include "SwapChain.h"
 #include "TerrainChunk.h"
 #include "TerrainPass.h"
@@ -73,6 +75,32 @@ constexpr float PI = 3.14159265358979323846f;
   return definition;
 }
 
+/// The tables a match is played by (OpenQuestions.md Q20), read once from the game-data directory
+/// beside the executable. A tree that does not load leaves the match on an empty one and says so,
+/// rather than refusing to start: getting GameData beside the executable is the owner's step (C2),
+/// and until it is taken every stage that reads a row is one that does not exist yet.
+[[nodiscard]] const Frontier::ContentTree& MatchContent()
+{
+  static const Frontier::ContentTree TREE = []
+  {
+    Frontier::ContentTree tree{};
+    const std::filesystem::path directory = Neuron::Paths::GameDataDirectory();
+    std::vector<Frontier::ContentDiagnostic> diagnostics;
+    if (Frontier::LoadContent(directory, tree, diagnostics))
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Info, "content: " + std::to_string(tree.components.chassis.size()) + " chassis, " +
+                                                   std::to_string(tree.structures.structures.size()) + " structures, " +
+                                                   std::to_string(tree.research.size()) + " research items from " + directory.string());
+      return tree;
+    }
+    const std::string reason = diagnostics.empty() ? std::string("no diagnostic") : diagnostics.front().message;
+    Neuron::Log::Write(Neuron::LogLevel::Warning,
+                       "content: no tables at " + directory.string() + " (" + reason + "); the match runs on none");
+    return Frontier::ContentTree{};
+  }();
+  return TREE;
+}
+
 /// A two-seat lobby, the least a match needs.
 [[nodiscard]] MatchSettings Lobby()
 {
@@ -85,6 +113,7 @@ constexpr float PI = 3.14159265358979323846f;
   settings.technologyTiers = 0;
   settings.victory = VictoryCondition::Annihilation;
   settings.survivalTicks = 0;
+  settings.deviceCapLevel = DeviceCapLevel::Medium; // 200 devices, the figure GameDesign.md §4 names
   for (SeatSettings& seat : settings.seats)
   {
     seat = {SeatKind::Empty, NO_ALLIANCE};
@@ -152,7 +181,7 @@ constexpr float PI = 3.14159265358979323846f;
 {
   Neuron::TerrainPass::Frame frame{};
   frame.aspect = static_cast<float>(Neuron::AUTHORED_WIDTH_PIXELS) / static_cast<float>(Neuron::AUTHORED_HEIGHT_PIXELS);
-  frame.lighting = Neuron::GARDEN_LIGHTING;
+  frame.lighting = Neuron::BUILT_IN_LIGHTING;
   frame.fogMode = _fog;
   frame.fogStart = Neuron::FOG_START_WORLD_UNITS;
   frame.fogEnd = Neuron::FOG_FULL_WORLD_UNITS;
@@ -193,6 +222,14 @@ Neuron::FogMode PoseFor(std::uint32_t _frame, float _extent, Neuron::Camera& _ca
   return _device.DebugMessageCount() == 0 ? EXIT_CLEAN : EXIT_DEBUG_MESSAGES;
 }
 
+/// Microseconds as milliseconds to two places, for the title bar. Fixed to two places rather than
+/// left to the default formatting, so that the three figures line up as the numbers move.
+[[nodiscard]] std::wstring Micros(std::uint64_t _microseconds)
+{
+  const std::uint64_t hundredths = (_microseconds + 5) / 10;
+  return std::to_wstring(hundredths / 100) + L"." + (hundredths % 100 < 10 ? L"0" : L"") + std::to_wstring(hundredths % 100);
+}
+
 } // namespace
 
 bool ParseCommandLine(std::span<const std::wstring> _arguments, LaunchOptions& _options)
@@ -203,6 +240,11 @@ bool ParseCommandLine(std::span<const std::wstring> _arguments, LaunchOptions& _
     if (argument == L"--warp")
     {
       _options.warp = true;
+      continue;
+    }
+    if (argument == L"--novsync")
+    {
+      _options.noVerticalSync = true;
       continue;
     }
     if (argument == L"--capture" && index + 2 < _arguments.size())
@@ -263,7 +305,7 @@ int App::RunWindowed()
   Neuron::SwapChain swapChain(device, window.Handle(), window.ClientWidth(), window.ClientHeight());
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::PresentPass present(device, scene);
-  Sim sim(Lobby());
+  Sim sim(Lobby(), MatchContent());
   if (!sim.CreateLandscape(SmallLandscape()))
   {
     Neuron::Log::Write(Neuron::LogLevel::Error, "the built-in landscape was refused");
@@ -278,9 +320,24 @@ int App::RunWindowed()
   const Neuron::FogMode fog = Neuron::DEFAULT_FOG_MODE;
   camera.ClampHeight(heights);
   const CameraController controller;
+  // The frame time is measured over the whole loop body, present included, which is what a player
+  // waits for. With --novsync and a display that allows tearing it is the renderer's cost; without
+  // either it is the refresh interval, and the title says which so that a figure read off it is
+  // never mistaken for the other (m0-foundation/T22).
+  Neuron::FrameTimer frameTimer;
+  const std::uint32_t syncInterval = m_options.noVerticalSync ? 0u : 1u;
+  const wchar_t* pacing = syncInterval != 0              ? L"vsync"
+                          : swapChain.TearingSupported() ? L"unlocked"
+                                                         : L"novsync (no tearing here: still paced by the display)";
+  if (m_options.noVerticalSync && !swapChain.TearingSupported())
+  {
+    Neuron::Log::Write(Neuron::LogLevel::Warning,
+                       "--novsync: this output does not allow tearing, so frames are still paced by the display");
+  }
   auto lastFrame = std::chrono::steady_clock::now();
   while (window.Pump())
   {
+    const auto frameStart = std::chrono::steady_clock::now();
     // The frame's input (TechnicalDesign.md §6.5): derive what the frame saw, offer it to the sinks,
     // mask what they took, fire the subscriptions, and only then read the view.
     const std::size_t consumed = Neuron::DeriveFrameInput(inputQueue.Events(), inputState);
@@ -311,8 +368,21 @@ int App::RunWindowed()
       list, swapChain.CurrentBackBuffer(), swapChain.CurrentRenderTargetView(),
       Neuron::FitAuthored(window.ClientWidth(), window.ClientHeight(), Neuron::AUTHORED_WIDTH_PIXELS, Neuron::AUTHORED_HEIGHT_PIXELS));
     device.EndFrame();
-    swapChain.Present();
+    swapChain.Present(syncInterval);
     device.DrainDebugMessages();
+    frameTimer.Add(static_cast<std::uint64_t>(
+      std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - frameStart).count()));
+    // Once a quarter of the window rather than every frame: a title that changes 500 times a
+    // second is unreadable, and SetWindowTextW is a message to the window's own thread.
+    if (frameTimer.TotalFrames() % (Neuron::FrameTimer::WINDOW_FRAMES / 4) == 0)
+    {
+      std::wstring title = L"Frontier Commander - ";
+      title += pacing;
+      title += L" - mean " + Micros(frameTimer.MeanMicroseconds()) + L" ms, median " + Micros(frameTimer.MedianMicroseconds()) +
+               L", 99th " + Micros(frameTimer.PercentileMicroseconds(99)) + L" - " + std::to_wstring(terrain.LastTriangleCount()) +
+               L" triangles in " + std::to_wstring(terrain.LastChunkCount()) + L" chunks";
+      window.SetTitle(title.c_str());
+    }
   }
   device.WaitForIdle();
   device.DrainDebugMessages();
@@ -338,7 +408,7 @@ int App::RunCapture()
   Neuron::GraphicsDevice device(m_options.warp);
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::FrameCapture capture(device, Neuron::AUTHORED_WIDTH_PIXELS, Neuron::AUTHORED_HEIGHT_PIXELS, Neuron::SCENE_COLOR_FORMAT);
-  Sim sim(Lobby());
+  Sim sim(Lobby(), MatchContent());
   if (!sim.CreateLandscape(SmallLandscape()))
   {
     Neuron::Log::Write(Neuron::LogLevel::Error, "the built-in landscape was refused");

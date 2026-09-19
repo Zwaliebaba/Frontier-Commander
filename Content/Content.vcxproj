@@ -99,6 +99,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ContentLoader.cpp" />
+    <ClCompile Include="ContentHash.cpp" />
     <ClCompile Include="ContentValidator.cpp" />
     <ClCompile Include="DesignStats.cpp" />
     <ClCompile Include="pch.cpp">
@@ -112,6 +113,7 @@
     <ClInclude Include="ComponentDesc.h" />
     <ClInclude Include="ContentLoader.h" />
     <ClInclude Include="ContentTree.h" />
+    <ClInclude Include="ContentHash.h" />
     <ClInclude Include="ContentValidator.h" />
     <ClInclude Include="DamageTable.h" />
     <ClInclude Include="DesignStats.h" />

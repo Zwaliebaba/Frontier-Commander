@@ -1,0 +1,76 @@
+{
+  "_comment": "The chassis, drives and modules of GameDesign.md 6, one row apiece (ADR-006). Every number is an integer in the unit its name says: hundredths for factors, percentages and power, ticks for times, subunits for distances (256 to the world unit, 16,384 to a cell). Speed is the design's world units a second at 20 ticks: 80 wu/s is 1,024 subunits a tick. Sight and range are the design's cells. The derived statistics - speed, hit points, armour, cost, build time - are computed from these rows by Sim and shown by the design screen; nothing here stores a derived number. A row with no unlockedBy is available from the first tick.",
+  "version": 1,
+  "chassis": [
+    {
+      "id": "LightI", "name": "Light I", "class": "Light", "model": "ChassisLightI",
+      "hitPoints": 100, "kineticArmor": 5, "thermalArmor": 5,
+      "baseSpeedSubunitsPerTick": 1024, "sightSubunits": 327680,
+      "costHundredths": 6000, "mounts": 1
+    },
+    {
+      "id": "MediumI", "name": "Medium I", "class": "Medium", "model": "ChassisMediumI",
+      "unlockedBy": "MediumChassis",
+      "hitPoints": 250, "kineticArmor": 12, "thermalArmor": 10,
+      "baseSpeedSubunitsPerTick": 704, "sightSubunits": 294912,
+      "costHundredths": 17000, "mounts": 1
+    },
+    {
+      "id": "HeavyI", "name": "Heavy I", "class": "Heavy", "model": "ChassisHeavyI",
+      "unlockedBy": "HeavyChassis",
+      "hitPoints": 500, "kineticArmor": 25, "thermalArmor": 18,
+      "baseSpeedSubunitsPerTick": 512, "sightSubunits": 262144,
+      "costHundredths": 32000, "mounts": 1
+    }
+  ],
+  "drives": [
+    {
+      "id": "Wheels", "name": "Wheels", "class": "Wheels", "model": "DriveWheels",
+      "speedFactorHundredths": 130, "maxSlopePercent": 25, "crossesWater": false,
+      "hitPointFactorHundredths": 100, "costHundredths": 3000
+    },
+    {
+      "id": "HalfTrack", "name": "Half-track", "class": "HalfTrack", "model": "DriveHalfTrack",
+      "unlockedBy": "HalfTracks",
+      "speedFactorHundredths": 110, "maxSlopePercent": 35, "crossesWater": false,
+      "hitPointFactorHundredths": 115, "costHundredths": 4500
+    },
+    {
+      "id": "Tracks", "name": "Tracks", "class": "Tracks", "model": "DriveTracks",
+      "unlockedBy": "TrackedDrives",
+      "speedFactorHundredths": 80, "maxSlopePercent": 40, "crossesWater": false,
+      "hitPointFactorHundredths": 150, "costHundredths": 7000
+    }
+  ],
+  "modules": [
+    {
+      "id": "MachineGun", "name": "Machine gun", "systemKind": "None", "model": "ModuleMachineGun",
+      "weightPenaltyPercent": 0, "costHundredths": 4000,
+      "weaponClass": "AntiLight", "damage": 8, "shotsPerSalvo": 1, "reloadTicks": 5,
+      "fireKind": "Direct", "shortRangeSubunits": 131072, "longRangeSubunits": 196608,
+      "shortHitPercent": 80, "longHitPercent": 50
+    },
+    {
+      "id": "Cannon", "name": "Cannon", "systemKind": "None", "model": "ModuleCannon",
+      "unlockedBy": "Ballistics",
+      "weightPenaltyPercent": 10, "costHundredths": 10000,
+      "weaponClass": "AntiTank", "damage": 60, "shotsPerSalvo": 1, "reloadTicks": 40,
+      "fireKind": "Direct", "shortRangeSubunits": 163840, "longRangeSubunits": 262144,
+      "shortHitPercent": 70, "longHitPercent": 45
+    },
+    {
+      "id": "Mortar", "name": "Mortar", "systemKind": "None", "model": "ModuleMortar",
+      "unlockedBy": "IndirectFire",
+      "weightPenaltyPercent": 15, "costHundredths": 11000,
+      "weaponClass": "Artillery", "damage": 80, "shotsPerSalvo": 1, "reloadTicks": 80,
+      "fireKind": "Indirect", "minimumRangeSubunits": 98304,
+      "shortRangeSubunits": 98304, "longRangeSubunits": 458752,
+      "shortHitPercent": 100, "longHitPercent": 100, "splashSubunits": 32768
+    },
+    {
+      "id": "Builder", "name": "Builder", "systemKind": "Builder", "model": "ModuleBuilder",
+      "weightPenaltyPercent": 10, "costHundredths": 5000,
+      "systemRangeSubunits": 32768, "buildPowerHundredthsPerTick": 50
+    }
+  ]
+}

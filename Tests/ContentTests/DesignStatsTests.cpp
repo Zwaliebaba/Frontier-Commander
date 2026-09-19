@@ -5,6 +5,7 @@
 #include "DesignStats.h"
 #include "FixedPoint.h"
 
+#include <algorithm>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -20,9 +21,28 @@ namespace
 /// A scratch directory per instance, so that two tests in one process never share one.
 int g_counter = 0;
 
+/// The shipped tables, as m1-vertical-slice/C2 authored them. The two worked examples are
+/// re-derived from these below, so that the numbers a reviewer diffs against GameDesign.md §6 are
+/// the numbers the game plays by; the fixture tree stays for the edge cases the shipped set has no
+/// row for, like a sensor module or a chassis with more mounts than modules.
+struct ShippedTree
+{
+  Frontier::ContentTree tree;
+
+  ShippedTree()
+  {
+    const std::filesystem::path root = std::filesystem::path(__FILE__).parent_path().parent_path().parent_path() / "GameData";
+    std::vector<Frontier::ContentDiagnostic> diagnostics;
+    if (!Frontier::LoadContent(root, tree, diagnostics))
+    {
+      const std::string first = diagnostics.empty() ? std::string("no diagnostic") : diagnostics.front().message;
+      Assert::Fail((L"the shipped tables do not load: " + std::wstring(first.begin(), first.end())).c_str());
+    }
+  }
+};
+
 /// The fixture tree's component rows are GameDesign.md §6's own numbers for the two worked
-/// examples, so the derivation is checked against the design rather than against itself. C2
-/// replaces this with the shipped tables and the same two assertions stand.
+/// examples, so the derivation is checked against the design rather than against itself.
 struct LoadedTree
 {
   std::filesystem::path path;
@@ -52,7 +72,7 @@ public:
   TEST_METHOD(ALightOnWheelsWithAMachineGunIsTheDesignsFirstWorkedExample)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
+    const Frontier::DesignRecipe design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
     Frontier::DesignStats stats{};
     Assert::IsTrue(Frontier::DeriveDesignStats(loaded.tree, design, Frontier::ClassUpgrades{}, stats) == Frontier::DesignFault::None);
     // GameDesign.md §6: 104 world units a second for 130 power in 13 seconds.
@@ -66,7 +86,7 @@ public:
   TEST_METHOD(AHeavyOnTracksWithACannonIsTheDesignsSecondWorkedExample)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign design{"Line", "Line", "HeavyI", "Tracks", {"Cannon"}};
+    const Frontier::DesignRecipe design{"Line", "Line", "HeavyI", "Tracks", {"Cannon"}};
     Frontier::DesignStats stats{};
     Assert::IsTrue(Frontier::DeriveDesignStats(loaded.tree, design, Frontier::ClassUpgrades{}, stats) == Frontier::DesignFault::None);
     // GameDesign.md §6: 29 world units a second for 490 power in 49 seconds.
@@ -76,10 +96,53 @@ public:
     Assert::AreEqual(750, stats.hitPoints, L"500 hit points at the tracks' factor of 1.5");
   }
 
+  TEST_METHOD(TheShippedTablesReproduceBothWorkedExamplesAndTheWholeResearchTree)
+  {
+    // The point of C2: the slice's numbers are files a reviewer diffs against GameDesign.md, and
+    // the derivation run over them gives the design's own two answers.
+    const ShippedTree shipped;
+    Frontier::DesignStats scout{};
+    Assert::IsTrue(Frontier::DeriveDesignStats(shipped.tree, {"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}},
+                                               Frontier::ClassUpgrades{}, scout) == Frontier::DesignFault::None);
+    Assert::AreEqual(104, Frontier::WorldUnitsPerSecond(scout.speedSubunitsPerTick), L"§6: 104 world units a second");
+    Assert::AreEqual(13000, scout.costHundredths, L"§6: 130 power");
+    Assert::AreEqual(std::uint32_t{13} * Neuron::TICKS_PER_SECOND, scout.buildTimeTicks, L"§6: 13 seconds");
+
+    Frontier::DesignStats line{};
+    Assert::IsTrue(Frontier::DeriveDesignStats(shipped.tree, {"Line", "Line", "HeavyI", "Tracks", {"Cannon"}}, Frontier::ClassUpgrades{},
+                                               line) == Frontier::DesignFault::None);
+    Assert::AreEqual(29, Frontier::WorldUnitsPerSecond(line.speedSubunitsPerTick), L"§6: 29 world units a second");
+    Assert::AreEqual(49000, line.costHundredths, L"§6: 490 power");
+    Assert::AreEqual(std::uint32_t{49} * Neuron::TICKS_PER_SECOND, line.buildTimeTicks, L"§6: 49 seconds");
+    Assert::AreEqual(750, line.hitPoints, L"500 hit points at the tracks' factor of 1.5");
+
+    // The tree reaches every M1 component and structure once (C2): what no row unlocks is
+    // available from the first tick, and what is unlocked is unlocked by exactly one item.
+    Assert::AreEqual(std::size_t{30}, shipped.tree.research.size(), L"thirty items");
+    std::vector<std::string> unlocked;
+    for (const Frontier::ResearchItemDesc& item : shipped.tree.research)
+    {
+      if (item.effect == Frontier::ResearchEffect::Unlock)
+      {
+        unlocked.push_back(item.unlocks);
+      }
+    }
+    Assert::AreEqual(std::size_t{10}, unlocked.size(), L"ten unlocks");
+    std::sort(unlocked.begin(), unlocked.end());
+    Assert::IsTrue(std::adjacent_find(unlocked.begin(), unlocked.end()) == unlocked.end(), L"no row is unlocked twice");
+    for (const std::string& identifier : unlocked)
+    {
+      const bool exists = shipped.tree.FindChassis(identifier) != nullptr || shipped.tree.FindDrive(identifier) != nullptr ||
+                          shipped.tree.FindModule(identifier) != nullptr || shipped.tree.FindStructure(identifier) != nullptr ||
+                          shipped.tree.FindStructureModule(identifier) != nullptr;
+      Assert::IsTrue(exists, (L"nothing named " + std::wstring(identifier.begin(), identifier.end())).c_str());
+    }
+  }
+
   TEST_METHOD(AClassUpgradeRaisesArmourAndHitPointsAndNothingElse)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
+    const Frontier::DesignRecipe design{"Scout", "Scout", "LightI", "Wheels", {"MachineGun"}};
     Frontier::ClassUpgrades upgrades{};
     upgrades.chassisArmorPercent[static_cast<std::size_t>(Frontier::ChassisClass::Light)] = 20;
     upgrades.chassisHitPointPercent[static_cast<std::size_t>(Frontier::ChassisClass::Light)] = 10;
@@ -94,8 +157,8 @@ public:
   TEST_METHOD(TheModulesWeightSlowsTheDeviceAndTheSensorRaisesItsSight)
   {
     const LoadedTree loaded;
-    const Frontier::DeviceDesign light{"A", "A", "LightI", "Wheels", {"MachineGun"}};
-    const Frontier::DeviceDesign heavy{"B", "B", "LightI", "Wheels", {"Cannon"}};
+    const Frontier::DesignRecipe light{"A", "A", "LightI", "Wheels", {"MachineGun"}};
+    const Frontier::DesignRecipe heavy{"B", "B", "LightI", "Wheels", {"Cannon"}};
     Frontier::DesignStats fast{};
     Frontier::DesignStats slow{};
     Assert::IsTrue(Frontier::DeriveDesignStats(loaded.tree, light, Frontier::ClassUpgrades{}, fast) == Frontier::DesignFault::None);

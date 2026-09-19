@@ -36,6 +36,30 @@
 
 Alliances are fixed in the lobby; allied commanders share vision and victory and cannot attack each other.
 
+**What the three conditions mean exactly** (settled by `m1-vertical-slice/S11`, 2026-09-19, because
+the table above is a sentence each and stage 12 needs a rule):
+
+- **Annihilation counts a structure in any state but a plan, and any device carrying a builder
+  module.** A plan occupies no cell and nothing has been spent on it, so a commander left with
+  nothing but plans has nothing standing; one under construction is a thing on the landscape and an
+  enemy has to destroy it. A commander reduced to tanks is out, which is the *Warzone 2100* rule the
+  table names — a builder is what lets a commander come back, and having none is the losing
+  condition rather than having no army.
+- **A commander who has never held a structure or a builder cannot be annihilated.** A match is set
+  up over its first ticks and every seat is empty-handed until its base level is placed, so the rule
+  is "held one of them once, and holds neither now".
+- **Survival is decided on power extracted, not power held.** The running total is every hundredth a
+  commander's served extractors produced, counted before the stockpile cap and before anything was
+  spent: what he spent, he still dug up, and power lost to a full stockpile was still extracted. A
+  command post's own trickle is not extraction and does not count. A tie is a draw.
+- **One alliance left ends every condition**, including Survival before its clock: there is nobody
+  left to play against and the clock cannot change the answer.
+- **Surrender takes a commander out on the tick the order applies**, not at the victory check, so
+  the rest of that tick carries none of his orders. A seat that surrendered is *eliminated* even if
+  his alliance goes on to win: the outcome belongs to the commanders who were there for it.
+- **A decided match stops.** The simulation does not advance another tick once a condition is met;
+  the state the deciding tick left is what a snapshot of a finished match holds.
+
 **Base, power and technology levels** are lobby settings with values. Base level: *nothing* is a builder and a command post; *small* adds two served extractors, a generator and a factory; *established* adds a lab, a repair bay and four hardpoints. Power level sets the starting stockpile: 400, 1,000 or 2,500. Technology level pre-completes the first zero, one or two tiers of the research tree.
 
 ---
@@ -55,7 +79,7 @@ Alliances are fixed in the lobby; allied commanders share vision and victory and
 
 **Its first consequence is this section's own arithmetic, not engineering.** At the speeds of §6 a light device crosses it in 105 minutes and a heavy one in **378 — six and a quarter hours** — against 1.3 and 4.7 on a Small landscape. A map that cannot be crossed in a sitting is not a bigger version of the same game: it makes transit a strategic decision rather than a tactical one, which wants forward bases, production at the front and a reason for transport to exist. That is coherent with what this game is about and it is a change to §6 and §7 rather than a cost to absorb. **The crossing-time test this section already schedules before M1 is where the answer comes from**, and it should be run at this size as well as at Small, because the number that halved the classes on 2026-09-17 is the number that decides whether this target is a frontier or dead time.
 
-For scale: the largest Species map, the Garden, is 2,002 world units across, which is 31 of these cells, so a Small landscape is four Gardens across and a Frontier one thirty-three; *Warzone 2100* maps run up to 250 tiles a side, and a tile is one tank, the same as the cell proposed here, so a Medium landscape is a *Warzone* map, Large is four times its area and Frontier sixteen. **Distance is the point of the game and its biggest risk.** With the speeds of §6 a light device crosses a Small landscape in 1.3 minutes and a heavy in 4.7; a Large one in 5.3 and 19. Whether that is decisions or dead time is the premise everything in `TechnicalDesign.md` §4 is sized by, and the test that decides it costs an evening and no engine: *Warzone 2100*, whose stats are files, with its unit speeds and power numbers set to this game's, played for thirty minutes against a stock AI, logging the time to first contact and the share of a unit's life spent in transit. Small targets four to six minutes to first contact and under two minutes for a light device to cross (owner, 2026-09-17), which the halved sizes meet on paper; the test is run before M1, and its numbers replace these.
+For scale: the Garden, the smallest of the twelve Species maps (the largest is the Generator at 5,372; `SpeciesLook.md` §2), is 2,002 world units across, which is 31 of these cells, so a Small landscape is four Gardens across and a Frontier one thirty-three; *Warzone 2100* maps run up to 250 tiles a side, and a tile is one tank, the same as the cell proposed here, so a Medium landscape is a *Warzone* map, Large is four times its area and Frontier sixteen. **Distance is the point of the game and its biggest risk.** With the speeds of §6 a light device crosses a Small landscape in 1.3 minutes and a heavy in 4.7; a Large one in 5.3 and 19. Whether that is decisions or dead time is the premise everything in `TechnicalDesign.md` §4 is sized by, and the test that decides it costs an evening and no engine: *Warzone 2100*, whose stats are files, with its unit speeds and power numbers set to this game's, played for thirty minutes against a stock AI, logging the time to first contact and the share of a unit's life spent in transit. Small targets four to six minutes to first contact and under two minutes for a light device to cross (owner, 2026-09-17), which the halved sizes meet on paper; the test is run before M1, and its numbers replace these.
 
 **Terrain has three properties the simulation reads:** height, slope and water. Height sets sight (§8) and, for indirect fire, range. Slope is the gradient between neighbouring cells; each drive class has a maximum it can climb (§6), and cliffs are slopes nothing climbs. Water is any cell below the water level — the Species `outsideHeight` — and only hover and lift drives cross it. Nothing else about the terrain is simulated: no soil types, no destruction, no terraforming, and that holds through M3 (owner, 2026-09-17); the delta format in `TechnicalDesign.md` §4.4 is chosen so it can change later.
 
@@ -149,7 +173,7 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 | Class | Hit points | Kinetic armour | Thermal armour | Base speed (wu/s) | Sight (cells) | Cost | Mounts | Note |
 |---|---|---|---|---|---|---|---|---|
 | Light | 100 | 5 | 5 | 80 | 20 | 60 | 1 | Fast to build, fast to move, cheap to lose |
-| Medium | 250 | 12 | 10 | 55 | 18 | 150 | 1 | The line unit |
+| Medium | 250 | 12 | 10 | 55 | 18 | 170 | 1 | The line unit; 150 until `Tools/CheckBalance.py` priced it (2026-09-18) |
 | Heavy | 500 | 25 | 18 | 40 | 16 | 320 | 2 on Heavy II | Slow; the second mount is Heavy II's |
 
 **Drive** sets speed as a function of terrain, the slope it can climb, whether it crosses water, and a hit-point multiplier. Six classes, of which four are in the first version:
@@ -162,6 +186,8 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 | Hover | 1.5 | 20% | Yes | 0.8 | 60 | 1 |
 | Legs | 0.9 | 60% | No | 1.0 | 50 | 2 |
 | Lift | 2.0 | ignores | Yes | 0.7 | 90 | M4 at the earliest |
+
+**What slope costs, and it is scaled to the drive's own limit** (owner, 2026-09-18, `OpenQuestions.md` Q23). A drive keeps its full speed on flat ground and half of it on the steepest slope it can climb, falling linearly between the two; above that maximum the ground is impassable and the drive will not go there at all. The curve is scaled to each drive's *own* maximum, so on a 20% slope tracks keep three quarters of their speed where wheels keep three fifths — the max slope column buys handling on ground both can cross and not merely reach on ground one cannot. A scout on wheels that is 1.6 cells a second on the flat is a cell a second on a 20% hillside, and the tracked column that follows it up loses a quarter rather than two fifths.
 
 **Derived statistics**, the formulas the tables carry and the design screen shows: speed = chassis base speed × drive speed factor × (100 − the sum of the modules' weight penalties) / 100; hit points = chassis hit points × drive HP factor × (100 + the class's hit-point upgrade) / 100; armour = chassis armour × (100 + the class's armour upgrade) / 100; cost = chassis + drive + modules; build time = cost ÷ 10 seconds, less the factory's modules; sight = the chassis's, or the sensor module's if larger. So a light on wheels with a machine gun is 104 world units per second (1.6 cells) for 130 power in 13 seconds, and a heavy on tracks with a cannon is 29 per second (0.45 cells) for 490 power in 49 seconds.
 
@@ -187,7 +213,16 @@ A **device** is a unit the commander designed. This is the heart of the game (pi
 
 **"Moddable" means the data files.** Every chassis, drive and module above is a row in a JSON file under `GameData\` beside the executable (owner, 2026-09-17: R13 withdrawn, JSON chosen), with an id, a class, its numbers, the research item that unlocks it and the model that draws it; the derivation formulas and the damage matrix (§8) are files too. Adding a component is adding a row and a model; rebalancing is editing numbers. A mod is a directory under `Mods\` whose files override the game's at the same path, enabled by name in the lobby; the host hashes what it loaded, mods included, and refuses a client whose content differs. The loader validates every file — every prerequisite exists, the research tree has no cycle, every model referenced is present — and names the file and line that is wrong; the same rules run in CI. `TechnicalDesign.md` §8 has the layout.
 
-**Experience.** A device that destroys things gains experience through eight ranks, each adding a small percentage to accuracy and damage. Ranks are visible on the unit, and they are what make a veteran worth retreating and repairing.
+**Experience.** A device that destroys things gains experience through eight ranks, each adding a small percentage to accuracy and damage. Ranks are visible on the unit, and they are what make a veteran worth retreating and repairing. The curve is the owner's, taken on 2026-09-18 against three the question put (`OpenQuestions.md` Q22), and it lives in `Sim/Design.h`:
+
+| Rank | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| Experience at | 0 | 2 | 5 | 10 | 20 | 40 | 80 | 160 |
+| Accuracy and damage | +0% | +2% | +4% | +7% | +10% | +14% | +18% | +24% |
+
+**What a kill is worth** is what it cost its owner, over the cost of the reference device — the light on wheels with a machine gun at 130 power that §6 works through — rounded down and never nought (`m1-vertical-slice/S10`). A scout is worth one, a heavy on tracks with a cannon three, a command post three. Rank 7's 160 is therefore on the order of a hundred kills, which is what the curve above is for, and a mod that adds a costlier device gets a costlier kill without an entry anywhere.
+
+The thresholds double, so a rank costs about as much as every rank before it put together and the eighth is a device that survived a match rather than one that had a good minute; +24% is worth the retreat-and-repair loop above and sits well under the 60% a class upgrade reaches, so a veteran light is still a light. It is measured against nothing yet: M2 ships ranks (§12) and its AI-versus-AI matches are where the spread is measured.
 
 ---
 
@@ -222,13 +257,17 @@ Target classes are the six drive classes for devices and the four strength class
 | Artillery | 100 | 100 | 100 | 100 | 100 | 20 | 130 | 120 | 100 | 60 |
 | Energy | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 80 |
 
-Anti-light is the machine gun's class: strong against light drives and soft structures, weak against tracks and bunkers; anti-tank the reverse; flame strong against everything light and useless against bunkers; artillery indifferent to armour and poor against anything that walks out from under it. **The tables are checked before the design screen exists**: a headless script under `Tools/` runs every design against every design per tier and per power spent, and a design that dominates its tier is a table bug to fix first.
+Anti-light is the machine gun's class: strong against light drives and soft structures, weak against tracks and bunkers; anti-tank the reverse; flame strong against everything light and useless against bunkers; artillery indifferent to armour and poor against anything that walks out from under it. **The tables are checked before the design screen exists**: a headless script under `Tools/` runs every design against every design per tier and per power spent, and a design that dominates its tier is a table bug to fix first. That script is `Tools/CheckBalance.py` (2026-09-18), and its first run found one: the **medium chassis was underpriced at 150**. At tier 2, with tracks not yet researched, a medium half-track with a machine gun beat every design costing no more at equal power spent — including the light cannon, which is the anti-armour answer that tier is supposed to have. The medium's 288 hit points behind 12 armour outlasted the light's 100 by more than the extra power cost, and 12 armour floors a machine gun's 8 damage to a third, so nothing cheap could punish it either. Repricing the medium to **170** clears every tier; nothing else moved, and the script compares at equal power precisely so that the answer is not "of course the bigger one wins a duel".
 
 **Destruction is visible.** A device or structure at zero hit points comes apart. Its model shatters into its own triangles, which tumble outward from the model's own centre, fall under gravity and fade together over five seconds, while a burst of core and debris particles rises from the same point and the wreck settles underneath. It is the Species explosion ported whole (`SpeciesLook.md` §8), and it is entirely cosmetic: `Client` draws it from the cosmetic random stream (`TechnicalDesign.md` §4.2), it is not in the state hash, no two clients see the same shards, and it obstructs, damages and reveals nothing. What the simulation does at zero hit points is exactly what it did before — the object is removed, a structure leaves a wreck that blocks nothing and expires after a stated number of ticks — and a commander who cannot see the death sees no explosion, because the host never tells them there was one (`TechnicalDesign.md` §5.2).
 
 **A blast is not a death.** The particle burst belongs to a weapon's *impact* and is sized by its splash radius and its damage, so a mortar round that lands in empty ground is still something the commander sees land, and a device picked off by a machine gun comes apart with no fireball at all. The two coincide when a splash weapon kills and not otherwise, which is why Species keeps them in two functions (`SpeciesLook.md` §8) and why this game keeps them two events.
 
 **Hitting.** A weapon has a hit chance at short range and a lower one at long range, both percentages, both modified by the device's rank and by research; the simulation rolls once per shot from its own random stream. Direct-fire weapons decide the hit at the moment of firing, and the projectile is a visual that arrives when it arrives. Indirect-fire weapons decide at impact against whatever is in the splash radius at the predicted landing cell, so a moving target can walk out from under a mortar.
+
+A shell flies at **960 world units a second**, which puts a mortar's longest shot just under two seconds in the air (`m1-vertical-slice/S10`). That is a game number rather than a presentation one: a scout covers three cells in that time and the mortar's splash is two, so the figure is exactly what makes "walks out from under it" true, and changing it changes how artillery plays. **Splash damages the shooter's enemies and not its own side.** The design does not have friendly fire, and an area weapon is not where one arrives by implication; the rule is one condition in `Sim/Weapons.cpp` if that is ever reconsidered.
+
+**Engaging at optimal range** holds fire until the short band and **at long range** opens up at the far edge. A weapon whose short range *is* its minimum has no short band to close into — the mortar's are both six cells — so for it the two stances are the same and both open at long range: "engage at optimal range" cannot mean "engage inside the range you may not fire within".
 
 **Sight and range.** Every device and structure has a sight radius; a target must be visible to someone on the commander's side to be fired on, and indirect-fire weapons additionally need a spotter — a sensor tower, a sensor device, or any device with the target in its own sight — because their range exceeds their sight. Height extends sight: a unit sees a distance scaled by its height above the target, and a ridge between them blocks it. Terrain occlusion is tested on the heightfield at cell resolution. Sight radii: light chassis 20 cells, medium 18, heavy 16, the sensor module 40, structures 12, the sensor tower 40, the tower 20; height adds a cell of sight for every 32 world units a viewer stands above its target.
 

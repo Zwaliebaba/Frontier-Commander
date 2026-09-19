@@ -106,6 +106,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ContentLoaderTests.cpp" />
+    <ClCompile Include="ContentHashTests.cpp" />
     <ClCompile Include="ContentValidatorTests.cpp" />
     <ClCompile Include="DesignStatsTests.cpp" />
     <ClCompile Include="pch.cpp">

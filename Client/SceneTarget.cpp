@@ -66,11 +66,24 @@ SceneTarget::SceneTarget(GraphicsDevice& _device, const std::array<float, 4>& _c
                                ", " + std::to_string(m_sampleCount) + " samples");
 }
 
-void SceneTarget::Begin(ID3D12GraphicsCommandList* _list)
+void SceneTarget::Bind(ID3D12GraphicsCommandList* _list) const
 {
   const D3D12_CPU_DESCRIPTOR_HANDLE renderTarget = m_renderTargetViews.Cpu(0);
   const D3D12_CPU_DESCRIPTOR_HANDLE depthStencil = m_depthStencilViews.Cpu(0);
   _list->OMSetRenderTargets(1, &renderTarget, FALSE, &depthStencil);
+}
+
+void SceneTarget::BindColorOnly(ID3D12GraphicsCommandList* _list) const
+{
+  const D3D12_CPU_DESCRIPTOR_HANDLE renderTarget = m_renderTargetViews.Cpu(0);
+  _list->OMSetRenderTargets(1, &renderTarget, FALSE, nullptr);
+}
+
+void SceneTarget::Begin(ID3D12GraphicsCommandList* _list)
+{
+  const D3D12_CPU_DESCRIPTOR_HANDLE renderTarget = m_renderTargetViews.Cpu(0);
+  const D3D12_CPU_DESCRIPTOR_HANDLE depthStencil = m_depthStencilViews.Cpu(0);
+  Bind(_list);
   _list->ClearRenderTargetView(renderTarget, m_clearColor.data(), 0, nullptr);
   _list->ClearDepthStencilView(depthStencil, D3D12_CLEAR_FLAG_DEPTH, SCENE_DEPTH_CLEAR, 0, 0, nullptr);
   const CD3DX12_VIEWPORT viewport(0.0f, 0.0f, static_cast<float>(AUTHORED_WIDTH_PIXELS), static_cast<float>(AUTHORED_HEIGHT_PIXELS));
