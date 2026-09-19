@@ -1998,6 +1998,8 @@ tasks:
     project: FrontierCommander
     depends_on: [R2, N2, K1, K2, S12]
     files:
+      - Core/LoopbackTransport.h
+      - Core/LoopbackTransport.cpp
       - FrontierCommander/App.h
       - FrontierCommander/App.cpp
       - FrontierCommander/LocalHost.h
@@ -2019,7 +2021,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: in_progress
     notes: >
       SPLIT OUT OF G1 ON 2026-09-19 (owner), with G1b. G1 was thirteen files and the whole
       application - the host thread, the wall-time-to-tick mapping, match start, camera, selection,
@@ -2028,6 +2030,27 @@ tasks:
       build or run it: only CI sees it. The split makes G2's capture the witness for this half
       rather than for the whole, so the capture and G1b proceed at the same time instead of one
       behind the other, and it halves the largest single diff of the milestone.
+      THE TRANSPORT WAS NOT THREAD SAFE AND THIS TASK IS WHERE THAT BITES (owner ruled 2026-09-19,
+      on being shown it). This acceptance says LocalHost runs on its own thread and talks to the
+      client "only through LoopbackTransport", and TechnicalDesign.md §3 says the same - "a host
+      thread in the same process talking to the client through the loopback transport". But
+      Core/LoopbackTransport had no mutex and no atomic anywhere: two deques, the counters and the
+      fault Random, all touched by both ends, and an end's Poll reaches into the OTHER end's queue
+      through Carry. That is a data race of the kind that survives every test and corrupts a shipped
+      build. One coarse lock over the whole object now, because an end never touches only itself.
+      PROVED RATHER THAN ASSERTED. A probe runs a host thread and a client thread over one transport
+      under ThreadSanitizer: 32 data races reported with the lock taken out, and none with it in.
+      The probe is not committed (ImplementationPlan.md §2), and TSan came from g++ 13 because the
+      clang-18 runtime is not installed here.
+      Faults() and Statistics() return BY VALUE now. A const reference into state another thread may
+      be writing is a race the caller cannot see; both are a handful of integers, and no caller bound
+      a reference to either. Host() stays unlocked and says why: it reads the one element the
+      constructor put there, which nothing moves and nothing erases. Connect() locks, because it
+      grows the vector every End holds a reference into.
+      THE DETERMINISM PROMISE IS UNCHANGED WHERE IT IS MADE. "The same seed and the same traffic lose
+      the same datagrams" is a promise to the tests, which drive both ends from one thread in a fixed
+      order; two threads interleave their Sends and no lock makes that repeatable. Local play runs
+      with no faults at all.
 
   - id: G1b
     title: Selection, orders, the camera's buttons and the match overlays
