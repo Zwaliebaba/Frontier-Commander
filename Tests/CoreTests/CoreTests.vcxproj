@@ -108,6 +108,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="FixedPointTests.cpp" />
+    <ClCompile Include="TickPacerTests.cpp" />
     <ClCompile Include="BinaryAngleTests.cpp" />
     <ClCompile Include="RandomTests.cpp" />
     <ClCompile Include="HashTests.cpp" />

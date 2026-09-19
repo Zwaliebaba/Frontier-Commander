@@ -2000,6 +2000,12 @@ tasks:
     files:
       - Core/LoopbackTransport.h
       - Core/LoopbackTransport.cpp
+      - Core/TickPacer.h
+      - Core/Core.vcxproj
+      - Tests/CoreTests/TickPacerTests.cpp
+      - Tests/CoreTests/CoreTests.vcxproj
+      - FrontierCommander/LocalHost.h
+      - FrontierCommander/LocalHost.cpp
       - FrontierCommander/App.h
       - FrontierCommander/App.cpp
       - FrontierCommander/LocalHost.h
@@ -2051,6 +2057,34 @@ tasks:
       the same datagrams" is a promise to the tests, which drive both ends from one thread in a fixed
       order; two threads interleave their Sends and no lock makes that repeatable. Local play runs
       with no faults at all.
+      LocalHost IS WRITTEN: the host thread, started explicitly rather than by the constructor -
+      a thread started there can reach a member the constructor has not finished writing - stopped
+      and joined by Stop(), which the destructor calls so a match that throws on its way up leaves
+      no thread behind. Pass(elapsed) is public so the capture path can run a match as fast as it
+      can rather than in real time, and so a test can step it exactly.
+      THE AI SEAT IS SIM'S. Sim::Advance runs it at stage 11 (AdvanceAiSeats), so a host that ticks
+      the simulation has already run every AI commander; this acceptance names the AI seat because
+      the host thread is what makes it run at all, not because the host drives it.
+      THE PACING IS IN Core AND NOT IN THE EXECUTABLE, which is TechnicalDesign.md §2's rule rather
+      than a preference: "code in an executable cannot be linked into a test DLL, so anything in one
+      that deserves a test is code that belongs in a library". Turning wall time into ticks is the
+      arithmetic that is wrong only on a machine that stutters, months later, unreproducibly - so it
+      is Core/TickPacer.h with ten cases in CoreTests, and what stays in FrontierCommander is the
+      thread and the wiring, which have nothing to get wrong. Every one of seven mutations is
+      caught, and the guard against a zero step is caught as a DIVIDE BY ZERO rather than a failed
+      assertion, which is as load-bearing as a guard gets.
+      IT SLOWS AND IT DOES NOT SKIP, which is the rule the whole file exists for: when the debt runs
+      past the ceiling what is thrown away is WALL TIME, never a tick. Every tick the match owes is
+      still run, later than real time asked for; the match takes longer in real seconds and is
+      otherwise identical. A skipped tick would be a different match, and on a simulation whose hash
+      both ends compare that is not something anybody recovers from. §3 also asks that a slowed host
+      TELL its clients and that the lobby show it; M1 has no lobby (this task's own acceptance says
+      "until M2's lobby exists"), so it is counted in SlowedTicks() and BehindTicks() and left for
+      whoever grows one.
+      NO WINDOWS HEADER ANYWHERE IN IT, which makes it the one part of G1a that is not CI's alone:
+      Sim, Net, Core and a thread. It builds and runs outside CI, and it did before it was pushed.
+      STILL TO WRITE: Match (the two loops joined) and App's change from M0's landscape viewer to a
+      match on Slice.json - both of which are genuinely CI's alone.
 
   - id: G1b
     title: Selection, orders, the camera's buttons and the match overlays

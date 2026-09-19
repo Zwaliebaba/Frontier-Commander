@@ -61,6 +61,9 @@
     <ClInclude Include="Assertion.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="TickPacer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="WindowsHeader.h">
       <Filter>Header Files</Filter>
     </ClInclude>

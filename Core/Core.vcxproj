@@ -117,6 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Assertion.h" />
+    <ClInclude Include="TickPacer.h" />
     <ClInclude Include="WindowsHeader.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="FixedPoint.h" />

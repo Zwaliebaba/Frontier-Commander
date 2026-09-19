@@ -14,6 +14,9 @@
     <ClCompile Include="FixedPointTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="TickPacerTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="BinaryAngleTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
