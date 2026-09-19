@@ -53,4 +53,25 @@ ScaledRectangle FitAuthored(std::uint32_t _clientWidth, std::uint32_t _clientHei
   return fit;
 }
 
+bool AuthoredFromClient(const ScaledRectangle& _fit, std::int32_t _clientX, std::int32_t _clientY, std::uint32_t _authoredWidth,
+                        std::uint32_t _authoredHeight, AuthoredPosition& _outAuthored) noexcept
+{
+  if (_fit.width == 0 || _fit.height == 0 || _authoredWidth == 0 || _authoredHeight == 0)
+  {
+    return false;
+  }
+  const std::int64_t insideX = static_cast<std::int64_t>(_clientX) - _fit.x;
+  const std::int64_t insideY = static_cast<std::int64_t>(_clientY) - _fit.y;
+  if (insideX < 0 || insideY < 0 || insideX >= _fit.width || insideY >= _fit.height)
+  {
+    return false; // The letterbox, or off the window entirely.
+  }
+  // Integer arithmetic, as FitAuthored is, so that the inverse is the same on every machine. The
+  // multiply comes first: dividing by the fit's size and then scaling would floor twice and put a
+  // pointer near the right-hand edge of a bilinear fit one authored pixel short of where it is.
+  _outAuthored.x = static_cast<std::int32_t>(insideX * _authoredWidth / _fit.width);
+  _outAuthored.y = static_cast<std::int32_t>(insideY * _authoredHeight / _fit.height);
+  return true;
+}
+
 } // namespace Neuron

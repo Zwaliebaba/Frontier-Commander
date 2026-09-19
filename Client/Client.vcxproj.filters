@@ -75,6 +75,12 @@
     <ClCompile Include="FogPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UiLayout.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="BitmapFont.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="WaterPass.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -90,6 +96,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="FrameCapture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="UiLayout.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="BitmapFont.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="GraphicsDevice.h">
