@@ -191,3 +191,46 @@ tasks:
     acceptance:
       - The owner plays a four-commander skirmish on a Medium landscape against three personalities, saves and resumes it, and records the frame time and the tick cost; every M2 line of GameDesign.md §12 is true; the plan is archived
     status: todo
+
+  - id: T13
+    title: The feature table - scenery gets rows, so that a feature names something
+    intent: >
+      Sim/Feature.h's `design` is documented "Row index in the feature table" and there is no
+      feature table: Content/ContentTree.h has none and GameData ships no Features.json. So a
+      feature arrives over the wire naming a row of nothing, and m1-vertical-slice/R2's
+      RenderViewBuilder cannot draw one. Found while writing that builder (R2's notes); recorded
+      rather than invented, because a content schema is the owner's and the last three gaps like it
+      became C6 and N4 for exactly that reason.
+    project: Content
+    depends_on: []
+    files:
+      - Content/FeatureDesc.h
+      - Content/ContentTree.h
+      - Content/ContentLoader.cpp
+      - Content/ContentValidator.cpp
+      - GameData/Features.json
+      - Replica/RenderViewBuilder.cpp
+      - Tests/ContentTests/FeatureDescTests.cpp
+      - Tests/ReplicaTests/RenderViewTests.cpp
+      - Design/Interface.md
+    acceptance:
+      - "A feature row carries at least an id, a model and the footprint in cells, loaded and validated like every other table, so that Sim/Feature.h's `design` indexes something real"
+      - Landscape generation scatters features from the table, so that a feature on the ground is a thing the simulation placed rather than a row nothing reads
+      - RenderViewBuilder composes a feature as one instance at its cell and facing, and a ReplicaTests case covers it
+      - Design/Interface.md §11's feature row is struck
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      MOVED FROM m1-vertical-slice/C7 ON 2026-09-19 BY THE OWNER'S RULING. C7 asked first whether
+      M1 places features at all, because nothing in Sim did and an empty table is content that must
+      still be validated and hashed while no code reads it. The answer was that scenery is M2's.
+      What stays behind in M1 is an honest gap rather than a lie: Sim/Feature.h's `design` still
+      documents a table that does not exist, and Replica/RenderViewBuilder.cpp's feature branch
+      cannot be exercised there. Both are recorded in Design/Interface.md §11.
+

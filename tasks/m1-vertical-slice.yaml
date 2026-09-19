@@ -2261,10 +2261,19 @@ tasks:
       - FrontierCommander/App.cpp
       - FrontierCommander/Capture.h
       - FrontierCommander/Capture.cpp
+      - Net/Messages.h
+      - Net/Messages.cpp
+      - Net/Host.h
+      - Net/Host.cpp
+      - Net/Client.h
+      - Net/Client.cpp
+      - Tests/NetTests/HostTests.cpp
+      - Tests/NetTests/ClientTests.cpp
       - .github/workflows/build.yml
     acceptance:
       - "--warp --capture <landscape> <ticks> <directory> runs LocalHost for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
-      - "THIS TASK FIRST DECIDES HOW SEAT 0 COMES TO BE PLAYING, because 'two AI seats' cannot be had as G1 wrote it: Net/Host.cpp's FreeSeat hands a joining client only a seat whose kind is Human, so an all-AI lobby refuses the join with NoSeat and there is no replica to draw from (proved by G1a's probe - six failures and an empty view). The two ways out are a scripted order stream driving the human seat, which is cheap and is not the AI playing, and an observer connection in Net that seats a client on an AI seat, which is a wire change and the one M3's spectator would want anyway. The choice is the owner's"
+      - "AN OBSERVER CONNECTION IN NET, which is how seat 0 comes to be playing at all: 'two AI seats' cannot be had as G1 wrote it, because Net/Host.cpp's FreeSeat gives a joining client only a seat whose kind is Human, so an all-AI lobby refuses the join with NoSeat and leaves no replica to draw from - proved by G1a's probe, six failures and an empty view. SETTLED BY THE OWNER ON 2026-09-19: a client may join as an OBSERVER of a seat that is already AI. It receives that seat's frames through the ordinary interest and fog path, sees exactly what that commander sees and no more, and its orders are refused rather than applied. The rejected alternative was a scripted order stream for the human seat, which means hand-writing gameplay that exists only for the capture, beside an AI that already plays a match to a decided end"
+      - "The observer is a wire change and carries its own tests: a join that asks to observe an AI seat is accepted and one that asks to observe a seat a human holds is refused; an observer's orders are refused with a reason and never reach stage 1; an observer sees the fog of the seat it watches and nothing outside it, which is the §5.2 assertion NetTests already makes for a player"
       - "The CI step runs --warp --capture Slice 6000 Captures and uploads the sixty frames; the frames at ticks 2,000, 4,000 and 6,000 show a base, devices in transit and fog"
       - The capture's wall time in CI is recorded in the notes, and the tick count is reduced if it exceeds five minutes
       - "C2's last acceptance line is settled here: this is the first capture that runs with GameData mirrored beside the executable, so the frames confirm the terrain is coloured by the biome's LandscapeDefault.dds and not by the built-in gradient, or C2 is reopened"
@@ -2566,41 +2575,6 @@ tasks:
       clang-tidy, the format job, the plan validation and the capture all passed, which is where
       the two host tests and the round-trip tests were actually run.
 
-  - id: C7
-    title: The feature table - scenery gets rows, so that a feature names something
-    intent: >
-      Sim/Feature.h's `design` is documented "Row index in the feature table" and there is no
-      feature table: Content/ContentTree.h has none and GameData ships no Features.json. So a
-      feature arrives over the wire naming a row of nothing, and m1-vertical-slice/R2's
-      RenderViewBuilder cannot draw one. Found while writing that builder (R2's notes); recorded
-      rather than invented, because a content schema is the owner's and the last three gaps like it
-      became C6 and N4 for exactly that reason.
-    project: Content
-    depends_on: [C1, R2]
-    files:
-      - Content/FeatureDesc.h
-      - Content/ContentTree.h
-      - Content/ContentLoader.cpp
-      - Content/ContentValidator.cpp
-      - GameData/Features.json
-      - Replica/RenderViewBuilder.cpp
-      - Tests/ContentTests/FeatureDescTests.cpp
-      - Tests/ReplicaTests/RenderViewTests.cpp
-      - Design/Interface.md
-    acceptance:
-      - "A feature row carries at least an id, a model and the footprint in cells, loaded and validated like every other table, so that Sim/Feature.h's `design` indexes something real"
-      - "THE OWNER RULES FIRST whether M1 places features at all: nothing in Sim puts one on a landscape today, and if the answer is that scenery is M2's then this task moves there rather than shipping an empty table nobody reads"
-      - RenderViewBuilder composes a feature as one instance at its cell and facing, and a ReplicaTests case covers it
-      - Design/Interface.md §11's feature row is struck
-    verify:
-      - python3 Tools/CheckTaskDag.py
-      - python3 Build/CheckFormat.py --clang-format clang-format-18
-      - python3 Build/CheckProjectFiles.py
-      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
-      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
-    parallel_safe: true
-    status: todo
-
   - id: C8
     title: What a shot looks like - the projectile's appearance, so that combat is visible
     intent: >
@@ -2624,7 +2598,8 @@ tasks:
       - Design/TechnicalDesign.md
     acceptance:
       - "A weapon row says what its shot looks like and for how long - at the least a model and a lifetime in ticks - validated like every other row, so that a Shot event has something to draw"
-      - "THE OWNER RULES the form first: a drawn model travelling from muzzle to target is one answer and a screen-space tracer drawn for a frame or two is another, and SpeciesLook.md §8's explosion is the precedent for how much of this is cosmetic and client-side"
+      - "SETTLED BY THE OWNER ON 2026-09-19: a shot is a short-lived INSTANCE of a placeholder projectile model, travelling from the firing module's MarkerMuzzle toward its target, drawn by K1's geometry pass like anything else. Core/RenderView.h's RenderInstanceKind::Projectile already exists and the pass already draws instances, so what this task adds is one authored model, a lifetime, and the event-to-instance walk - no new pass and no new shader. The rejected alternative was a tracer beam: no model content, but a world-space line pass that does not exist, which is more renderer work rather than less"
+      - "GameData/Models gains the placeholder projectile, authored like the twenty-two C4 already ships, and the weapon row names it"
       - "RenderViewBuilder turns a Shot event into instances of kind Projectile between the muzzle and the target for the stated lifetime, placed from the event's own tick so that it is not drawn a frame early or late, with a ReplicaTests case"
       - "G2's capture shows a shot in flight in at least one frame, which is what makes combat visible in the artefact the agent reads (OpenQuestions.md R1)"
       - Design/Interface.md §11's projectile row is struck
