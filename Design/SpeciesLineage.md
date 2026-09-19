@@ -102,7 +102,7 @@ Darwinia's game, 65,808 lines, and almost none of it is this game. What is worth
 | `Water`, `Clouds`, the sky | Design | The look; the drawing is OpenGL |
 | `EntityGrid`, `ObstructionGrid` | Design | Spatial grids are needed; these are whole-map float grids sized for one team count |
 | `RoutingSystem` | Leave | Waypoint routes for designer-authored paths, not a pathfinder |
-| `Weapons`, `Explosion`, `ParticleSystem` | Read | Projectile kinds and their feel — laser, grenade, rocket, airstrike — are reference for the module table; the particle system's shape is worth copying on the render side |
+| `Weapons`, `Explosion`, `ParticleSystem` | Read; port `Explosion`'s shatter | Projectile kinds and their feel — laser, grenade, rocket, airstrike — are reference for the module table; the particle system's shape is worth copying on the render side. `Explosion` is the exception to "read": its triangle shatter is ported as it stands, measured in `SpeciesLook.md` §8 and built by `m2-skirmish/T12` (owner, 2026-09-19). No code comes across from any of the three — the drawing is OpenGL and the draws are on the wrong random stream |
 | `GunTurret`, `Building` (markers as entrances, docks and ports) | Read | How a building uses `.shp` markers is the pattern for turrets and muzzles |
 | `Camera` (in `Species/`) | Design | A free RTS camera with mounts; the control feel is the target |
 | `LevelFile` | Leave; the map format is a reference for stamps | The `Landscape_StartDefinition` block — size, cell size, outside height, palette names, tile list — is a landscape definition already |

@@ -132,7 +132,7 @@ The milestone is done when its "proves" column in `GameDesign.md` §12 is true o
 | Solution, projects, checkers (M0 T1–T6) | `AGENTS.md` §1–§4, §6 | `TechnicalDesign.md` §2; `.clang-tidy`, `.clang-format`, `build.yml` in full |
 | `Core` (M0 T7–T14) | `TechnicalDesign.md` §4.1–§4.3, §4.9, §5.6, §8 (the JSON reader), §9 | `AGENTS.md` R14–R17; the Species `network-transport` plan for the transport seam |
 | Landscape (M0 T16–T17; M2 T7) | `SpeciesTerrain.md` §2–§5 | `GameDesign.md` §3; `TechnicalDesign.md` §4.4 |
-| Renderer (M0 T18, T20; M1 K1–K2; M2 T8) | `AGENTS.md` §5; `TechnicalDesign.md` §6 | `SpeciesLook.md`; `SpeciesTerrain.md` §6–§7; `GameDesign.md` §11 |
+| Renderer (M0 T18, T20; M1 K1–K2; M2 T8, T12) | `AGENTS.md` §5; `TechnicalDesign.md` §6 | `SpeciesLook.md`; `SpeciesTerrain.md` §6–§7; `GameDesign.md` §11 |
 | Input and UI (M0 T19; M1 D1, K3, K4; M2 T10) | `TechnicalDesign.md` §6.4–§6.5 | `SpeciesCanvas.md`; the Species `input-native-events` plan; `Design/Interface.md` once written |
 | Simulation (M0 T15; M1 S1–S12) | `TechnicalDesign.md` §3, §4, §7 | `GameDesign.md` §2–§9 for the numbers each system applies |
 | Content and tools (M1 C1–C4) | `TechnicalDesign.md` §8 | `GameDesign.md` §4–§8 tables; `SpeciesLineage.md` §4–§5 |
@@ -161,7 +161,7 @@ Writing tasks against the design found a handful of places where a task would ha
 ## 7. Placeholders, and what M1 leaves out on purpose
 
 - **Models** are the owner's to make (owner, 2026-09-17). Until they exist, M1 C4 generates primitives with markers so that composition at markers is exercised rather than faked, and every model the tables name exists. The owner's OBJ files replace them through `ImportObj.py` one at a time, with no code change.
-- **Audio, the sprite pass and particles, water with waves, the sky and clouds, Eclipse-shaped windows, save and resume, the lobby, hover, walls and hardpoints, and every module beyond the four** are M2. M1's projectiles are small geometry instances and an explosion is a wreck appearing. This is the review's cut list applied, with the owner's one reversal (replication stays in M1).
+- **Audio, the sprite pass and particles, water with waves, the sky and clouds, Eclipse-shaped windows, save and resume, the lobby, hover, walls and hardpoints, and every module beyond the four** are M2. M1's projectiles are small geometry instances and an explosion is a wreck appearing; the explosion itself — the particle burst and the debris shatter — is `m2-skirmish/T12`, which the owner added on 2026-09-19 rather than reversing the cut. This is the review's cut list applied, with the owner's one reversal (replication stays in M1).
 - **The palette in M0 is a generated gradient**; the Species palettes arrive with the provenance ADR in M1 C4, so that no Species-derived file is in the tree before the ADR that records it.
 - **`Design/Interface.md` does not exist yet.** It is M1 D1, and the UI tasks depend on it.
 

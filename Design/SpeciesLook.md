@@ -177,7 +177,7 @@ The free camera is a fly camera with a ground floor, not an RTS camera with a fi
 
 ---
 
-## 8. Sprites and particles
+## 8. Sprites, particles and debris
 
 **Citizen-scale sprites** (`GameLogic/Citizen.cpp:2246`): a billboard 3 units wide, scaled by 1 + 0.03 × ((index × uniqueId) mod 10) so no two are quite the same size, twice as tall as wide, standing 0.3 units above the ground, with a black shadow quad on the ground behind it.
 
@@ -200,6 +200,27 @@ The free camera is a fly camera with a ground floor, not an RTS camera with a fi
 | Leaf | 60 | 25 | | | | |
 
 Negative gravity rises: fire and control flashes float up. The `Particle.bmp` texture is a 16×16 grey square; the softness comes from the additive blend and the count, not the sprite.
+
+**Debris** (`GameLogic/Explosion.cpp`) is the other half of an explosion, and it is geometry rather than a sprite: the dead object's own model, shattered into individually tumbling triangles. `ExplosionManager::AddExplosion` (`:316`) walks the fragment tree and shatters every fragment it reaches. Each surviving triangle is lifted into world space, **re-centred on its own centroid** so that it rotates about itself rather than about the model, and thrown with a velocity of **(centroid − fragment centre) × 3.0, with 10.0 added to y** — the model blows outward from its own middle and upward. A triangle whose three edges sum to under 6 world units is dropped as too small to see, and a degenerate one is dropped outright (`:77` `Explosion::Explosion`).
+
+| Constant | Value | What it does |
+|---|---|---|
+| `EXPLOSION_LIFETIME` | 5 s | Every triangle of one explosion dies at the same moment; the per-triangle random life is in the source, commented out |
+| `MAX_INITIAL_SPEED` | 3.0 | Scales the outward velocity |
+| `INITIAL_VERTICAL_SPEED` | 10.0 | Added to y, so debris rises before it falls |
+| `ACCEL_DUE_TO_GRAV` | −10.0 /s² | `GRAVITY` from `NeuronCore/Globals.h:15`, negated |
+| `FRICTION_COEF` | 0.05 | Per tick, `vel ×= 1 − min(1, speed × 0.05 × dt)`, so the fastest debris slows fastest |
+| `MAX_ANG_VEL` | ±4.0 rad/s | Per axis, signed, drawn once per tumbler |
+| `ROT_FRICTION_COEF` | 0.2 | Per tick, `angVel ×= 1 − 0.2 × dt` |
+| `NUM_TUMBLERS` | 5 | **Five** rotation matrices per explosion, shared: every triangle picks one at random |
+
+Five tumblers rather than one per triangle is the trick worth copying. Three hundred triangles rotating in five groups reads as chaos at the distance this camera sits at, and it costs five matrix updates a frame instead of three hundred. A tumbler is a matrix with a small rotation multiplied onto it every frame, composed Y·X·Z and never re-orthonormalised over the five seconds it lives (`:39`, `:48`).
+
+The shatter is drawn **flat-shaded and opaque**, one colour per triangle out of the model's own colour table, with the triangle's normal rotated by its tumbler; the explosion fades as a whole, `alpha = (1 − age) × 255` across its five seconds (`:216` `Explosion::Render`).
+
+The fraction argument is how a *damaged* thing sheds part of itself without dying: call sites pass `1 − health/100` (`GameLogic/AntHill.cpp:73`, `Spider.cpp:161`) and that proportion of the triangles is thrown. Frontier Commander does not use it at version 1 — a thing comes apart when it dies and not before — but the mechanism costs nothing to carry and it is what a damage cue would be built from.
+
+**The two halves are separate and are combined at the call site.** `Location::Bang` (`GameLogic/Location.cpp:1992`) is the particle half of a blast and knows nothing about geometry: between 1 and 2 × `range × damage / 100` `ExplosionCore` particles of size 120–180 at `range × 0.3` above the point, and `max(1, range × damage / 200)` `ExplosionDebris` particles of size 30–50 at `range × 0.5`, each thrown with a random horizontal velocity (±20 and ±30) and a positive vertical one (10–20 and 20–40). A death calls both halves. Note which random stream `Bang` draws from — `syncfrand`, the *simulation* stream, under a comment forbidding the call sequence to change. That is the coupling `TechnicalDesign.md` §4.2 exists to prevent: here the equivalent draws are cosmetic and live in `Client`.
 
 ---
 
@@ -235,7 +256,7 @@ Negative gravity rises: fire and control flashes float up. The `Particle.bmp` te
 
 ## 11. What this means for Frontier Commander
 
-**Carry as data.** One entry per biome in `GameData\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours and the particle types. Every number above is a row.
+**Carry as data.** One entry per biome in `GameData\Biomes.json` — palette, water and wave bitmaps (`SpeciesTerrain.md` §6, §7), the light pair, the fog range and colour — and one file of constants for the sky grid, the cloud layers, the camera limits, the team colours, the particle types and the debris constants of §8. Every number above is a row.
 
 **Carry as rules for the pixel shader.** Lambert only; no ambient; two directional lights whose colours may exceed 1.0, summed and clamped after the sum; one normal per triangle; one colour per triangle. That is a shader of a dozen lines, and it is the whole of the lighting.
 
