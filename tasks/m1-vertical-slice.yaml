@@ -2107,8 +2107,20 @@ tasks:
       AND THE SAME MATCH IS CLEAN UNDER ThreadSanitizer: zero data races with a real host thread and
       a real client thread over the loopback, which is the lock added earlier in this task verified
       where it actually matters rather than in a synthetic probe.
-      STILL TO WRITE: App's change from M0's landscape viewer to a match on Slice.json - the window,
-      the input routing and the drawing, which are genuinely CI's alone.
+      THE CLIENT GENERATES ITS OWN LANDSCAPE, AND THIS IS WHERE THAT BOUNDARY IS EASIEST TO LOSE.
+      Match holds a Landscape of its own, built from the definition the host sent with the join, and
+      NOT the host's - whose own is flattened under every structure in the match, including the
+      bases this commander has never scouted. TechnicalDesign.md §5.2: "the terrain under an
+      unscouted base is not public". In a local match the host's Landscape is one member away and
+      reading it would be a wallhack that shipped, so the client generates and App draws that.
+      It arrives with the join, so it is empty until the client is Playing (TerrainReady() says),
+      and it is generated AFTER Client::Advance rather than before, because Advance is what reads
+      the JoinAccepted. App therefore cannot build its terrain, water and fog passes at startup the
+      way M0 did: they wait for the landscape, which is a state M0's loop did not have.
+      STILL TO WRITE: App's change from M0's landscape viewer to a match on Slice.json. That means
+      holding a Match, waiting for TerrainReady() before building the passes that need a landscape,
+      adding ModelBuffers and a GeometryPass with C6's commander colours and a FogPass, and drawing
+      Match::View() every frame. It is the only part of this task that is genuinely CI's alone.
 
   - id: G1b
     title: Selection, orders, the camera's buttons and the match overlays

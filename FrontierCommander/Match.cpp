@@ -96,6 +96,18 @@ void Match::Advance(std::chrono::nanoseconds _elapsed)
   //    each frame to the replica, and sends the orders and the acknowledgement that are due.
   m_client.Advance(m_livenessTick, m_replica);
 
+  // The landscape arrives with the join, and is generated HERE rather than taken from the host:
+  // §5.2's boundary, and the reason Match holds a Landscape of its own at all. AFTER Advance and
+  // not before: Advance is what reads the JoinAccepted, so asking first would leave the terrain a
+  // pass behind the moment it became knowable, and App cannot build a terrain pass without it.
+  if (!m_terrain.Created() && m_client.State() == ClientState::Playing)
+  {
+    if (!m_terrain.Create(m_client.Landscape()))
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Error, "match: the landscape the host sent could not be generated on this client");
+    }
+  }
+
   // 4 and 5. Interpolate a hundred milliseconds behind the newest frame, and build the render view
   //    from that moment. RenderTimeAtNewestFrame is the replica's own timeline - the host's tick
   //    numbers arriving late - and the interpolation delay is already inside it.

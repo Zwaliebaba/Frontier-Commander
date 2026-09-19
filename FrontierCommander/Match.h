@@ -100,6 +100,24 @@ public:
     return m_replica;
   }
 
+  /// THE LANDSCAPE THIS COMMANDER GENERATES, and not the host's. It is built from the definition
+  /// the host sent with the join, so it carries no flatten deltas at all: the host's own landscape
+  /// is flattened under every structure in the match, including the bases this commander has never
+  /// scouted, and TechnicalDesign.md §5.2 is explicit that "the terrain under an unscouted base is
+  /// not public". A local match is where that boundary is easiest to lose - the host's Landscape is
+  /// one member away - and losing it here would be a wallhack that shipped.
+  ///
+  /// Empty until the join is accepted, because the definition arrives with it. TerrainReady() says.
+  [[nodiscard]] const Landscape& Terrain() const noexcept
+  {
+    return m_terrain;
+  }
+
+  [[nodiscard]] bool TerrainReady() const noexcept
+  {
+    return m_terrain.Created();
+  }
+
   [[nodiscard]] const LocalHost& HostSide() const noexcept
   {
     return m_host;
@@ -129,6 +147,8 @@ private:
   Replica m_replica;
   ModelComposer m_composer;
   RenderViewBuilder m_builder;
+  /// The client's own, generated from the definition the join carried. Never the host's.
+  Landscape m_terrain;
   Neuron::RenderView m_view;
   PickSet m_picks;
   std::vector<std::uint32_t> m_selected;
