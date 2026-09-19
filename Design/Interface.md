@@ -344,6 +344,8 @@ The elapsed match time as `mm:ss` from the replica's tick, and, when the victory
 
 Each of these is a real gap found while writing this document, with the task that owns it. The ones marked **blocks K4** must land before the panels are finished.
 
+**Rows 12 and 13 were added on 2026-09-19**, found while writing `R2`'s `RenderViewBuilder`: its acceptance asked for features and projectiles before anybody checked whether the content behind them existed, and neither does. They are `C7` and `C8` in `tasks/m1-vertical-slice.yaml` as well as here, because this table is where a reader of the design finds a gap and the plan is where `Tools/CheckTaskDag.py` does — rows 3, 4 and 5 were lost for exactly the want of the second half.
+
 **Rows 3, 4 and 5 changed owner on 2026-09-19.** They were given to `N1`, `C1` and `C2`, and those three tasks were marked `done` without them — the acceptance lines that would have caught it were never written, and `Tools/CheckTaskDag.py` reads the plan's YAML and not this table, so a row whose owner is `done` is invisible to the thing that schedules work. They are now `N4` and `C6` in `tasks/m1-vertical-slice.yaml`, where the checker can see them. Row 4 is also moved ahead of `K3`: this document previously said none of these blocks `K3`, which was true of the letter of `K3`'s acceptance and false of its intent, because a toolkit that hard-codes the palette leaves nobody owning the move to data that §3 promises.
 
 | # | What is missing | Owner |
@@ -359,6 +361,8 @@ Each of these is a real gap found while writing this document, with the task tha
 | 9 | A rally-point order kind, a design-delete order kind, and a pause that is part of the match rather than of the process. All three need a twenty-first order kind, which changes the wire | A later milestone; noted in `TechnicalDesign.md` §4.7 |
 | 10 | The minimap's scale rule for Medium and Large landscapes | The milestone that ships them (M2, M3) |
 | 11 | The survival clock's default duration | `GameDesign.md` §2 |
+| 12 | A **feature table** in `Content`. `Sim/Feature.h`'s `design` is documented "Row index in the feature table" and no such table exists — `ContentTree` has none and `GameData` ships no `Features.json` — so a feature reaches a client naming a row of nothing and `RenderViewBuilder` cannot draw one | `C7`; the owner rules first whether M1 places features at all |
+| 13 | **What a shot looks like.** `TechnicalDesign.md` §5.3 sends projectiles as short-lived events rather than objects, and no row says what one looks like or for how long: `ModuleDesc` carries the model whose `MarkerMuzzle` a shot leaves from, and no projectile model, tracer or lifetime | `C8` |
 
 ---
 
