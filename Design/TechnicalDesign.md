@@ -284,7 +284,7 @@ Direct3D 12 through the SDK headers and `d3dx12.h`, the one file outside the SDK
 | Water | One plane at the water level with the wave texture scrolling, and the shore band | One PSO, alpha blended |
 | Geometry | Every device, structure, feature and wreck: models, per-vertex colour, team colour substituted, instanced per model | One PSO; one instance buffer per model per frame |
 | Debris | The triangles of a destroyed model, tumbling and fading (`SpeciesLook.md` §8): the Geometry pass's vertex data drawn with one transform per **triangle** rather than one per model | One PSO, alpha blended; the Geometry pixel shader with an alpha, its own vertex shader; a bounded pool of live triangles, the oldest explosion dropped when it is full |
-| Sprites | Billboards for infantry-sized things, the population, and particles | One PSO, instanced, alpha tested |
+| Sprites | Billboards for infantry-sized things, the population, and particles | **Two** pipeline states over one vertex and pixel shader, instanced: alpha tested for the cutout billboards, whose alpha is binary because the population is a colour-keyed sprite; and additive (`ONE, ONE`) for particles and effect sprites, whose alpha is a luminance falloff that an alpha test would turn into a hard disc and that `SRC_ALPHA, ONE` would apply twice (`SpeciesLineage.md` §4, measured 2026-09-19) |
 | Fog | A full-screen composite darkening explored-not-visible cells and blacking unexplored ones, from the commander's visibility as the replica knows it | One PSO |
 | UI | Windows, text, icons, the minimap | One PSO, orthographic, alpha blended |
 | Present | The scene target into the back buffer, scaled | One PSO |

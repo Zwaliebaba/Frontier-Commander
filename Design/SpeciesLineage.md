@@ -186,7 +186,9 @@ Two things the sheets make plain that the names did not. The set is strongest in
 
 ### Textures, sprites, icons
 
-Magenta (255, 0, 255) is the colour key throughout; the texture loader turns it into alpha.
+**How a texture gets an alpha, measured 2026-09-19.** Magenta (255, 0, 255) is a colour key, but it is neither the rule nor throughout: of the 44 files this game takes, **four** hold any magenta at all — `Sprites/Citizen`, `Sprites/LaserTrooper`, `Textures/Clouds` and `Textures/ShapeWireframe`. Every BMP loads fully opaque (`NeuronClient/Bitmap.cpp:162` for 24-bit and `:126` for the palettes set `a = 255` unconditionally), and the only thing in the tree that ever writes an alpha is `ConvertPinkToTransparent` (`:695`), which `Resource::GetTexture` calls unless a caller passes `_masked=false`. `ConvertColourToAlpha` (`:680`) would have derived one from a channel and **has no callers**.
+
+The rest carry no alpha because they are drawn **additively** — `GL_SRC_ALPHA, GL_ONE` or `GL_ONE, GL_ONE` at every effect-sprite, icon and font draw — and under an additive blend a black texel contributes nothing because its *colour* is zero, whatever its alpha. So black is the transparent end, but as a continuous falloff rather than a key: `Glow` is a 128×128 greyscale blob of 219 distinct levels, and keying its black would make it a hard disc. `Tools/ImportTextures.py` derives alpha from luminance for those and leaves RGB alone, keys the four, and writes a flat opaque alpha for the lookups and gradients; it carries the rule per file and `--analyze` checks each against the pixels. **A luminance alpha must not be drawn with `SRC_ALPHA, ONE`**, which applies the falloff twice.
 
 | Item | Seen | Disposition |
 |---|---|---|
