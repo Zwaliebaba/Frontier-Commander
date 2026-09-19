@@ -2021,7 +2021,7 @@ tasks:
       - "LocalHost runs Sim, Net's Host and the AI seat on its own thread driven by wall time, mapping wall time to ticks in exactly one place, slowing the match clock rather than skipping when it falls behind; it talks to the client only through LoopbackTransport"
       - "The client loop is the seven steps of §3: pump, drain the network, apply frames, interpolate 100 milliseconds behind, build the render view, route input, draw and present; it has no simulation clock"
       - Starting the executable starts a match on GameData/Landscapes/Slice.json with the human in seat 0 and the scripted AI in seat 1 at the lobby defaults, until M2's lobby exists
-      - The capture of G2 is what proves this task on CI, and the frames show a landscape with two bases on it
+      - "The capture of G2 is what proves this task on CI, and the frames show a landscape with a base on it. NOT TWO: this line said two until G1a was written, and the fog of TechnicalDesign.md §5.2 makes it impossible - the frames are drawn from one commander's replica and the opposite base is unexplored ground. G2's own acceptance already says 'a base', singular, and that is the wording that governs"
     verify:
       - python3 Tools/CheckTaskDag.py
       - python3 Build/CheckFormat.py --clang-format clang-format-18
@@ -2117,10 +2117,62 @@ tasks:
       and it is generated AFTER Client::Advance rather than before, because Advance is what reads
       the JoinAccepted. App therefore cannot build its terrain, water and fog passes at startup the
       way M0 did: they wait for the landscape, which is a state M0's loop did not have.
-      STILL TO WRITE: App's change from M0's landscape viewer to a match on Slice.json. That means
-      holding a Match, waiting for TerrainReady() before building the passes that need a landscape,
-      adding ModelBuffers and a GeometryPass with C6's commander colours and a FogPass, and drawing
-      Match::View() every frame. It is the only part of this task that is genuinely CI's alone.
+      APP IS WRITTEN AND IT IS THE ONE PART OF THIS TASK CI ALONE CAN COMPILE. It loads GameData,
+      finds Slice by its file stem in the content tree - M0's hard-coded recipe is gone and a
+      missing landscape is refused rather than substituted for - holds a Match, and draws the render
+      view. The passes that need a landscape are built when it arrives and not at startup; the
+      frames before it does present the cleared target, which is the Species sky, and the log says
+      once if the join has still not landed after ten seconds, because a window of nothing but sky
+      is otherwise indistinguishable from a window that hung. ModelBuffers and the geometry pass are
+      built at startup, since models and commander colours are content and need no join.
+      THE CAPTURE WAITS FOR THE JOIN BEFORE IT COUNTS FRAME 0, and the window deliberately does not.
+      A window shows sky for a frame or two and nobody minds; a capture whose frame 0 is the cleared
+      target has written a BLACK BMP as its first artefact, and those files are the only look anyone
+      gets at this game. The wait is bounded and a join that never lands is reported.
+      TWO MISTAKES CAUGHT IN THE WRITING, BOTH WORTH RECORDING. The terrain pass's constants address
+      is set INSIDE Draw, from the slot that Draw wrote, so hoisting it above the call to satisfy
+      R16 would have bound the previous frame's constants - the hoist of FrameOf next to it is real
+      and that one was not. And the probe's first check of the command post's height compared a wire
+      value against a subunit one and failed by a factor of 64; the code was right and the check was
+      wrong, which is the failure a probe exists to make loud.
+      THE BASE LEVEL WAS NOBODY'S AND IS NOW THIS TASK'S. Tests/SimTests/AiTests.cpp has carried the
+      note since S12: "NOTHING IN THE TREE OWNS BASE-LEVEL PLACEMENT YET - it is the application's
+      (m1-vertical-slice/G1), and until G1 lands a match is set up by whoever starts one". So
+      FrontierCommander/StartingBase places GameDesign.md §2's Nothing level - a command post and a
+      builder - before the host thread starts, because a base placed on a running simulation is a
+      structure that appeared out of nothing in a frame somebody was watching. Small and Established
+      are refused rather than silently reduced: a commander who chose an established base and got a
+      builder would read it as the game losing his settings, and the lobby that can ask for them is
+      M2's. The builder's design is the AI designer's choice of builder even for the human seat,
+      which is not a shortcut - it is the same truck the scripted opponent starts with, so neither
+      commander begins a chassis ahead.
+      IT FLATTENS AND THE TEST FIXTURE NEVER DID. Sim/Construction.cpp levels the ground under a
+      footprint the moment construction begins and writes the mean into Structure::y; AiTests skips
+      that step, so every command post in that suite stands at y = 0, which is sea level. No test
+      there draws, so nothing noticed. StartingBase runs the same FlattenDelta and the same mean,
+      and the probe confirms the post at 84 world units against ground the client generated at 86 -
+      the footprint's mean against the point under its centre, which is exactly the difference there
+      should be.
+      PROVED END TO END AGAINST THE REAL CONTENT: the commander sees exactly his own command post
+      and his own builder and nothing else, because the opposite base is unexplored - §5.2 working
+      rather than asserted - and the render view has four instances to draw. ThreadSanitizer finds
+      no race in a match that now has objects to publish every tick, which the empty world of the
+      earlier run could not have exercised.
+      A CLIENT CANNOT BE SEATED ON AN AI SEAT, found here and recorded against G2. Net/Host.cpp's
+      FreeSeat hands a joining client only a seat whose kind is Human, so the all-AI lobby G2's
+      acceptance asks for refuses the join with NoSeat and leaves no replica to draw. Tried, not
+      reasoned about: six failures and an empty view. The capture therefore watches an unattended
+      human seat whose base stands still while the AI opposite it plays, and G2 decides between a
+      scripted order stream and an observer connection in Net.
+      AND THE FLATTEN NEVER REACHES THE CLIENT AT ALL, which became K6 by the owner's ruling on
+      2026-09-19. changedChunks has no consumer, Match never calls Landscape::ApplyDelta, and
+      TerrainPass cannot re-mesh a chunk; K6 carries the whole finding. Sequenced before G2, so that
+      the frames G2 uploads do not show bases half-buried in hillsides.
+      ONE EDGE LEFT AS IT IS, DELIBERATELY. A minimised window blocks in WaitMessage while the host
+      thread keeps ticking, so the liveness clock falls behind and, past Match's thousand-tick debt
+      ceiling, wall time is written off. Pausing the local host is G1b's Escape menu and that is the
+      right place to fix it; spinning the loop instead would burn a core to avoid a case a pause
+      handles properly.
 
   - id: G1b
     title: Selection, orders, the camera's buttons and the match overlays
@@ -2162,14 +2214,15 @@ tasks:
       M0 capture grows into a headless AI-versus-AI match whose frames show bases, devices,
       combat and fog, and the CI job runs it on every pull request.
     project: FrontierCommander
-    depends_on: [G1a]
+    depends_on: [G1a, K6]
     files:
       - FrontierCommander/App.cpp
       - FrontierCommander/Capture.h
       - FrontierCommander/Capture.cpp
       - .github/workflows/build.yml
     acceptance:
-      - "--warp --capture <landscape> <ticks> <directory> runs LocalHost with two AI seats for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
+      - "--warp --capture <landscape> <ticks> <directory> runs LocalHost for <ticks> ticks as fast as the simulation allows, holds a client replica of seat 0's view, renders the scene target from a scripted camera path every hundred ticks and writes the BMPs; exits non-zero on any debug-layer message"
+      - "THIS TASK FIRST DECIDES HOW SEAT 0 COMES TO BE PLAYING, because 'two AI seats' cannot be had as G1 wrote it: Net/Host.cpp's FreeSeat hands a joining client only a seat whose kind is Human, so an all-AI lobby refuses the join with NoSeat and there is no replica to draw from (proved by G1a's probe - six failures and an empty view). The two ways out are a scripted order stream driving the human seat, which is cheap and is not the AI playing, and an observer connection in Net that seats a client on an AI seat, which is a wire change and the one M3's spectator would want anyway. The choice is the owner's"
       - "The CI step runs --warp --capture Slice 6000 Captures and uploads the sixty frames; the frames at ticks 2,000, 4,000 and 6,000 show a base, devices in transit and fog"
       - The capture's wall time in CI is recorded in the notes, and the tick count is reduced if it exceeds five minutes
       - "C2's last acceptance line is settled here: this is the first capture that runs with GameData mirrored beside the executable, so the frames confirm the terrain is coloured by the biome's LandscapeDefault.dds and not by the built-in gradient, or C2 is reopened"
@@ -2541,3 +2594,64 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: todo
+
+  - id: K6
+    title: The client applies the flatten and re-meshes the chunks the render view names
+    intent: >
+      Core/RenderView.h's `changedChunks` has no consumer and never has had one. RenderViewBuilder
+      works out which terrain chunks the structures this commander can SEE have flattened - the one
+      piece of state it keeps, and correct, including for a razed building - and hands them over;
+      nothing reads them. Nor does anything write the flatten into the client's own Landscape:
+      Sim/Landscape.h has ApplyDelta, and Match never calls it, because RenderViewBuilder holds no
+      landscape and only reports the change. So every structure in M1 stands on unflattened ground
+      on the client, and the capture - the only picture anyone reviews - shows bases half-buried in
+      hillsides. Found while writing App (G1a); the owner ruled on 2026-09-19 that it is its own
+      task and that it comes before G2, so that the frames G2 uploads are worth accepting.
+    project: Client
+    depends_on: [G1a]
+    files:
+      - FrontierCommander/Match.h
+      - FrontierCommander/Match.cpp
+      - Client/TerrainPass.h
+      - Client/TerrainPass.cpp
+      - Client/TerrainChunk.h
+      - Client/TerrainChunk.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/TerrainChunkTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ReplicaTests/ConvergenceTests.cpp
+    acceptance:
+      - "Match levels its own landscape under every structure the replica holds, from the footprint of the structure's row and the flattened height StructureState carries, using Sim/Placement.h's FlattenDelta and Landscape::ApplyDelta - the same arithmetic Sim/Construction.cpp runs on the host, so the two agree sample for sample"
+      - "The flatten follows the fog and nothing else: a structure this commander cannot see does not flatten his ground, and a ghost flattens it exactly as the structure did when he last saw it, because that is what he remembers (TechnicalDesign.md §5.2 - 'the terrain under an unscouted base is not public')"
+      - "TerrainPass re-meshes the chunks the render view names, at all four strides, into the ranges those chunks already own: a chunk's vertex and index counts are fixed by its stride and only the heights move, so the buffers keep their layout and a rebuild is an upload and a copy rather than a reallocation"
+      - "A rebuild costs only the chunks that changed: a base of a dozen structures standing still rebuilds nothing on the frame after it arrived, which is what RenderViewBuilder's remembered flatten is for"
+      - "Tests: the chunk rebuild against a synthetic height change, on the CPU, with no device; and a full-stack ConvergenceTests case that a structure the client can see leaves his landscape agreeing with the host's under its footprint, while one he cannot see leaves it untouched"
+      - The capture of G2 shows structures standing on level ground
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      WHY IT FELL BETWEEN THE TASKS, recorded so the next gap is found earlier. S4 flattens on the
+      HOST and stops there, correctly - the wire carries no height deltas, because they would hand
+      a commander the shape of ground he has never scouted. R2 computes the changed chunks and says
+      in its own notes that "the client generates the landscape from the definition it was given at
+      the join and flattens it under the structures it can SEE" - which describes work and assigns
+      it to nobody. K1 is the geometry pass and K2 is the fog pass, and neither touches terrain.
+      G1a's acceptance is the two loops and says nothing about ground. Four tasks each did their own
+      half correctly and the seam between them was never anybody's.
+      THE RE-MESH IS THE REAL WORK AND THE SHAPE OF IT IS ALREADY DECIDED BY K1's BUFFERS.
+      TerrainPass builds every chunk at four strides once, in its constructor, into one vertex and
+      one index buffer, and holds only offsets afterwards; there is no rebuild path at all. What
+      makes it tractable is that a flatten changes HEIGHTS and not TOPOLOGY: a chunk at a given
+      stride has the same vertex and index counts whatever the ground does, so the rebuilt mesh
+      fits the range it already occupies and the index buffer never moves. An upload heap and a
+      CopyBufferRegion per changed chunk per stride is the whole mechanism.
+      DO NOT REACH FOR THE HOST'S LANDSCAPE. It is one member away through Match and it is
+      flattened under every structure in the match. Using it would make this task trivial and ship
+      a wallhack; the point of the client holding its own Landscape is exactly this moment.
