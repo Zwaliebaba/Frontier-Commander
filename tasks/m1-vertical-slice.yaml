@@ -1718,7 +1718,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       The toolkit's rules are documented in the header comment of UiPanel.h, not in a prose
       file: project directories are flat (AGENTS.md §2).
@@ -1831,6 +1831,13 @@ tasks:
       then, and the acceptance line "UiPass draws panels, text and icons" is shown in G2's frames
       rather than here. That is a deliberate statement of what is and is not evidence, not a request
       to take it on trust.
+      GREEN ON RUN 35437308010 (head ebf94b1), which is what makes this done: the MSVC build with
+      /warnaserror took UiPass.cpp and both shaders, dxc took UiVS.hlsl and UiPS.hlsl, vstest ran
+      the 16 new ClientTests cases with the rest, the WARP capture and the content validation
+      passed, and clang-tidy 22.1.8 came back clean over every translation unit. The three files
+      this session could not compile compiled first time, which the local clang-tidy sweep and the
+      check of every d3dx12.h helper call against the vendored header are the reason for - that
+      check found the one real defect, <iterator> for std::begin and std::size.
 
   - id: G1a
     title: FrontierCommander application - the client loop and the host thread over loopback
