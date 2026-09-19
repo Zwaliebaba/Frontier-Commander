@@ -11,6 +11,7 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
   Add(_seat.alliance);
   Add(_seat.powerHundredths);
   Add(_seat.stockpileCapHundredths);
+  Add(_seat.extractedHundredths);
   AddSpan(std::span<const std::uint32_t>(_seat.researchComplete));
   Add(static_cast<std::uint32_t>(_seat.researchActive.size()));
   for (const ResearchProgress& progress : _seat.researchActive)
@@ -63,8 +64,9 @@ void StateHash::AddSeat(const Seat& _seat) noexcept
     Add(rejection.kind);
     Add(rejection.reason);
   }
-  AddBool(_seat.defeated);
+  Add(_seat.victory);
   AddBool(_seat.surrendered);
+  AddBool(_seat.everHeldBase);
 }
 
 void StateHash::AddOrder(const Order& _order) noexcept

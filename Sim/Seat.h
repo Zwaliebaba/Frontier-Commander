@@ -7,6 +7,7 @@
 #include "MatchSettings.h"
 #include "Order.h"
 #include "ObjectId.h"
+#include "Victory.h"
 
 #include <cstdint>
 #include <vector>
@@ -42,6 +43,15 @@ struct Seat
   std::int32_t powerHundredths;        ///< The stockpile, in hundredths of a power unit.
   std::int32_t stockpileCapHundredths; ///< What the stockpile may not exceed (GameDesign.md §4)
 
+  /// Every hundredth of power this commander's extractors have produced since the first tick,
+  /// whether it was banked, spent or lost to the stockpile cap. The Survival condition is decided
+  /// on it (GameDesign.md §2: "the side that extracted the most power wins"), which the stockpile
+  /// cannot answer - a commander who spent everything he dug would lose to one who sat on it, and
+  /// a cap that throws income away would hide the difference between them entirely. 64 bits
+  /// because it only ever grows: a full seat at the cap's income for a day of ticks is far past
+  /// what 32 would hold.
+  std::int64_t extractedHundredths;
+
   std::vector<std::uint32_t> researchComplete; ///< Row indices, ascending, so two runs hash alike
   std::vector<ResearchProgress> researchActive;
 
@@ -73,12 +83,28 @@ struct Seat
   /// in the hash, because two hosts that refuse different orders have diverged.
   std::vector<OrderRejection> rejections;
 
-  bool defeated;    ///< Surrendered or annihilated; a defeated seat's orders are dropped.
-  bool surrendered; ///< Which of the two it was, which the victory condition of S11 reads
+  /// Where this commander stands (Sim/Victory.h). Stage 12 writes it and nothing else does. There
+  /// is no separate defeated flag: it would be this field spelled a second way, and a second way
+  /// to spell a fact is a way for the two to disagree.
+  VictoryState victory;
+  bool surrendered; ///< Eliminated by his own order rather than by annihilation
+
+  /// True once the commander has held a structure or a builder. The annihilation rule cannot
+  /// eliminate a seat that never had either: a match is set up over several ticks and a seat is
+  /// empty-handed until its base level is placed, so without this a match would be over before it
+  /// began. Once true it stays true - it records that the seat WAS established, not that it is.
+  bool everHeldBase;
 
   [[nodiscard]] bool Scripted() const noexcept
   {
     return kind == SeatKind::Ai;
+  }
+
+  /// Out of the match: surrendered or annihilated. A seat that was still standing when the match
+  /// ended and did not win is Lost rather than this, because it was never defeated in play.
+  [[nodiscard]] bool Defeated() const noexcept
+  {
+    return victory == VictoryState::Eliminated;
   }
 
   [[nodiscard]] bool operator==(const Seat&) const noexcept = default;

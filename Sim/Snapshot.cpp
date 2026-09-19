@@ -202,6 +202,7 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   _writer.Write(_seat.alliance);
   _writer.Write(_seat.powerHundredths);
   _writer.Write(_seat.stockpileCapHundredths);
+  _writer.Write(_seat.extractedHundredths);
   _writer.Write(static_cast<std::uint32_t>(_seat.researchComplete.size()));
   for (const std::uint32_t item : _seat.researchComplete)
   {
@@ -278,8 +279,9 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
     _writer.Write(rejection.kind);
     _writer.Write(rejection.reason);
   }
-  _writer.WriteBool(_seat.defeated);
+  _writer.Write(_seat.victory);
   _writer.WriteBool(_seat.surrendered);
+  _writer.WriteBool(_seat.everHeldBase);
 }
 
 [[nodiscard]] bool ReadSeat(Neuron::ByteReader& _reader, Seat& _out)
@@ -287,7 +289,8 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
   Seat seat{};
   std::uint32_t count = 0;
   if (!ReadEnum(_reader, seat.kind, 3) || !_reader.Read(seat.alliance) || !_reader.Read(seat.powerHundredths) ||
-      !_reader.Read(seat.stockpileCapHundredths) || !_reader.Read(count) || count > Snapshot::MAX_RESEARCH)
+      !_reader.Read(seat.stockpileCapHundredths) || !_reader.Read(seat.extractedHundredths) || !_reader.Read(count) ||
+      count > Snapshot::MAX_RESEARCH)
   {
     return false;
   }
@@ -414,7 +417,7 @@ void WriteSeat(Neuron::ByteWriter& _writer, const Seat& _seat)
       return false;
     }
   }
-  if (!_reader.ReadBool(seat.defeated) || !_reader.ReadBool(seat.surrendered))
+  if (!ReadEnum(_reader, seat.victory, VICTORY_STATE_COUNT) || !_reader.ReadBool(seat.surrendered) || !_reader.ReadBool(seat.everHeldBase))
   {
     return false;
   }

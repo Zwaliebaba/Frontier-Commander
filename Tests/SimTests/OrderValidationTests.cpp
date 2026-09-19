@@ -299,7 +299,7 @@ public:
     Fixture fixture;
     fixture.sim.Submit(Ordered(Frontier::OrderKind::Surrender, 0));
     fixture.sim.Advance();
-    Assert::IsTrue(fixture.sim.Seats()[0].defeated);
+    Assert::IsTrue(fixture.sim.Seats()[0].Defeated());
     Assert::IsTrue(fixture.sim.Seats()[0].surrendered, L"surrender is distinguishable from annihilation");
 
     fixture.sim.Submit(Ordered(Frontier::OrderKind::Move, 0, static_cast<std::int32_t>(fixture.mine.value), 25 * CELL, 25 * CELL));

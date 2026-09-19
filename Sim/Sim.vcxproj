@@ -109,6 +109,7 @@
     <ClCompile Include="Movement.cpp" />
     <ClCompile Include="Steering.cpp" />
     <ClCompile Include="Targeting.cpp" />
+    <ClCompile Include="Victory.cpp" />
     <ClCompile Include="Weapons.cpp" />
     <ClCompile Include="Projectiles.cpp" />
     <ClCompile Include="Damage.cpp" />
@@ -157,6 +158,7 @@
     <ClInclude Include="Movement.h" />
     <ClInclude Include="Steering.h" />
     <ClInclude Include="Targeting.h" />
+    <ClInclude Include="Victory.h" />
     <ClInclude Include="Weapons.h" />
     <ClInclude Include="Damage.h" />
     <ClInclude Include="Experience.h" />

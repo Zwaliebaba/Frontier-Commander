@@ -9,6 +9,7 @@
 #include "Research.h"
 #include "StateHash.h"
 #include "Targeting.h"
+#include "Victory.h"
 #include "Weapons.h"
 
 #include <algorithm>
@@ -47,7 +48,10 @@ Sim::Sim(const MatchSettings& _settings, const ContentTree& _content)
     seat.deviceCap = DEVICE_CAPS[std::min<std::size_t>(static_cast<std::size_t>(_settings.deviceCapLevel), DEVICE_CAPS.size() - 1)];
     seat.structureCap = STRUCTURE_CAP;
     seat.stockpileCapHundredths = Economy::StockpileCapHundredths(0);
-    seat.defeated = lobby.kind == SeatKind::Empty;
+    // An empty seat is Eliminated from the first tick, which is what "takes no part" is in a
+    // field with four values: its orders are dropped, it is never counted as standing, and it
+    // cannot win. It is not Lost, because losing is something that happens to a commander.
+    seat.victory = lobby.kind == SeatKind::Empty ? VictoryState::Eliminated : VictoryState::Playing;
     m_seats.push_back(std::move(seat));
   }
 }
@@ -180,6 +184,14 @@ void Sim::Submit(Order _order)
 
 void Sim::Advance()
 {
+  // A decided match does not advance (m1-vertical-slice/S11). The outcome is what every system
+  // above the simulation is waiting for, and a tick after it can only move objects nobody is
+  // playing any more: the host stops calling this and the state stays as the last tick left it,
+  // which is the state the snapshot of a finished match holds and the hash of it reports.
+  if (m_finished)
+  {
+    return;
+  }
   ++m_tick;
   ApplyOrders();
   AdvanceEconomy();
@@ -257,7 +269,7 @@ bool Sim::Apply(const Order& _order)
     return false;
   }
   Seat& seat = m_seats[_order.seat];
-  if (seat.kind == SeatKind::Empty || seat.defeated)
+  if (seat.kind == SeatKind::Empty || seat.Defeated())
   {
     return false;
   }
@@ -281,7 +293,9 @@ bool Sim::Apply(const Order& _order)
   switch (order.kind)
   {
   case OrderKind::Surrender:
-    seat.defeated = true;
+    // Out at once rather than at stage 12: the rest of this tick must not carry his orders, and a
+    // commander who has conceded should not go on shooting while the stages catch up.
+    seat.victory = VictoryState::Eliminated;
     seat.surrendered = true;
     return true;
 
@@ -549,84 +563,23 @@ void Sim::AdvanceAiSeats() {}
 
 void Sim::CheckVictory()
 {
-  if (m_finished)
+  Frontier::CheckVictory(*this);
+}
+
+void Sim::Decide(std::uint8_t _winningAlliance) noexcept
+{
+  m_finished = true;
+  m_winningAlliance = _winningAlliance;
+  // Everyone still playing when the match ended is told which way it went, here rather than at
+  // each of stage 12's exits, so that there is one place the Won-or-Lost rule is written. A seat
+  // that had already left keeps Eliminated: the match's outcome is not his.
+  for (Seat& seat : m_seats)
   {
-    return;
-  }
-  // The alliances still standing: a seat that is present and not defeated keeps its alliance in.
-  std::array<bool, 256> standing{};
-  std::uint32_t standingCount = 0;
-  for (const Seat& seat : m_seats)
-  {
-    if (seat.kind != SeatKind::Empty && !seat.defeated && !standing[seat.alliance])
+    if (seat.victory != VictoryState::Playing)
     {
-      standing[seat.alliance] = true;
-      ++standingCount;
+      continue;
     }
-  }
-  const auto lastStanding = [&standing]() -> std::uint8_t
-  {
-    for (std::size_t alliance = 0; alliance < standing.size(); ++alliance)
-    {
-      if (standing[alliance])
-      {
-        return static_cast<std::uint8_t>(alliance);
-      }
-    }
-    return NO_ALLIANCE;
-  };
-  switch (m_settings.victory)
-  {
-  case VictoryCondition::Annihilation:
-  case VictoryCondition::Dominance: // Deposits arrive with the landscape (M1); until then the annihilation rule.
-    if (standingCount <= 1)
-    {
-      m_finished = true;
-      m_winningAlliance = standingCount == 1 ? lastStanding() : NO_ALLIANCE;
-    }
-    return;
-  case VictoryCondition::Survival:
-    if (standingCount <= 1)
-    {
-      m_finished = true;
-      m_winningAlliance = standingCount == 1 ? lastStanding() : NO_ALLIANCE;
-      return;
-    }
-    if (m_tick >= m_settings.survivalTicks)
-    {
-      // The clock ran out: the alliance with the most power wins, and a tie is a draw.
-      std::array<std::int64_t, 256> power{};
-      for (const Seat& seat : m_seats)
-      {
-        if (seat.kind != SeatKind::Empty && !seat.defeated)
-        {
-          power[seat.alliance] += seat.powerHundredths;
-        }
-      }
-      std::int64_t best = -1;
-      std::uint8_t winner = NO_ALLIANCE;
-      bool tied = false;
-      for (std::size_t alliance = 0; alliance < power.size(); ++alliance)
-      {
-        if (!standing[alliance])
-        {
-          continue;
-        }
-        if (power[alliance] > best)
-        {
-          best = power[alliance];
-          winner = static_cast<std::uint8_t>(alliance);
-          tied = false;
-        }
-        else if (power[alliance] == best)
-        {
-          tied = true;
-        }
-      }
-      m_finished = true;
-      m_winningAlliance = tied ? NO_ALLIANCE : winner;
-    }
-    return;
+    seat.victory = _winningAlliance != NO_ALLIANCE && seat.alliance == _winningAlliance ? VictoryState::Won : VictoryState::Lost;
   }
 }
 

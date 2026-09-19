@@ -278,7 +278,13 @@ void Economy::Advance(const World& _world, std::span<Seat> _seats, const Content
     // rebalancing the numbers is an edit to Structures.json and not to this file.
     const auto seatIndex = static_cast<std::uint8_t>(index);
     CollectSites(_world, _content, seatIndex, seat.upgrades.extractorRatePercent);
-    std::int64_t income = AssignService();
+    // What the served extractors produced this tick. It is banked on the seat before the stockpile
+    // cap or the command post's trickle touch it, because the Survival condition is decided on
+    // what a commander EXTRACTED (GameDesign.md §2) - power lost to a full stockpile was still
+    // extracted, and the command post's own output never was.
+    const std::int64_t extracted = AssignService();
+    seat.extractedHundredths += extracted;
+    std::int64_t income = extracted;
     _world.ForEachStructure(
       [&income, &_content, seatIndex](ObjectId, const Structure& _structure)
       {

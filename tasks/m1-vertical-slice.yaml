@@ -1061,7 +1061,40 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
+    notes: >
+      Stage 12 is Sim/Victory.{h,cpp}. GameDesign.md §2 gives each condition a sentence and stage 12
+      needs a rule, so §2 now carries the six readings this task had to take; the two that were
+      real decisions rather than restatements are these.
+
+      SURVIVAL IS DECIDED ON WHAT WAS EXTRACTED, NOT ON WHAT IS HELD. "The side that extracted the
+      most power wins" cannot be answered by the stockpile: a commander who spent what he dug would
+      lose to one who sat on it, and the stockpile cap throws income away, so two economies that
+      differ by a factor of three can end the clock at the same number. Seat::extractedHundredths is
+      a running total that stage 2 adds the served extractors' output to before the cap and before
+      the command post's trickle - the command post generates, it does not extract. 64 bits, because
+      it only ever grows.
+
+      A SEAT THAT NEVER HELD A BASE CANNOT BE ANNIHILATED. The rule as the design states it -
+      neither a structure nor a builder - is true of a seat the lobby has just created, so without a
+      latch a match would end before its base level was placed, and so would every suite that
+      advances a tick over a world it has not filled. Seat::everHeldBase is that latch, set by the
+      same walk that tests the rule. It is also what keeps a combat test of two scouts from ending
+      as a double annihilation: neither seat ever held a structure or a builder, so neither is out.
+
+      WHAT WENT IN THE OTHER DIRECTION. Seat::defeated is gone rather than joined: the victory state
+      is the same fact spelled better, and Seat.h's own header warns against a second field that can
+      disagree with the first. Seat::Defeated() is the question spelled out, and it means Eliminated
+      - out during play - which is not Lost, which is being on the board at the end and not winning.
+      A decided match no longer advances at all: Sim::Advance returns at once, so the tick, the
+      stream, the world and the hash stay as the deciding tick left them.
+
+      Dominance still falls through to the annihilation rule. It needs 60% of a landscape's deposits
+      held for ten continuous minutes and ships with the first Large landscapes (GameDesign.md §2),
+      so a match set to it is played rather than refused.
+
+      Snapshot version 14 and ADR-003's table with it: a seat is 157 bytes and the three-seat
+      fixture 1,716. Measured: SimTests 143 passed, 0 failed; VictoryTests is 9 of them.
 
   - id: S12
     title: Sim scripted AI seat

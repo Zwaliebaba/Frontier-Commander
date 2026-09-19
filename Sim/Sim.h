@@ -10,6 +10,7 @@
 #include "OrderQueue.h"
 #include "PathPlanner.h"
 #include "Seat.h"
+#include "Victory.h"
 #include "Visibility.h"
 #include "World.h"
 
@@ -158,7 +159,9 @@ public:
   void Submit(Order _order);
 
   /// One tick: the fourteen stages of TechnicalDesign.md §4.8, in order. The tick counter and the
-  /// simulation Random advance here and nowhere else.
+  /// simulation Random advance here and nowhere else. **A finished match does nothing here**: the
+  /// outcome stage 12 decided is the end of the simulation's work, so this returns at once and the
+  /// tick, the stream, the world and the hash are left exactly as the deciding tick left them.
   void Advance();
 
   [[nodiscard]] std::uint32_t Tick() const noexcept
@@ -242,6 +245,11 @@ public:
   {
     return m_droppedOrders;
   }
+
+  /// Stage 12's one writer (Sim/Victory.h): the match is over, and this alliance won or
+  /// NO_ALLIANCE for a draw. Every seat still playing becomes Won or Lost by it, and a seat that
+  /// had already left keeps Eliminated. Nothing else in the tree ends a match.
+  void Decide(std::uint8_t _winningAlliance) noexcept;
 
   [[nodiscard]] bool Finished() const noexcept
   {

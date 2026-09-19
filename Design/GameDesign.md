@@ -36,6 +36,30 @@
 
 Alliances are fixed in the lobby; allied commanders share vision and victory and cannot attack each other.
 
+**What the three conditions mean exactly** (settled by `m1-vertical-slice/S11`, 2026-09-19, because
+the table above is a sentence each and stage 12 needs a rule):
+
+- **Annihilation counts a structure in any state but a plan, and any device carrying a builder
+  module.** A plan occupies no cell and nothing has been spent on it, so a commander left with
+  nothing but plans has nothing standing; one under construction is a thing on the landscape and an
+  enemy has to destroy it. A commander reduced to tanks is out, which is the *Warzone 2100* rule the
+  table names — a builder is what lets a commander come back, and having none is the losing
+  condition rather than having no army.
+- **A commander who has never held a structure or a builder cannot be annihilated.** A match is set
+  up over its first ticks and every seat is empty-handed until its base level is placed, so the rule
+  is "held one of them once, and holds neither now".
+- **Survival is decided on power extracted, not power held.** The running total is every hundredth a
+  commander's served extractors produced, counted before the stockpile cap and before anything was
+  spent: what he spent, he still dug up, and power lost to a full stockpile was still extracted. A
+  command post's own trickle is not extraction and does not count. A tie is a draw.
+- **One alliance left ends every condition**, including Survival before its clock: there is nobody
+  left to play against and the clock cannot change the answer.
+- **Surrender takes a commander out on the tick the order applies**, not at the victory check, so
+  the rest of that tick carries none of his orders. A seat that surrendered is *eliminated* even if
+  his alliance goes on to win: the outcome belongs to the commanders who were there for it.
+- **A decided match stops.** The simulation does not advance another tick once a condition is met;
+  the state the deciding tick left is what a snapshot of a finished match holds.
+
 **Base, power and technology levels** are lobby settings with values. Base level: *nothing* is a builder and a command post; *small* adds two served extractors, a generator and a factory; *established* adds a lab, a repair bay and four hardpoints. Power level sets the starting stockpile: 400, 1,000 or 2,500. Technology level pre-completes the first zero, one or two tiers of the research tree.
 
 ---

@@ -233,7 +233,7 @@ public:
     {
       Assert::IsTrue(original.Seats()[seat] == reloaded.Seats()[seat]);
     }
-    Assert::IsTrue(original.Seats()[2].defeated, L"seat 2 surrendered");
+    Assert::IsTrue(original.Seats()[2].Defeated(), L"seat 2 surrendered");
     Assert::AreEqual(original.AppliedOrders(), reloaded.AppliedOrders());
     Assert::AreEqual(original.DroppedOrders(), reloaded.DroppedOrders());
     Assert::AreEqual(original.Finished(), reloaded.Finished());
@@ -362,7 +362,19 @@ public:
 
     Frontier::Sim surrender = Busy();
     surrender.SeatAt(0).surrendered = true;
-    moved(surrender, L"a seat's surrender, which defeated alone does not say");
+    moved(surrender, L"a seat's surrender, which the victory state alone does not say");
+
+    Frontier::Sim standing = Busy();
+    standing.SeatAt(1).victory = Frontier::VictoryState::Eliminated;
+    moved(standing, L"where a seat stands (m1-vertical-slice/S11)");
+
+    Frontier::Sim extracted = Busy();
+    extracted.SeatAt(1).extractedHundredths += 1;
+    moved(extracted, L"what a seat has extracted, which the survival clock is settled on");
+
+    Frontier::Sim established = Busy();
+    established.SeatAt(1).everHeldBase = !established.Seats()[1].everHeldBase;
+    moved(established, L"whether a seat has ever held a base, which decides if it can be annihilated");
 
     Frontier::Sim fog = Busy();
     fog.SeatAt(2).fog.AddViewer(1, 1);
