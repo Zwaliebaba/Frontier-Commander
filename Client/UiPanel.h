@@ -19,8 +19,9 @@
 // player would order a unit to walk to whatever was behind the readout he just clicked, which is
 // the one input mistake a real-time game cannot take back.
 //
-// IT DRAWS NOTHING. A panel is state and hit testing; Client/UiPass.h turns it into quads. That is
-// what lets the whole of this file be tested on any machine, with no device and no window.
+// IT DRAWS NOTHING. A panel is state and hit testing; Client/UiDraw.h turns it into quads and
+// Client/UiPass.h draws them. That is what lets the whole of this file be tested on any machine,
+// with no device and no window.
 
 namespace Neuron
 {

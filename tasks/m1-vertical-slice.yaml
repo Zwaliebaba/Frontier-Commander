@@ -1435,7 +1435,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       THE REPLICA STARTS ITSELF FROM THE CLIENT, and that is the finding of this task rather than a
       convenience. The first version took the seat and the landscape size through a Begin() the
@@ -1478,6 +1478,18 @@ tasks:
       against the real Sim, Net's Host and Client and the LoopbackTransport and RUN - seven tests,
       zero failures, including the seeded-loss run at 250 per mille. The MSVC build, clang-tidy and
       InterpolationTests under vstest are CI's.
+      AND CI HAS NOW RUN THEM. clang-tidy 22.1.8 found two things clang-tidy 18 was not asked about
+      in this session, both fixed in the head this note sits on: Replica's constructor was noexcept
+      while default-constructing four maps, three vectors and a DesignStore, every one of which
+      allocates (bugprone-exception-escape), and the heading wrap cast through std::int8_t
+      (bugprone-signed-char-misuse). The heading step is arithmetic on the unsigned difference now,
+      and the replacement was checked against the original over all 65,536 heading pairs with no
+      mismatch rather than reasoned about.
+      DONE ON THE EVIDENCE OF RUN 35435306312 (head 530d206): the MSVC build, vstest over every test
+      DLL, and clang-tidy 22.1.8 over all 162 translation units all ran. The two translation units
+      that failed that run were m1/K3's - Tests/ClientTests/UiLayoutTests.cpp and Client/UiPanel.cpp
+      - and clang-tidy reached them only because the build and the tests before it had passed, which
+      is what makes Replica's half of that run evidence rather than an assumption.
 
   - id: R2
     title: Replica render view, model composition at markers, and picking
@@ -1679,6 +1691,8 @@ tasks:
       - Client/BitmapFont.cpp
       - Client/UiPass.h
       - Client/UiPass.cpp
+      - Client/UiDraw.h
+      - Client/UiDraw.cpp
       - Client/UiInputSink.h
       - Client/UiInputSink.cpp
       - Client/Shaders/UiVS.hlsl
@@ -1687,6 +1701,9 @@ tasks:
       - Client/Client.vcxproj.filters
       - Tests/ClientTests/UiLayoutTests.cpp
       - Tests/ClientTests/BitmapFontTests.cpp
+      - Tests/ClientTests/UiInputSinkTests.cpp
+      - Tests/ClientTests/UiDrawTests.cpp
+      - Tests/ClientTests/ScaleModeTests.cpp
       - Tests/ClientTests/ClientTests.vcxproj
       - Tests/ClientTests/ClientTests.vcxproj.filters
     acceptance:
@@ -1759,7 +1776,61 @@ tasks:
       It reproduced both findings before the fix and 217 checks come back clean over every file of
       R1 and K3 after it. 18 is not 22 and will not catch everything 22 does, but "clang-tidy cannot
       be run here" was wrong, and acting on it cost three CI rounds.
-      STILL TO COME: UiPass and its two shaders, which need Direct3D and are CI's alone.
+      UiPass AND A FILE THE LIST DID NOT NAME. The declared files are UiPass.h/.cpp and the two
+      shaders; what is written is those four plus Client/UiDraw.h and Client/UiDraw.cpp, and the
+      split is the same one that moved AUTHORED_WIDTH_PIXELS out of SceneTarget.h. UiPass.h includes
+      d3d12.h, so everything declared beside the pass can only be exercised where that header is;
+      turning a panel into quads is rectangles, insets, thresholds and colour choices, which is
+      arithmetic that comes out wrong by one pixel rather than by a crash. UiDraw holds it, has no
+      Direct3D, and is 16 cases of UiDrawTests. UiPass is left with the upload, the pipeline and one
+      DrawInstanced. UiPanel.h's "UiPass.h turns it into quads" was updated to say UiDraw.h.
+      ONE DRAW CALL, BECAUSE ALPHA IS NOT COMMUTATIVE. Both atlases are bound at once and the pixel
+      shader branches on a flat integer the vertex carries, rather than batching by texture: a batch
+      reorders the quads, and reordering them paints a button's caption underneath the button. The
+      branch is uniform across a quad and costs a comparison.
+      TWO FIELDS ADDED TO UiWidget. A List had no row captions at all - `maximum` says how many rows
+      it has and `text` is one string - so a list was a widget kind the toolkit could not draw;
+      `rows` is them, with `maximum` still the authority the hit test and the row rectangles are
+      built on. And a ProgressBar had no way to say whether it was a build bar or a health bar,
+      which §3 needs to pick between barBuild, barHealth and barHealthLow; `barStyle` says.
+      §3 LEAVES A BAND UNNAMED and UiDraw.cpp states its reading rather than hiding it: the table
+      gives barHealth "at or over half" and barHealthLow "under a quarter" and nothing between, so
+      the quarter is the threshold and the band above it takes the ordinary colour.
+      THE ICON SHEET DOES NOT YET MATCH THE RULE IT IS DRAWN BY, and this is already tracked rather
+      than new: §3 rules an icon "a single-channel mask tinted at draw time, never a coloured
+      bitmap", while GameData\Textures\Icons.dds is the eight 64x64 Species order banners C4
+      imported unkeyed - 468 colours, alpha 255 everywhere - which ADR-010 says stand "until the
+      icon atlas is rebuilt from this game's own art" and §11 row 7 assigns to C4 as a blocker on
+      K4. UiPass implements §3 (a 32x32 cell, the red channel as the mask) and IconAtlas loads any
+      sheet that divides into 32x32 cells, so the placeholder loads as an 8x4 grid of quarter
+      banners and an icon draws as a tinted square until the sheet is re-authored. Nothing here
+      hard-codes the placeholder's geometry. The font needs no such note: it is a two-colour cutout,
+      white on transparent, so its alpha IS its coverage, which is why the two kinds read different
+      channels and UiPS.hlsl says so.
+      MUTATION TESTED, AND IT FOUND TWO HOLES. With Uppercased() removed from the title the suite
+      still passed, because the case pinned the FIRST glyph of "Selection" and that letter is
+      already a capital; it pins the second now, where 'e' becomes 'E'. With an icon's tint fixed at
+      bodyText it still passed, because nothing covered §3's "dimText where it is not available".
+      Both are cases now, and the other eleven mutations tried - the bar drawn over its own border,
+      a collapsed gradient, overlapping border corners, a half instead of a quarter, a uv edge, a
+      dropped triangle, an unchecked cell index, a selected row's caption, a down button's caption -
+      were all caught before the fix.
+      AND THE LINUX HARNESS WAS WRONG AGAIN, in a way that mattered less than the last one but was
+      worth fixing: it built every test file into one translation unit, which invented a clash
+      between two files' file-local SELECTION_PANEL that MSVC cannot have, and its compile step was
+      piped through grep so a failed build reported the previous binary's run as a pass. Each test
+      file is its own translation unit now, as it is under MSVC, and the binary is deleted before
+      the build so a stale one cannot answer for it.
+      Verified in the session on Linux: 59 tests, zero failures, over five test files; clang-tidy 18
+      clean over UiDraw, UiPanel, UiWidgets and UiDrawTests with this repository's own configuration;
+      CheckFormat, CheckProjectFiles and CheckTaskDag clean.
+      WHAT IS NOT SHOWN HERE. UiPass.cpp, UiVS.hlsl and UiPS.hlsl are Direct3D and HLSL: this
+      session can compile neither, and nothing constructs a UiPass yet - K4 builds §2's panels and
+      G2's capture is the first frame that would carry one. So the pipeline state, the root
+      signature, the blend and the two shaders are checked by CI's build and by nothing else until
+      then, and the acceptance line "UiPass draws panels, text and icons" is shown in G2's frames
+      rather than here. That is a deliberate statement of what is and is not evidence, not a request
+      to take it on trust.
 
   - id: G1a
     title: FrontierCommander application - the client loop and the host thread over loopback

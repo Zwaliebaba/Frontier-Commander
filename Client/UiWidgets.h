@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <string>
+#include <vector>
 
 // The seven things a panel can hold (Design/Interface.md §3; m1-vertical-slice/K3): a label, a
 // button, a toggle, a list, a progress bar, an icon and a text field. That is the whole set M1
@@ -48,6 +49,16 @@ enum class UiAction : std::uint8_t
   TextSubmitted
 };
 
+/// How a progress bar picks its fill. Design/Interface.md §3 gives three bar colours for two
+/// different jobs - `barBuild` for "construction and production progress", `barHealth` and
+/// `barHealthLow` for a health reading - and a bar holding only a value and a maximum cannot tell
+/// which job it is doing. This says, in the one place the widget is built.
+enum class UiBarStyle : std::uint8_t
+{
+  Build, ///< Always barBuild: a construction or production bar has no low state, it has a length
+  Health ///< barHealthLow under a quarter, barHealth at or above it
+};
+
 /// A widget, as a panel holds it.
 ///
 /// `id` IS THE OWNER'S HANDLE AND NOT AN INDEX. A panel's widgets are added once and never move,
@@ -61,11 +72,17 @@ struct UiWidget
   std::uint32_t id = 0;
   std::string text;
   bool enabled = true;
-  bool on = false;                  ///< Toggle: down. Button: held, while the pointer is on it
-  std::int32_t value = 0;           ///< ProgressBar: the value. List: the selected row. Icon: the cell
-  std::int32_t maximum = 0;         ///< ProgressBar: the maximum. List: how many rows there are
-  std::int32_t rowHeightPixels = 0; ///< List
-  std::uint32_t textLimit = 0;      ///< TextField: the most characters it takes, 0 for no limit
+  bool on = false;                         ///< Toggle: down. Button: held, while the pointer is on it
+  std::int32_t value = 0;                  ///< ProgressBar: the value. List: the selected row. Icon: the cell
+  std::int32_t maximum = 0;                ///< ProgressBar: the maximum. List: how many rows there are
+  std::int32_t rowHeightPixels = 0;        ///< List
+  std::uint32_t textLimit = 0;             ///< TextField: the most characters it takes, 0 for no limit
+  UiBarStyle barStyle = UiBarStyle::Build; ///< ProgressBar
+  /// List: one caption a row. `maximum` stays the authority on how many rows the list HAS, because
+  /// that is what the hit test and the row rectangles are built on; this is what they are called,
+  /// and a row with no caption here simply draws none. A list whose owner draws its own rows leaves
+  /// it empty.
+  std::vector<std::string> rows;
 };
 
 /// Whether this kind takes a click at all. A label, a bar and an icon are readouts: they are drawn

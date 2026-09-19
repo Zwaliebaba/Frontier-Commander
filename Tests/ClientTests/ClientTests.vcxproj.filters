@@ -23,6 +23,9 @@
     <ClCompile Include="UiInputSinkTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="UiDrawTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="FrameInputTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

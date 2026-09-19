@@ -141,6 +141,8 @@
     <ClCompile Include="UiWidgets.cpp" />
     <ClCompile Include="UiPanel.cpp" />
     <ClCompile Include="UiInputSink.cpp" />
+    <ClCompile Include="UiDraw.cpp" />
+    <ClCompile Include="UiPass.cpp" />
     <ClCompile Include="WaterPass.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -155,6 +157,8 @@
     <ClInclude Include="UiWidgets.h" />
     <ClInclude Include="UiPanel.h" />
     <ClInclude Include="UiInputSink.h" />
+    <ClInclude Include="UiDraw.h" />
+    <ClInclude Include="UiPass.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="PresentPass.h" />
     <ClInclude Include="ScaleMode.h" />
@@ -200,6 +204,12 @@
     </FxCompile>
     <FxCompile Include="Shaders\TerrainPS.hlsl">
       <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\UiPS.hlsl">
+      <ShaderType>Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Shaders\UiVS.hlsl">
+      <ShaderType>Vertex</ShaderType>
     </FxCompile>
     <FxCompile Include="Shaders\TerrainVS.hlsl">
       <ShaderType>Vertex</ShaderType>
