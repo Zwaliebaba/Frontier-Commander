@@ -1276,7 +1276,37 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
+    notes: >
+      Net/Client is the client end, Net/Reassembler puts a fragmented frame back together and
+      Net/ReliableStream carries the orders. Both halves of the stream are one class, because a
+      conversation has a sending and a receiving half at both ends and the acknowledgement one half
+      produces is the one the other consumes; N2's Host holds the other instance.
+
+      TWO THINGS THE DESIGN DID NOT SPELL OUT AND THE CODE HAD TO. Karn's rule: an order that was
+      SENT TWICE measures no round trip, because there is no telling which copy the acknowledgement
+      answers, and taking the last send would measure a trip that never happened - a lossy link
+      otherwise talks itself into an estimate far shorter than the link, resends more, and gets
+      lossier. And the estimate is held in EIGHTHS of a tick: in whole ticks a smoothed average
+      over eight samples cannot move at all for a sample within eight of the estimate, so it would
+      sit on its initial guess for ever. Measured: it walks from the initial 8 down to 5 on a link
+      of 4.
+
+      WHEN A PARTIAL FRAME IS GIVEN UP ON. §5.3 says a frame with a fragment missing is discarded,
+      and the question it leaves is when. Two answers, both here: a third frame arriving while two
+      are part-way through displaces the older, and a frame that COMPLETES discards every partial
+      older than itself - the host encodes its next frame against what this one acknowledged, so
+      the missing piece would complete a frame nothing is a delta from any more. No timer, and
+      nothing to tune.
+
+      A frame is applied when it is full or when its baseline is exactly what this client last
+      applied; anything else is dropped and the unmoved acknowledgement is what tells the host. The
+      Join is the one message with no acknowledgement of its own, so it is the one repeated on a
+      schedule of its own; everything else rides the frame acknowledgement.
+
+      Measured: NetTests 28 passed, 0 failed. Sixty orders over a link losing a twelfth, duplicating
+      a twentieth and reordering a tenth arrive exactly once and in order; twenty orders over the
+      real LoopbackTransport dropping a fifth take 47 datagrams and 12 resends.
 
   - id: R1
     title: Replica world and interpolation, with the convergence tests

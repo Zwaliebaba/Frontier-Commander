@@ -105,7 +105,9 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ClientTests.cpp" />
     <ClCompile Include="RecordsTests.cpp" />
+    <ClCompile Include="ReliableStreamTests.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>

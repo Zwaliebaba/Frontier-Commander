@@ -11,7 +11,13 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="ClientTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="RecordsTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ReliableStreamTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pch.cpp">
