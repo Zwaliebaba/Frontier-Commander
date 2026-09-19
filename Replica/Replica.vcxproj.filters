@@ -17,6 +17,9 @@
     <ClCompile Include="ModelComposer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Picking.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Replica.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -32,6 +35,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ModelComposer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Picking.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Replica.h">

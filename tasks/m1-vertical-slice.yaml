@@ -1576,8 +1576,30 @@ tasks:
       part on a pitched marker is drawn level. Every M1 marker is level - a drive sits on the ground
       and a mount faces out - so nothing is wrong on screen yet, but the content already records
       something the render path throws away. Raising it rather than adding a pitch nobody asked for.
-      STILL TO WRITE: Replica/Picking, Replica/RenderViewBuilder, PickingTests, and the scale's way
-      through GeometryInstance and GeometryVS.hlsl.
+      PICKING IS DONE: a world ray from an authored screen point, the nearest object under it, and
+      the devices inside a screen rectangle, all as pure functions. §5's rules rather than this
+      task's opinion - a click takes the nearest object of any seat because an enemy one is an
+      inspection, a rectangle takes DEVICES OF ONE SEAT because "a rectangle never selects
+      structures and never selects another commander's anything", and a wreck, a feature and a
+      projectile are picked by nothing. Refusing a ray that starts on a panel stays the caller's;
+      the interface already knows where its panels are.
+      REPLICA HAS NO MATRIX TYPE AND MAY NOT HAVE ONE - it includes no platform header ever and
+      CheckProjectFiles refuses one - so the camera arrives as sixteen floats, row major, row vector
+      times matrix, which is what XMStoreFloat4x4 gives and what GeometryVS.hlsl's mul computes. The
+      unprojection is here rather than in the executable BECAUSE that is where it can be tested,
+      which is this task's whole intent.
+      THE FIXTURE CAMERA WAS WRONG IN A WAY THAT LOOKED RIGHT. Its projection and its inverse agreed
+      with each other and described a camera looking the other way; four cases failed and not one of
+      them said which. The z row is written out with the reversed depth of ADR-005 spelled beside
+      it now - near at 1, far at 0.
+      MUTATION TESTING, TWELVE TRIED. Two survived and both were worth the finding. The rectangle
+      case moved both axes at once, so a box that had lost its right-edge test entirely still
+      excluded the device by its bottom edge; each of the four edges has its own case now. And the
+      behind-the-ray early-out turned out NOT to be load-bearing - the distance comes out negative
+      anyway and the caller drops it - so the comment says it is an early-out rather than a guard,
+      which is what it had claimed to be.
+      STILL TO WRITE: Replica/RenderViewBuilder, and the draw scale's way through GeometryInstance
+      and Client/Shaders/GeometryVS.hlsl.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals
