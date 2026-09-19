@@ -143,7 +143,7 @@ tasks:
     blocked_by:
       - m1-vertical-slice/G3
     acceptance:
-      - Sounds.json carries an event per (object kind, event) with sample group, position type, loop type and parameter curves; ImportSounds.py has populated Content\Sounds under the provenance ADR's list; device loss parks silent and rebuilds
+      - Sounds.json carries an event per (object kind, event) with sample group, position type, loop type and parameter curves; ImportSounds.py has populated Content\Sounds under the provenance ADR's list; device loss parks silent and rebuilds; the table carries a row for the destruction and impact events T12 emits, so the explosion its intent names has something to key on
       - The pure parts (the event table, the curve evaluation) are unit-tested; the rest is run by the owner
     status: todo
 
@@ -168,13 +168,14 @@ tasks:
       between two frames (GameDesign.md §8, ruled as OpenQuestions.md Q20), so that the moment
       the game is about is a moment the game draws.
     project: Client
-    depends_on: [T8]
+    depends_on: [T8, T9]
     blocked_by:
       - m1-vertical-slice/G3
     acceptance:
       - "A device or structure destroyed in the commander's sight shatters into its own triangles with the constants SpeciesLook.md §8 measured: five seconds of life, an outward velocity of (triangle centroid - fragment centre) x 3 with 10 added to y, gravity -10, linear and rotational friction, five shared tumblers an explosion, the whole fading together to nothing; triangles under 6 units of perimeter and degenerate ones are dropped before any of it"
       - "The Debris pass of TechnicalDesign.md §6.2 exists - its own vertex shader, the Geometry pass's pixel shader with an alpha, alpha blended, one transform per triangle rather than one per model - and its pool of live triangles has a stated maximum that drops the oldest explosion when full; the task's ADR records the maximum and the eviction order against the largest structure in the catalogue, ruled on a frame of several commanders losing an army at once"
-      - "The particle half lands with the geometry half: ExplosionCore and ExplosionDebris burst from the death point with the counts, sizes and velocities of Location.cpp:1992 carried into this game's units, through the sprite pass T8 builds"
+      - "The particle half is keyed to the impact and not to the death: a weapon with a splash radius throws ExplosionCore and ExplosionDebris from its impact point with the counts, sizes and velocities of Location.cpp:1992 scaled by the splash radius and damage of GameDesign.md §6, through the sprite pass T8 builds, whether or not the impact killed anything - and a death with no blast behind it shatters with no burst"
+      - "A death and a blast each sound, positioned at their own point in 3D through the event table T9 builds, keyed on the same two event kinds the wire already carries rather than on an audio channel of their own"
       - "The wreck is not delayed for the effect - it is simulation state, so it is drawn from the frame the death is reported and the shards fall around it"
       - "Sim is untouched and proves it: the destruction event is an event kind on the wire and not a new record, the replica keeps a removed object's last state until the end of the frame reporting its death so the client can read the model, transform and seat it already holds, the shatter draws from the cosmetic stream in Client, and the state hash, the snapshot format and SimTests are unchanged"
       - "A death the commander cannot see produces nothing: ReplicaTests shows the destruction event for an object outside interest is never delivered, so no rule about render distance ever reaches the fog pass"
