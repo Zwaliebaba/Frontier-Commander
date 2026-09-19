@@ -110,20 +110,28 @@ A pointer outside the scaled rectangle — in the letterbox bars — is over no 
 
 ### The buttons
 
+**THE POINTER HAS TWO MODES, AND *aim* IS THE DEFAULT** (owner, 2026-09-19; §12 ruling 3, rewritten). In *aim* mode the mouse drives the camera with no button held, Windows' pointer is hidden and warped nowhere, and the thing the commander points at is a ring drawn **on the ground at the centre of the screen** (§4's cursor, below). In *point* mode there is an ordinary pointer and the camera does not turn. **Escape moves between them**, and the pause menu of §10 moves off Escape to **F10** so that one key means one thing.
+
+This is Species's own arrangement (`SpeciesLook.md` §7): in Species the mouse is connected to the camera the whole time a location is being played, and Escape opens a window, which is what releases it. Frontier Commander needs the released mode for more than a menu — §5's drag rectangle, §7's panels and §9's minimap all want a pointer — so the mode is named rather than implied by whether a window happens to be open.
+
 | Input | What it does | Where it is decided |
 |---|---|---|
-| Left click on a panel | The widget under it acts and consumes the event | `UiInputSink`, the router's first sink |
-| Left click on the world | Selects the object under the ray; nothing under it clears the selection | §5 |
-| Left drag on the world | Selects every own device inside the rectangle | §5 |
+| **Mouse motion, *aim*** | **Turns the camera**, at `AIM_RADIANS_PER_COUNT` a raw count, with no button held | §12, ruling 3 |
+| **Mouse motion, *point*** | Moves the pointer; the camera does not turn | §12, ruling 3 |
+| **Escape** | **Swaps the mode**: *aim* to *point*, *point* to *aim*; peels an armed order or a modal panel first (§7) | `App` |
+| Left click on a panel (*point*) | The widget under it acts and consumes the event | `UiInputSink`, the router's first sink |
+| Left click on the world | Selects the object under the ray — the screen's centre in *aim*, the pointer in *point*; nothing under it clears the selection | §5 |
+| Left drag on the world (*point* only) | Selects every own device inside the rectangle | §5 |
 | **Right click on the world** | **Gives the selection its default order** (§6) | §6 |
-| Right click on a panel | Nothing; the panel consumes it | `UiInputSink` |
-| **Middle button held** | **Aims the camera**, at `AIM_RADIANS_PER_COUNT` | §12, ruling 3 |
-| Wheel | Camera height; over the minimap, nothing | `CameraController` |
-| W A S D, the arrows, the screen edges | Camera movement, as M0 built them | `CameraController` |
-| Q E, R F, Page Up, Page Down | Camera yaw, pitch and height, as M0 built them | `CameraController` |
+| Right click on a panel (*point*) | Nothing; the panel consumes it | `UiInputSink` |
+| Wheel | Camera height; over the minimap in *point*, nothing | `CameraController` |
+| The arrows, the screen edges (*point* only) | Camera movement, as M0 built them | `CameraController` |
+| Page Up, Page Down | Camera height, as M0 built them | `CameraController` |
 | Shift | Camera speed ×4; with an order, queues it behind the current one | §6 |
 
-**The right button belongs to the game, and the camera gives it up.** `SpeciesCanvas.md` §2 is explicit that the right button never touches a window, and `G1` needs right-click for Move and Attack. M0's `CameraController` currently aims with the right button held; M1 moves aiming to the middle button held, and `G1` makes that change. The alternative, a drag threshold that delays every order by up to a quarter second, was refused: an order that arrives late is the one thing a real-time game cannot afford, and `TechnicalDesign.md` §3 already spends 250 to 330 milliseconds getting a click to visible movement.
+**The right button belongs to the game, and the camera gives it up.** `SpeciesCanvas.md` §2 is explicit that the right button never touches a window, and `G1` needs right-click for Move and Attack. M0's `CameraController` aims with the right button held; M1 takes aiming off the buttons altogether. The alternative considered for M0's problem, a drag threshold that delays every order by up to a quarter second, was refused then and is refused now: an order that arrives late is the one thing a real-time game cannot afford, and `TechnicalDesign.md` §3 already spends 250 to 330 milliseconds getting a click to visible movement.
+
+**The camera flies; it is not held at a height.** `Client/Camera.h` is already a fly camera — yaw and pitch free, height the commander's, `CAMERA_MIN_CLEARANCE` of 10 above the highest ground within one spacing and `CAMERA_MAX_HEIGHT` of 5,000 — and those are Species's own `MIN_GROUND_CLEARANCE` and `MAX_HEIGHT` to the unit (`SpeciesLook.md` §7). The floor is not a height lock: it pushes the camera up out of the terrain and never pulls it down onto it. Nothing about this changes; it is written here because a reader of the old table could take "camera height" for a fixed one.
 
 ### Hotkeys
 
@@ -140,15 +148,18 @@ Bindings live in `Preferences.json` (`TechnicalDesign.md` §9) as a control name
 | H | Hold position stance |
 | Tab | Cycle the selection through devices of the same design |
 | Delete | Demolish the selected own structure, after a confirm click |
-| Escape | Cancel an armed order, then a modal panel, then the pause menu (§10) |
+| Escape | Cancel an armed order, then a modal panel, then swap the pointer between *aim* and *point* (§4) |
+| F10 | The pause menu (§10), from either pointer mode |
 | Enter | Open the chat line (§10) |
 | F1 | Toggle the panel overlay off, for a clean look at the world |
 
-**Escape is peeled, not swallowed.** It cancels the innermost thing that is open, one press at a time, and only opens the pause menu when nothing else is open. The window procedure owns Escape for closing the window (ADR-004), so `G1` moves that to the pause menu's Quit and the procedure keeps only Alt+F4.
+**Escape is peeled, not swallowed.** It cancels the innermost thing that is open, one press at a time: an armed order first, then a modal panel, and **then it swaps the pointer's mode** (§4). It no longer opens the pause menu — **F10** does, from either mode — because a key that both released the mouse and opened a menu would do one of the two by accident every time. The window procedure owns Escape for closing the window (ADR-004), so `G1` moves that to the pause menu's Quit and the procedure keeps only Alt+F4.
 
 ### The cursor
 
-The game draws its own cursor, Windows' being hidden (`SpeciesCanvas.md` §6), as a 32×32 quad from `Icons.dds` at the pointer. M1 has six:
+The game draws its own cursor, Windows' being hidden (`SpeciesCanvas.md` §6). There are two of them, and which one is drawn is the pointer's mode.
+
+**In *point* mode: a 32×32 quad** from `Icons.dds` at the pointer, drawn by the UI pass over everything. M1 has six:
 
 | Cursor | When |
 |---|---|
@@ -159,6 +170,20 @@ The game draws its own cursor, Windows' being hidden (`SpeciesCanvas.md` §6), a
 | Build | Placing a structure, over legal ground |
 | Refuse | Placing over illegal ground, or an order the selection cannot take |
 
+**In *aim* mode: a ring lying on the ground**, at the point where the ray through the centre of the screen meets the landscape — Species's `MouseHighlight` disc (`SpeciesCanvas.md` §6, `SpeciesLook.md` §7.1), which is what the owner asked for on 2026-09-19. It is a world-space quad and not a screen-space one, and **it tilts with the ground**: its up vector is the terrain's interpolated normal, so on a hillside it lies against the hill. The six meanings above still apply — they choose the ring's **tint**, from the same six entries of `Icons.dds`, rather than a different bitmap at the pointer.
+
+The rules it carries over from Species, each with the reason:
+
+| Rule | Value | Why |
+|---|---|---|
+| Orientation | `up` = the landscape's interpolated normal at the hit; `front` = `normalize(up × worldUp)`, falling back to world `+Z` when that cross product is near zero; `right` = `normalize(front × up)` | The fallback is not decoration: Species's own normal map writes exactly `(0, 1, 0)` for flat ground, `XMVector3Normalize` of a zero vector is zero, and the ring therefore collapses to a point on flat ground in Species today. Frontier Commander's landscape is mostly flat |
+| Size | 30 world units × `sqrt(distance to the camera) / 40` | Keeps it roughly the same size on screen without being a billboard: about 15 units across at 400 away, 37 at 2,500 |
+| Over water | the hit's height raised to at least 1 world unit | The terrain mesh continues under the sea, so the ray hits the seabed; Species lifts the disc to float on the surface rather than testing the water plane |
+| Off the landscape | **hidden**, and the last position is not reused | Species falls back to a sphere thousands of units out and samples a normal off the end of its map, which it gets away with because terrain fills its view. M1 draws a horizon |
+| Depth | tested, not written; no culling; biased toward the camera | It is coplanar with the ground it sits on. Species nudges its near plane out 5% for the cursor pass, which is a GL trick with no clean D3D12 equivalent — a slope-scaled depth bias is the one to use |
+| Blend | a blurred copy first (`SRC_ALPHA`, `INV_SRC_COLOR`), then the sharp one additively (`SRC_ALPHA`, `ONE`) in the tint | The dark pass is what makes a bright ring readable over bright sand |
+| Pulse | `size × (1 + \|sin(4t)\|× 0.6)` while placing a structure | Species animates exactly the placement and move-here cursors, and a placement is the one thing in M1 that wants the eye |
+
 ### Tooltips
 
 Hovering a widget for 1,000 milliseconds shows a tooltip: a panel-framed box at the pointer, offset 16 right and 16 down, flipped to the other side when it would leave the frame, holding one or two lines of `bodyText`. The text is revealed at 50 characters a second (`SpeciesCanvas.md` §5), which is the one piece of the overlay's character this document carries. Moving off the widget hides it at once.
@@ -166,6 +191,8 @@ Hovering a widget for 1,000 milliseconds shows a tooltip: a panel-framed box at 
 ---
 
 ## 5. Selection
+
+**Where the ray comes from.** In *point* mode it is cast through the pointer, as §4 has always said. In *aim* mode there is no pointer and it is cast through the **centre of the screen**, which is where the ground ring of §4 is drawn: what the commander sees under the ring is what a click takes. Every rule below is about the ray and not about the mouse, so nothing else in this section changes — except the rectangle, which needs two corners and therefore a pointer, and is *point* mode's alone.
 
 **What can be selected.** Own devices and own structures, one at a time by click, or several devices by rectangle. A rectangle never selects structures and never selects another commander's anything. Clicking a visible enemy device or structure selects it as an *inspection*: the selection panel shows it (§8) and the orders panel is empty, because nothing it can be ordered to do exists.
 
@@ -334,7 +361,7 @@ The elapsed match time as `mm:ss` from the replica's tick, and, when the victory
 
 **The match-end overlay** (560, 380, 800, 320) appears when the seat's victory state leaves `Playing`. It fills the panel frame, shows `VICTORY` in `accent` or `DEFEAT` in `warning` at 32 pixels — the one place text is drawn at a size other than 16, as a doubled 16-pixel glyph, which is exactly 1:1 at twice the scale and stays crisp — the match duration, and a Quit button. The simulation stops advancing once decided (`S11`), so the world behind it is frozen and the camera still moves, which is deliberate: a player wants to look at the field.
 
-**The pause menu** (760, 420, 400, 240) appears on Escape when nothing else is open: Resume and Quit, stacked. It pauses the local host, which M1 may do because the host is a thread in the same process (`G1`); it is not a simulation state and no order carries it, so §11 notes it as the thing that must change before a match has a second human in it.
+**The pause menu** (760, 420, 400, 240) appears on **F10**, from either pointer mode: Resume and Quit, stacked. It was on Escape until 2026-09-19, when Escape became the pointer's mode key (§4); opening it puts the pointer in *point* mode, and Resume puts it back where it was. It pauses the local host, which M1 may do because the host is a thread in the same process (`G1`); it is not a simulation state and no order carries it, so §11 notes it as the thing that must change before a match has a second human in it.
 
 **The chat line** opens on Enter as a single-line field along the bottom of the world view, above the panels at y 760, taking `WM_CHAR` characters up to 128, and emits `Chat` on Enter. Messages appear as up to four lines of `bodyText` above it, each for eight seconds. M1 has one human, so this exists to prove the order kind travels rather than to be used.
 
@@ -343,6 +370,8 @@ The elapsed match time as `mm:ss` from the replica's tick, and, when the victory
 ## 11. What this document needs that does not exist yet
 
 Each of these is a real gap found while writing this document, with the task that owns it. The ones marked **blocks K4** must land before the panels are finished.
+
+**Rows 14 and 15 were added on 2026-09-19** with the owner's ruling on the pointer (§12, ruling 3). A cursor that lies on the ground needs the ground, and nothing in the tree can answer where a ray meets it or which way it faces there; that is row 14, and it is the one piece of §4's new cursor that is not drawing. Row 15 is the ring's texture, and it is owned by `K7` rather than by `C4` on purpose: `C4` is `done`, and the paragraph above this one is the record of what it cost the last time a live gap was hung off a finished task.
 
 **Rows 12 and 13 were added on 2026-09-19**, found while writing `R2`'s `RenderViewBuilder`: its acceptance asked for features and projectiles before anybody checked whether the content behind them existed, and neither does. They are `C7` and `C8` in `tasks/m1-vertical-slice.yaml` as well as here, because this table is where a reader of the design finds a gap and the plan is where `Tools/CheckTaskDag.py` does — rows 3, 4 and 5 were lost for exactly the want of the second half.
 
@@ -363,6 +392,8 @@ Each of these is a real gap found while writing this document, with the task tha
 | 11 | The survival clock's default duration | `GameDesign.md` §2 |
 | 12 | A **feature table** in `Content`. `Sim/Feature.h`'s `design` is documented "Row index in the feature table" and no such table exists — `ContentTree` has none and `GameData` ships no `Features.json` — so a feature reaches a client naming a row of nothing and `RenderViewBuilder` cannot draw one | `m2-skirmish/T13`. **Ruled 2026-09-19**: scenery is M2's, so M1 ships no feature table. The gap stays open rather than being papered over — `Sim/Feature.h`'s `design` still names a table that does not exist and `RenderViewBuilder`'s feature branch cannot be exercised in M1 |
 | 13 | **What a shot looks like.** `TechnicalDesign.md` §5.3 sends projectiles as short-lived events rather than objects, and no row says what one looks like or for how long: `ModuleDesc` carries the model whose `MarkerMuzzle` a shot leaves from, and no projectile model, tracer or lifetime | `C8`. **Ruled 2026-09-19**: a shot is a short-lived instance of a placeholder projectile model travelling muzzle-to-target, drawn by `K1`'s geometry pass — `RenderInstanceKind::Projectile` already exists, so no new pass and no new shader |
+| 14 | **A ray against the landscape, and a normal at a world point.** §4's ground ring needs both: where the ray through the screen's centre meets the terrain, and the slope it lies against. `Core/HeightView.h` carries the samples and nothing else — no ray march, no normal — and the only ray-versus-world code in the tree is `Replica/Picking.h`'s ray-versus-sphere, which never touches the ground. `Replica/OrderInput.cpp`'s `GroundPoint` intersects a **flat plane at y = 0** and says why: a Move names x and z only, so the height is not worth a walk. That reasoning is sound for the order's payload and does not cover *which* x and z the commander pointed at — over ground at height h the plane's answer is off by about `h / tan(pitch)`, which at 200 units and a 26.6° pitch is 400 world units, six cells. One function serves the ring, the order and the footprint ghost | `K7`, which cannot be built without it; `OrderInput` then uses it instead of the plane |
+| 15 | **The ground ring's texture and its blurred twin** (§4, added 2026-09-19). Not a cell of `Icons.dds`: the ring is a world-space quad that wants its own texture at 128×128 or better, and the dark pass wants a pre-blurred copy of it rather than a filter at run time (`SpeciesLook.md` §7.1). Owned by `K7` and not by `C4`, because `C4` is `done` and this table's own heading records what a gap owned by a finished task costs | `K7` |
 
 ---
 
@@ -372,7 +403,8 @@ Each is a decision this document made that a reader may reasonably want to overt
 
 1. **Text is 16 pixels, monospaced, one face.** Against `SpeciesCanvas.md` §7, which asks for 12 and 13. The reason is in §3: at a fixed authored resolution, a size that is not the atlas's cell resamples every glyph, and pillar 3 is what the authored resolution exists to serve. Overturning this means accepting soft text or re-authoring the atlas at 12 and 13.
 2. **One-pixel borders, no drop shadow on a panel.** Against `SpeciesCanvas.md` §3's 2-pixel border with a 1-pixel outer loop, and with `GameDesign.md` §11.4 and `K3`, which both say one pixel. The yellow-twice-with-shadow title treatment is dropped with it; the title's glow was Species's answer to text over a red gradient, and this document's panels are dark.
-3. **The middle button aims the camera; the right button gives orders.** M0 bound aiming to the right button because no orders existed yet. The alternative considered and refused was a drag threshold on the right button, which delays every order.
+3. **The mouse aims the camera with no button at all, and Escape releases it** (owner, 2026-09-19; this replaces the ruling of the same number, which gave aiming to the middle button held). M0 bound aiming to the right button because no orders existed yet; D1 moved it to the middle button so the right button could give orders; the owner asks for Species's own arrangement, where the mouse is connected to the camera the whole time and a key releases it. What was weighed against it is that an aimed mouse has no pointer, and §5's drag rectangle, §7's panels and §9's minimap all need one — hence two modes rather than Species's single one, and hence the pause menu moving to F10 so that Escape means one thing.
+   **The aim itself is taken from the raw relative counts and not from Species's cursor-warping.** Species's free-movement camera has no yaw and no pitch: it moves a virtual cursor, ray-casts it onto the terrain, rotates the camera's forward vector toward that world point by `sin(angle) × sqrt(dt)` a frame, and then warps the operating system's pointer back so it stays glued to it, the screen's edge clamp being what makes the turn continue (`SpeciesLook.md` §7.2). It is a fine scheme and it is the wrong one to port: `Client/Camera.h` stores yaw and pitch rather than a basis, `Client/RawMouse.h` already reads relative counts precisely because `TechnicalDesign.md` §6.5 wanted them "unclamped by the screen's edge and without the pointer acceleration Windows applies", and a per-frame `SetCursorPos` is the thing that behaves worst across two monitors and a high-DPI display. Species's own editor camera is the delta camera, at 0.005 radians a pixel, and that is what M1 takes.
 4. **The world view is the whole frame and the panels sit over it.** The alternative, a world viewport above a HUD strip, wastes no pixels to occlusion but makes the scene 1920×792 and breaks the authored resolution ADR-004 fixed.
 5. **Shift-queued orders are a client-side convenience.** The simulation has no queue and does not gain one for M1. A rejoining client loses its queue.
 6. **The auto-research toggle is read-only in M1.** Changing it mid-match needs an order kind that does not exist.

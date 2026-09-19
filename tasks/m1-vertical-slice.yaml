@@ -61,6 +61,11 @@ tasks:
       and the right button giving orders while the middle button aims the camera, which M0 had
       bound the other way and G1 changes. The owner's merge of the pull request is the acceptance
       of all nine.
+      RULING 3 WAS REWRITTEN ON 2026-09-19 and this note is left as it was written, because the
+      point of the note is what D1 decided. The owner asked for Species's arrangement - the mouse
+      connected to the camera with no button held, Escape releasing it - so aiming comes off the
+      buttons altogether, the pointer has the two modes Design/Interface.md §4 now names, and the
+      pause menu moves to F10. G1b carries it; K7 carries the ground cursor that goes with it.
 
   - id: C1
     title: Content loaders, validation with file-and-line diagnostics, and FrontierHost --validate; the content ADR
@@ -2217,7 +2222,7 @@ tasks:
       handles properly.
 
   - id: G1b
-    title: Selection, orders, the camera's buttons and the match overlays
+    title: Selection, orders, the pointer's two modes and the match overlays
     intent: >
       The operator drives the slice: picking things, giving them orders, and being told the match
       is over. Every order becomes an OrderMessage and nothing in the executable touches Sim,
@@ -2243,7 +2248,10 @@ tasks:
       - Design/Interface.md
     acceptance:
       - "Selection by click and drag rectangle through Replica's picking; orders by right click (Move, or Attack on an enemy), by hotkey (attack-move, stop, stances) and, until K4's panels, by hotkey plus click for structure placement with the footprint ghost; every order becomes an OrderMessage and nothing in the executable touches Sim"
-      - "The middle button aims the camera and the right button gives orders, which is Design/Interface.md §12 ruling 3 and reverses what M0's CameraController bound"
+      - "The pointer has two modes and AIM is the default (Design/Interface.md §4 and §12 ruling 3, rewritten by the owner on 2026-09-19): in aim the mouse turns the camera with no button held, from Client/RawMouse.h's relative counts at 0.005 radians a count, Windows' pointer is hidden, and the ray a click casts goes through the CENTRE of the screen; in point there is an ordinary pointer and the camera does not turn"
+      - "Escape swaps the modes, after peeling an armed order and then a modal panel, and the pause menu moves to F10 - a key that both released the mouse and opened a menu would do one of the two by accident every time"
+      - "The drag rectangle, the panels, the minimap and the six screen cursors are point mode's alone, and the camera's arrow keys and screen edges with them; everything else works in both, because §5 and §6 are written about the RAY and not about the mouse"
+      - "The camera is not held at a height: Client/Camera.h's floor pushes it up out of the terrain and never pulls it down onto it, which is Species's own MIN_GROUND_CLEARANCE of 10 and MAX_HEIGHT of 5000 (SpeciesLook.md §7), and nothing in this task changes it"
       - "The end of the match shows a win or loss overlay; Escape pauses the local host and shows a menu with resume and quit; Alt+F4 quits"
       - "A rejected order shows N4's reason as one line of warning text for two seconds, per Design/Interface.md §6"
       - A click moves a unit in about 250 milliseconds over loopback, measured with the log and recorded in the notes
@@ -2273,7 +2281,21 @@ tasks:
       was Attack-move as well as pitch down. §7 is the document that specifies the game's controls
       and the camera's letters were placeholders from SpeciesLook.md §7 that predate any order
       existing, so the orders win. The camera keeps the arrow keys, the screen's edges, the wheel,
-      PageUp and PageDown, and the middle button's drag, which §12 ruling 3 had already given it.
+      PageUp and PageDown.
+      AND IT LOST THE MIDDLE BUTTON TOO, LATER THE SAME DAY. The owner asked for Species's
+      arrangement - the mouse connected to the camera the whole time, Escape releasing it - so
+      aiming comes off the buttons altogether. What was weighed against it is that an aimed mouse
+      has no pointer, and §5's rectangle, §7's panels and §9's minimap all need one; hence two
+      modes rather than Species's single one.
+      DO NOT PORT SPECIES'S FREE-MOVEMENT CAMERA, which is a trap this task should not walk into.
+      Species has no yaw and no pitch: it moves a virtual cursor, ray-casts it onto the terrain,
+      rotates the camera's forward vector toward that world point, and then WARPS the operating
+      system's pointer back so it stays glued to it, the screen edge's clamp being what makes the
+      turn continue (SpeciesLook.md §7.2). Client/Camera.h stores yaw and pitch, Client/RawMouse.h
+      already reads relative counts because TechnicalDesign.md §6.5 wanted them unclamped by the
+      screen's edge, and a per-frame SetCursorPos is the thing that behaves worst across two
+      monitors and a high-DPI display. Species's own editor camera is the delta camera and is what
+      this task ports, at its 0.005 radians a pixel.
       SHIFT-QUEUED ORDERS ARE NOT DONE AND ARE NOT SILENTLY DROPPED. Design/Interface.md §6 and §12
       ruling 5 describe them as a client-side convenience the simulation knows nothing about; no
       acceptance line of this task asks for them, so they are not here. They belong with K4's orders
@@ -2768,3 +2790,65 @@ tasks:
       as soon as they are in different clusters; using equality as a reachability test refuses
       almost every real site. Reachability over the graph is a planner question and the planner
       answers it over several ticks, which one decision cannot wait for.
+
+  - id: K7
+    title: The ground cursor - a ring that lies on the landscape and tilts with it
+    intent: >
+      The owner asked on 2026-09-19 for Species's cursor: not a quad at the pointer but a ring drawn
+      ON the ground, tilted to the slope, so that pointing at a hillside points at the hillside.
+      Design/Interface.md §4 specifies it and §12 ruling 3 makes it the cursor of aim mode, where
+      there is no pointer and the ring sits at the centre of the screen. It is the one part of that
+      ruling that is drawing rather than input, and it needs something the tree does not have: an
+      answer to where a ray meets the landscape, and to which way the ground faces there
+      (Design/Interface.md §11 row 14).
+    project: Client
+    depends_on: [K1, K6]
+    files:
+      - Core/HeightView.h
+      - Client/GroundRay.h
+      - Client/GroundRay.cpp
+      - Client/CursorPass.h
+      - Client/CursorPass.cpp
+      - Client/Client.vcxproj
+      - Client/Client.vcxproj.filters
+      - Tests/ClientTests/GroundRayTests.cpp
+      - Tests/ClientTests/ClientTests.vcxproj
+      - Tests/ClientTests/ClientTests.vcxproj.filters
+      - Replica/OrderInput.cpp
+      - Tests/ReplicaTests/OrderInputTests.cpp
+      - GameData/Textures/GroundRing.dds
+      - GameData/Textures/GroundRingBlur.dds
+      - Design/Interface.md
+    acceptance:
+      - "A ray against the heightfield: clip the ray to the landscape rectangle, march the sample grid cell by cell, and test the two triangles of each cell in the same split the terrain mesh uses, so that the cursor lands on the triangle the commander can see and not on the other diagonal; the nearest hit, and a clean miss when the ray leaves the landscape"
+      - "A normal at a world point, bilinear over the four surrounding samples from central differences, with the DEGENERATE CASE branched explicitly: flat ground gives a normal of exactly (0,1,0), its cross product with world up is zero, XMVector3Normalize of a zero vector is zero, and the quad collapses to a point - which is a live fault in Species today (SpeciesLook.md §7.1) and would show on most of M1's landscape"
+      - "Off the landscape the cursor is HIDDEN and the last position is not reused; Species falls back to a sphere thousands of units out and gets away with it because terrain fills its view, and M1 draws a horizon"
+      - "Over water the hit's height is raised to at least one world unit, so the ring floats on the sea rather than sinking to the seabed the mesh carries on into"
+      - "A pass that draws it: one four-vertex quad on the basis up = the normal, front = normalize(up x worldUp), right = normalize(front x up), sized 30 world units times sqrt(the camera's distance) / 40; depth tested and not written, no culling, and a slope-scaled depth bias toward the camera because it is coplanar with the ground - Species nudges its near plane out 5% for the cursor pass and that is a GL trick with no clean D3D12 equivalent"
+      - "The blurred pass then the sharp one, at SRC_ALPHA/INV_SRC_COLOR and SRC_ALPHA/ONE, which is what makes a bright ring readable over bright sand; the six meanings of §4 choose the tint rather than a different bitmap"
+      - "The ring's own texture and its pre-blurred twin ship with it, through C4's importer and at C4's provenance rules, because they are not cells of Icons.dds and C4 is done - Design/Interface.md §11 row 15, and its heading is the reason the row does not name C4"
+      - "Replica/OrderInput.cpp's GroundPoint uses the same ray, so that the point a right click orders and the point the ring is drawn at are one point - today it intersects a flat plane at y = 0 and over ground 200 units up at the default 26.6 degree pitch that is 400 world units out, six cells"
+      - "Tests on the CPU with no device: the ray against a synthetic heightfield with a known hill, including a grazing ray, a ray that leaves the landscape, and a ray down a valley whose first CELL hit is not its nearest TRIANGLE hit; the normal at a flat cell, at a slope of known gradient, and at the edge; and the basis on flat ground, which is the degenerate case"
+    verify:
+      - python3 Tools/CheckTaskDag.py
+      - python3 Build/CheckFormat.py --clang-format clang-format-18
+      - python3 Build/CheckProjectFiles.py
+      - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
+      - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
+    parallel_safe: true
+    status: todo
+    notes: >
+      IT DEPENDS ON K6 AND THE REASON IS THE POINT OF K6. A cursor that lies on the client's
+      landscape is only in the right place if the client's landscape is the right shape, and until
+      K6 lands the client's ground is unflattened under every structure - so the ring would float
+      above a levelled base, or sink into it, by exactly the flatten K6 applies.
+      THE RAY IS NOT Replica/Picking.h's. That one is ray-versus-sphere over the render view's
+      objects and never touches the ground; this one is ray-versus-heightfield. They meet in App,
+      which casts one ray and asks both: Picking answers what is under it, GroundRay answers where
+      the ground under it is. Neither grows a dependency on the other, and GroundRay sits in Client
+      beside the terrain mesh whose triangle split it has to match.
+      MATCH THE MESH'S DIAGONAL OR THE CURSOR WILL LIE. Client/TerrainChunk.cpp decides how a cell
+      is split into two triangles, and a ray test that splits it the other way answers with a
+      surface that is not the one on the screen - by up to the cell's relief, which on this
+      landscape is tens of units. The test for it is the third ray case above, and it is written
+      against TerrainChunk's split rather than against a guess.
