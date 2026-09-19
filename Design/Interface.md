@@ -197,7 +197,7 @@ Hovering a widget for 1,000 milliseconds shows a tooltip: a panel-framed box at 
 
 **Every order is acknowledged locally at once** — a one-frame `accent` mark at the target point and a sound — and the unit moves when the replica says it has. There is no client-side prediction (`TechnicalDesign.md` §3).
 
-**A rejection is shown.** The simulation records a reject reason per seat (`S2`: `NotOwned`, `NotVisible`, `CannotAfford`, `AtCap`, `InvalidTarget`, `InvalidPlacement`, `NotResearched`, `NoCommandPost`, `Malformed`). It reaches the client in the frame, is drawn as one line of `warning` text centred at y 720 for two seconds, and replaces the line already there. The wire record that carries it does not exist yet; §11 gives it to `N1`.
+**A rejection is shown.** The simulation records a reject reason per seat (`S2`: `NotOwned`, `NotVisible`, `CannotAfford`, `AtCap`, `InvalidTarget`, `InvalidPlacement`, `NotResearched`, `NoCommandPost`, `Malformed`). It reaches the client in the frame, is drawn as one line of `warning` text centred at y 720 for two seconds, and replaces the line already there. `SeatState` carries it (`N4`, 2026-09-19) as three fixed-size fields — a wrapping `rejectSequence`, the `OrderKind` and the `RejectReason` — rather than the list the simulation keeps, because this section draws one line at a time. **The client redraws on the sequence and not on the value**: two identical refusals are equal field for field, so without it a commander who asks twice for what he cannot afford would watch the line sit there and read it as not having been heard.
 
 ---
 
@@ -350,7 +350,7 @@ Each of these is a real gap found while writing this document, with the task tha
 |---|---|---|
 | 1 | `AuthoredFromClient`, the inverse of `FitAuthored`, with its round-trip test | `K3` |
 | 2 | `Core/RenderView.h` must carry a selection flag, construction progress, a commander colour index rather than a packed colour, the fog grid, and a wreck-or-projectile distinction | `R2` — **blocks K4** |
-| 3 | A wire record carrying the per-seat order rejections `S2` already records, so §6 can show them | `N4` — **blocks K4** |
+| 3 | ~~A wire record carrying the per-seat order rejections `S2` already records, so §6 can show them~~ | **Done 2026-09-19 by `N4`**: `SeatState` carries the seat's last refusal as a sequence, a kind and a reason |
 | 4 | `GameData\Interface.json`, the chrome palette of §3, and its loader row | `C6` — **blocks K4** |
 | 5 | The eight commander colours, as a content table | Ruled in `GameDesign.md` §11 (owner, 2026-09-19); `C6` carries the table, and `R2` reads an index into it |
 | 6 | The eight ranks' names, badges and percentages. `GameDesign.md` §6 says "a small percentage" and nothing more, and `S5` defers to a design that proposes none | `GameDesign.md` §6, then `C2` |

@@ -130,9 +130,39 @@ void Host::Advance(std::uint32_t _tick)
     }
   }
 
+  LatchRejections();
+
   if (m_sim->PublishDue())
   {
     Publish(_tick);
+  }
+}
+
+void Host::LatchRejections() noexcept
+{
+  // EVERY TICK, NOT EVERY PUBLISH. Sim clears a seat's rejections at the start of every stage 1 and
+  // a publish is due on even ticks only, so reading the vector from PublishTo would drop every
+  // refusal an odd tick judged - which, since a commander's clicks do not land on even ticks by
+  // arrangement, is about half of them.
+  const std::span<const Seat> seats = m_sim->Seats();
+  for (HostClient& client : m_clients)
+  {
+    if (client.state == SeatConnection::Open || client.view.seat >= seats.size())
+    {
+      continue;
+    }
+    for (const OrderRejection& rejection : seats[client.view.seat].rejections)
+    {
+      client.view.rejection.sequence = static_cast<std::uint16_t>(client.view.rejection.sequence + 1);
+      if (client.view.rejection.sequence == 0)
+      {
+        // 0 is how a seat that has had no refusal says so, so the counter steps over it on the wrap
+        // rather than claiming a commander's 65,536th refusal never happened.
+        client.view.rejection.sequence = 1;
+      }
+      client.view.rejection.kind = rejection.kind;
+      client.view.rejection.reason = rejection.reason;
+    }
   }
 }
 

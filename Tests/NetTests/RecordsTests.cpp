@@ -150,6 +150,9 @@ Frontier::SeatState ASeat()
   record.deviceCap = 200;
   record.structureCount = 3;
   record.structureCap = 300;
+  record.rejectSequence = 7;
+  record.rejectKind = static_cast<std::uint8_t>(Frontier::OrderKind::AttackMove);
+  record.rejectReason = static_cast<std::uint8_t>(Frontier::RejectReason::CannotAfford);
   return record;
 }
 
@@ -243,8 +246,9 @@ public:
                 L"WreckState");
     AssertBytes(Bytes(AFeature()), {0x31, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x0C, 0x00, 0x0D, 0x00, 0x40, 0x00, 0x00, 0x00, 0x10},
                 L"FeatureState");
-    AssertBytes(Bytes(ASeat()), {0x01, 0x40, 0x9C, 0x00, 0x00, 0xA0, 0x86, 0x01, 0x00, 0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00,
-                                 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0xC8, 0x00, 0x03, 0x00, 0x2C, 0x01},
+    AssertBytes(Bytes(ASeat()),
+                {0x01, 0x40, 0x9C, 0x00, 0x00, 0xA0, 0x86, 0x01, 0x00, 0x15, 0xCD, 0x5B, 0x07, 0x00, 0x00, 0x00, 0x00, 0xFF, 0xFF,
+                 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0C, 0x00, 0xC8, 0x00, 0x03, 0x00, 0x2C, 0x01, 0x07, 0x00, 0x01, 0x03},
                 L"SeatState");
     AssertBytes(Bytes(ADesign()), {0x02, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x03, 0x00,
                                    0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -426,6 +430,37 @@ public:
     Neuron::ByteReader emptyReader(emptyRun);
     Frontier::FogDelta readRun{};
     Assert::IsFalse(Frontier::Read(emptyReader, readRun), L"a run of no cells");
+  }
+
+  /// m1-vertical-slice/N4. A refusal is drawn as a line of text the operator reads, so a byte from
+  /// the wire must not be able to name an order kind or a reason the tree has no case for, and the
+  /// two halves of "has this seat had a refusal at all" must not be able to disagree.
+  TEST_METHOD(ARefusalNoEnumerationHasOrThatDisagreesWithItsSequenceIsRefused)
+  {
+    const auto refused = [](auto _mutate, const wchar_t* _what)
+    {
+      Frontier::SeatState written = ASeat();
+      _mutate(written);
+      const std::vector<std::byte> bytes = Bytes(written);
+      Neuron::ByteReader reader(bytes);
+      Frontier::SeatState read{};
+      Assert::IsFalse(Frontier::Read(reader, read), _what);
+    };
+    refused([](Frontier::SeatState& _record) { _record.rejectKind = Frontier::ORDER_KIND_COUNT; }, L"a twenty-first order kind");
+    refused([](Frontier::SeatState& _record) { _record.rejectReason = Frontier::REJECT_REASON_COUNT; }, L"an eleventh reason");
+    refused([](Frontier::SeatState& _record) { _record.rejectReason = static_cast<std::uint8_t>(Frontier::RejectReason::Accepted); },
+            L"a refusal whose reason is Accepted");
+    refused([](Frontier::SeatState& _record) { _record.rejectSequence = 0; }, L"a reason on a seat that has had none");
+
+    // And the shape a seat that has genuinely had none takes, which must read.
+    Frontier::SeatState none{};
+    none.seat = 1;
+    none.researchItem = Frontier::NO_RESEARCH_ITEM;
+    const std::vector<std::byte> bytes = Bytes(none);
+    Neuron::ByteReader reader(bytes);
+    Frontier::SeatState read{};
+    Assert::IsTrue(Frontier::Read(reader, read), L"no refusal yet is a zero sequence and Accepted");
+    Assert::IsTrue(read == none);
   }
 };
 

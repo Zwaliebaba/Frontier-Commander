@@ -2018,3 +2018,32 @@ tasks:
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
     status: in_progress
+    notes: >
+      THE PROTOCOL VERSION IS BUMPED TO 2 and SEAT_STATE_BYTES from 34 to 38. Records.h's own rule
+      is that any layout change in it bumps the version, and nothing has shipped against 1, but the
+      bump is not skipped for that: a version bumped only when someone might notice is a version
+      nobody can reason about.
+      THE FIELDS ARE FIXED-SIZE AND THERE ARE THREE. Design/Interface.md 6 draws one line and
+      replaces it, so a list would be compared and sent every frame for a display that shows one at
+      a time. The third field is the sequence, and it is the one that earns its place: two identical
+      refusals are equal field for field, so without it the line would not restart and a commander
+      asking twice for what he cannot afford would read it as not having been heard. It counts
+      refusals rather than naming a tick, so the client compares it for inequality and never for
+      order, and it steps over 0 when it wraps because 0 is how a seat that has had none says so.
+      THE READER REFUSES A REASON THAT DISAGREES WITH ITS SEQUENCE, both ways round: Accepted with
+      a sequence, and a real reason without one. A host that sent either has an encoder that is
+      wrong, and the alternative is a client drawing a line of warning text with nothing in it.
+      THE LATCH IS ON ClientView AND NOT BESIDE THE SIMULATION'S SEAT. A refusal is reported to the
+      commander who sent the order: a seat playing under AI has nobody to tell, and a client that
+      joins has no business being handed a refusal from before it arrived. Both fall out of the
+      latch starting empty with the view rather than needing a rule.
+      Verified in the session on Linux: CheckTaskDag, CheckFormat and CheckProjectFiles clean;
+      -fsyntax-only over Host.cpp, Records.cpp and FrameEncoder.cpp; and Records.cpp built against
+      a stub and run, which prints the 38 bytes the test pins - they match byte for byte - confirms
+      the round trip is equal, and confirms all four refusals refuse and that a seat with no refusal
+      still reads. The two host tests need the real Sim and are CI's.
+      THE HOST TEST RUNS THE SCENARIO AT BOTH PARITIES rather than asserting one. Which tick stage 1
+      judges an order on depends on when the reliable stream delivered it, and a test that assumed
+      a parity would pass while proving half of what it is for; it asserts instead that across the
+      two runs both an odd and an even tick were seen, and fails if they were not.
+      CI HAS NOT RUN on this change yet.

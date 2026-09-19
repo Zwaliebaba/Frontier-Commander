@@ -146,10 +146,13 @@ FeatureState WireFeature(std::uint32_t _id, const Feature& _feature)
   return record;
 }
 
-SeatState WireSeat(std::uint8_t _seat, const Seat& _record)
+SeatState WireSeat(std::uint8_t _seat, const Seat& _record, const RejectionLatch& _rejection)
 {
   SeatState record{};
   record.seat = _seat;
+  record.rejectSequence = _rejection.sequence;
+  record.rejectKind = static_cast<std::uint8_t>(_rejection.kind);
+  record.rejectReason = static_cast<std::uint8_t>(_rejection.reason);
   record.powerHundredths = _record.powerHundredths;
   record.stockpileCapHundredths = _record.stockpileCapHundredths;
   record.extractedHundredths = _record.extractedHundredths;
@@ -283,7 +286,7 @@ void EncodeFrame(const Sim& _sim, const InterestSet& _interest, ClientView& _vie
   _outFrame.sequence = _view.nextSequence;
   _outFrame.baselineSequence = _baseline != nullptr ? _baseline->sequence : NO_BASELINE;
   _outFrame.tick = _sim.Tick();
-  _outFrame.seat = WireSeat(_view.seat, seat);
+  _outFrame.seat = WireSeat(_view.seat, seat, _view.rejection);
 
   const FrameRecord empty;
   const FrameRecord& was = _baseline != nullptr ? *_baseline : empty;

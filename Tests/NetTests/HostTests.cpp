@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <map>
+#include <span>
 #include <vector>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
@@ -370,6 +371,102 @@ public:
     match.Pump(10);
     Assert::AreEqual(static_cast<std::uint32_t>(0), match.host.Statistics().ordersApplied);
     Assert::AreEqual(static_cast<std::uint32_t>(1), match.host.Statistics().ordersRefusedShape);
+  }
+
+  /// m1-vertical-slice/N4. The host latches a seat's rejections every tick rather than reading them
+  /// at publish time, and this is why: the simulation clears them at the start of every stage 1 and
+  /// a publish is due on even ticks only, so half of them would be judged and thrown away.
+  TEST_METHOD(ARefusalReachesTheNextFrameWhicheverTickJudgedIt)
+  {
+    bool sawOdd = false;
+    bool sawEven = false;
+    for (const std::uint32_t offset : {std::uint32_t{8}, std::uint32_t{9}})
+    {
+      Match match;
+      DeviceAt(match.sim, 0, 16, 16);
+      Reveal(match.sim, 0, 14, 14, 8);
+      match.client.SendJoin(CONTENT, 1, "owner", 0);
+      match.Pump(offset);
+
+      // A device this seat does not own, which stage 1 refuses and Net does not: the shape is legal.
+      Frontier::Order stop{};
+      stop.tick = match.sim.Tick() + 1;
+      stop.seat = 0;
+      stop.kind = Frontier::OrderKind::Stop;
+      stop.operands = {999999, 0, 0, 0};
+      Assert::IsTrue(match.client.Submit(stop));
+
+      // One tick at a time, so that the tick stage 1 judged it on is observable at all.
+      std::uint32_t judgedOnTick = 0;
+      Frontier::RejectReason judgedReason = Frontier::RejectReason::Accepted;
+      for (std::uint32_t step = 0; step < 12; ++step)
+      {
+        match.sim.Advance();
+        const std::span<const Frontier::Seat> seats = match.sim.Seats();
+        if (judgedOnTick == 0 && !seats[0].rejections.empty())
+        {
+          judgedOnTick = match.sim.Tick();
+          judgedReason = seats[0].rejections.front().reason;
+        }
+        match.network.Host().Poll();
+        match.host.Advance(match.sim.Tick());
+        match.clientEnd.Poll();
+        match.client.Advance(match.sim.Tick(), match.sink);
+      }
+
+      Assert::AreNotEqual(std::uint32_t{0}, judgedOnTick, L"stage 1 refused the order at all");
+      Assert::IsTrue(judgedReason != Frontier::RejectReason::Accepted);
+      if (judgedOnTick % 2 == 1)
+      {
+        sawOdd = true;
+      }
+      else
+      {
+        sawEven = true;
+      }
+
+      Assert::IsFalse(match.sink.frames.empty(), L"the client was sent frames");
+      const Frontier::SeatState& seat = match.sink.frames.back().seat;
+      Assert::AreEqual(std::uint16_t{1}, seat.rejectSequence, L"the seat's first and only refusal");
+      Assert::AreEqual(static_cast<std::uint8_t>(Frontier::OrderKind::Stop), seat.rejectKind);
+      Assert::AreEqual(static_cast<std::uint8_t>(judgedReason), seat.rejectReason, L"the reason stage 1 gave");
+    }
+
+    // The point of running it twice. If both offsets landed on the same parity the assertions above
+    // would still pass while proving only half of what this test is for.
+    Assert::IsTrue(sawOdd, L"one of the two runs was judged on an odd tick");
+    Assert::IsTrue(sawEven, L"and one on an even tick");
+  }
+
+  /// The reason the record carries a sequence and not just a kind and a reason: two identical
+  /// refusals are equal by value, and the operator has to see the second one.
+  TEST_METHOD(TwoIdenticalRefusalsAreTwoSequences)
+  {
+    Match match;
+    DeviceAt(match.sim, 0, 16, 16);
+    Reveal(match.sim, 0, 14, 14, 8);
+    match.client.SendJoin(CONTENT, 1, "owner", 0);
+    match.Pump(8);
+
+    const auto askForWhatHeCannotHave = [&match]()
+    {
+      Frontier::Order stop{};
+      stop.tick = match.sim.Tick() + 1;
+      stop.seat = 0;
+      stop.kind = Frontier::OrderKind::Stop;
+      stop.operands = {999999, 0, 0, 0};
+      Assert::IsTrue(match.client.Submit(stop));
+      match.Pump(10);
+      Assert::IsFalse(match.sink.frames.empty());
+      return match.sink.frames.back().seat;
+    };
+
+    const Frontier::SeatState first = askForWhatHeCannotHave();
+    const Frontier::SeatState second = askForWhatHeCannotHave();
+
+    Assert::AreEqual(first.rejectKind, second.rejectKind, L"the same order");
+    Assert::AreEqual(first.rejectReason, second.rejectReason, L"refused for the same reason");
+    Assert::AreNotEqual(first.rejectSequence, second.rejectSequence, L"and it is a second refusal, not the first again");
   }
 
   TEST_METHOD(TheBytesAFrameTakesAtAHundredAndAtSixHundredObjects)

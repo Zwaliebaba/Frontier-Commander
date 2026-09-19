@@ -100,6 +100,7 @@ private:
   void Receive(std::uint32_t _tick);
   void OnJoin(Neuron::ConnectionId _connection, const Join& _join, std::uint32_t _tick);
   void OnOrders(HostClient& _client, const Orders& _orders, std::uint32_t _tick);
+  void LatchRejections() noexcept;
   void Publish(std::uint32_t _tick);
   void PublishTo(HostClient& _client, std::uint32_t _tick);
   void SendPayload(Neuron::ConnectionId _connection, const Neuron::ByteWriter& _payload);
