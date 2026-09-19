@@ -57,6 +57,29 @@ converted it. Anything added later is added to this table in the same commit.
 | `GameData/Textures/SpectrumFont.dds` | `GameData/Textures/SpeccyFontNormal.bmp` | `Tools/ImportTextures.py` (C4) | The Spectrum font atlas, 256×224, black keyed to alpha zero |
 | `GameData/Textures/Icons.dds` | `GameData/Icons/Banner{Goto,Follow,Absorb,Deploy,Unload,None}.bmp`, `Gesture{Armour,Officer}.bmp` | `Tools/ImportTextures.py` (C4) | Eight 64×64 order icons in a 4×2 atlas, unkeyed: the dark-blue field is part of the icon |
 
+**The recipe for the two atlases, because the tool that made them has since been rewritten.** They
+were converted on 2026-09-18 by `m1-vertical-slice/C4`'s revision of `Tools/ImportTextures.py`,
+which took a key and an atlas width on the command line and wrote the legacy masked DDS header.
+The tool on `main` since 2026-09-19 is manifest-driven, writes the DX10 header form, and states
+that composing an icon atlas belongs to this game's own art rather than to a straight conversion —
+so it converts `SpeccyFontNormal.bmp` under its `luminance` rule, which for a two-colour font is
+the same cutout C4's black key gave, and it does not compose `Icons.dds` at all. To rebuild them as
+they stand:
+
+    # the font: one file, black to alpha zero
+    python3 Tools/ImportTextures.py Species/GameData/Textures/SpeccyFontNormal.bmp \
+        GameData/Textures/SpectrumFont.dds --key 000000          # C4's revision
+
+    # the icons: eight 64x64 BMPs into a 4x2 atlas, in this cell order, unkeyed
+    python3 Tools/ImportTextures.py --atlas 4 GameData/Textures/Icons.dds \
+        Icons/BannerGoto.bmp Icons/BannerFollow.bmp Icons/BannerAbsorb.bmp Icons/BannerDeploy.bmp \
+        Icons/BannerUnload.bmp Icons/BannerNone.bmp Icons/GestureArmour.bmp Icons/GestureOfficer.bmp
+
+That order is the atlas's cell order and it was verified against the committed file on 2026-09-19:
+the command reproduces `Icons.dds` byte for byte. A rebuild under the current tool would carry the
+DX10 header instead, which `Core/TextureFile.cpp` reads as readily — the pixels are the same.
+
+
 **The light pairs, the fog ranges, the palettes' numbers, the camera limits and the particle types**
 are also Species's, read out of its level files and its source into `SpeciesLook.md` and
 `SpeciesTerrain.md` and re-authored as rows in `GameData/Biomes.json` and as constants. They are

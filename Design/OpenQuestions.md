@@ -1,6 +1,6 @@
 # Open questions — answered
 
-**Status: one open — Q24, on what a weapon shoots at when it has a choice. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q23 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: one open — Q24, on what a weapon shoots at when it has a choice. Answered: the twenty-two of 2026-09-17, the six the external review raised included, Q17 through Q23 of 2026-09-18, and Q25 of 2026-09-19.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -53,6 +53,7 @@ Three answers went against the recommendation. Replication in the vertical slice
 | Q21 | The built-in light pair is the Garden's, whose sun lies on the horizon and reaches no surface facing up; the owner's frame of 2026-09-18 had a median value of 39/255. Which pair is the built-in? | **Species' Sandbox pair**, asked for after reading how Species itself does it: two elevated near-white lights from opposite azimuths, the pair Species put on its own level 1. The Garden stays as a biome | Yes | `Client/Lighting.h`; `GameData/Biomes.json`; `SpeciesLook.md` §2 and §11; `m0-foundation/T22` rules on the fog against a frame drawn under it |
 | Q22 | `GameDesign.md` §8 gives ranks a count and the word "small" and no numbers, and `m1-vertical-slice/S5` asks for "the per-rank accuracy and damage percentages the design proposes". What does a rank add? | **The modest curve**: thresholds doubling to 160 weighted kills, accuracy and damage reaching +24%. Re-open it in M2 against a measured match | Yes | `GameDesign.md` §8; `Sim/Design.h` |
 | Q23 | `GameDesign.md` §2 says slope costs movement and §6 says a drive sets speed as a function of terrain, and the drive table has no terrain column. What does a slope cost a drive? | **Half speed at the drive's own limit**: full on the flat, falling linearly to half at the steepest slope that drive can climb, impassable beyond, each curve scaled to that drive's own maximum | Yes | `GameDesign.md` §6; `Sim/Movement.h` |
+| Q25 | Nothing in the design made a destroyed device or structure explode. What comes apart when one dies, and how finely? | **Triangle-level, as Species does it** (owner, 2026-09-19): the dead object's own model shatters into individually tumbling triangles that fall and fade over five seconds, with the particle burst beside it and the wreck underneath | Yes | `GameDesign.md` §8, §11, §12; `SpeciesLook.md` §8; `TechnicalDesign.md` §5.3 and §6.2; `SpeciesLineage.md` §5; `m2-skirmish/T12` builds it |
 
 The question as it was put, kept for the reasoning it weighed.
 
@@ -233,6 +234,30 @@ The shape is the argument. The thresholds double, so a rank costs about as much 
 
 **Recommendation: option 2, in M2.** It is what the design's own phrase names, it costs one axis and one operand in an order record that has room, and it is the only one of the three a commander can see and change. Option 1 is what M1 ships either way, so taking option 2 costs nothing now; option 3 is clever and unteachable.
 
+
+### Q25 — When a device or structure dies, what comes apart, and how finely? (raised 2026-09-19, answered 2026-09-19)
+
+The design had no destruction effect at all. `ImplementationPlan.md` §7 cut it to "an explosion is a wreck appearing" for M1, `SpeciesLook.md` §8 carried the two explosion *particle* types and nothing about geometry, and `SpeciesLineage.md` §5 filed `Explosion` under "read" — so a structure at zero hit points was replaced by a wreck between one frame and the next, in every milestone. The owner ruled on 2026-09-19 that a destroyed thing must explode, which raised the only question that had to be answered before it could be planned: at what granularity.
+
+**Why it blocks.** Nothing built — M1 destroys things and draws wrecks and is unaffected either way. It blocks the *shape* of `m2-skirmish/T12` and one row of `TechnicalDesign.md` §6.2, because the granularity decides whether the Debris pass instances per triangle or per fragment, and those are different vertex buffers and instance counts differing by a factor of thirty to four hundred.
+
+**The options.**
+
+| | A: triangle-level, as Species | B: fragment-level chunks | C: chunks plus a spray |
+|---|---|---|---|
+| What comes apart | Every triangle of every fragment | The named fragments — turret, barrel, chassis, drive | The fragments as chunks, plus a fraction of their triangles |
+| Instances, a heavy of 300 triangles | ~300 | ~10 | ~10, plus the fraction |
+| Instances, a structure of 2,400 | ~2,400 | ~6 | ~6, plus the fraction |
+| Reads as | The machine dissolving | The machine breaking | Both |
+| What it asks of content | Nothing; any model shatters | Every model needs a meaningfully authored fragment tree, and one authored as a single fragment does not break at all | As B |
+
+**Answered: option A, triangle-level as Species does it (owner, 2026-09-19).** Recommendation: A, and the answer followed it. B is cheaper and the fragment tree already exists in the model format, but it puts a content requirement on every model the owner has yet to make, and A is the look this project is pinned to (`GameDesign.md` §11 point 1). The cost A was feared for is not real at this scale: the worst case is the largest structure in the catalogue at 2,400 triangles against a frame already budgeted for a million, and `SpeciesLook.md` §8's own rule discards every triangle under 6 units of perimeter before one of them draws. What the count does bound is the pool: §6.2's Debris pass holds a fixed maximum of live triangles and drops the oldest explosion when it is full, which is the one thing Species does not do — its explosion list is unbounded, and Species never had four commanders losing an army at once.
+
+**What the answer does not decide, because the existing rules already do.** The shatter is cosmetic, so it lives in `Client`, draws from the cosmetic random stream (`TechnicalDesign.md` §4.2), stays out of the state hash, and differs between clients — which is why no two players see the same shards and why that is not a defect. It is fog-correct without a rule of its own: a client is told of a death only when its commander could see it (§5.2), so the event never arrives and no debris is spawned. And the wreck is not delayed for it — the wreck is simulation state the replica reports, so it appears at once and the shards fall around it.
+
+**Numbering.** This question was raised on `main` as Q20 while Q20 was already taken by the content-tables
+question above, which was answered a day earlier and is cited from `Sim/Sim.h`, `Sim/Snapshot.h` and ADR-009.
+It became Q25 when the two branches met on 2026-09-19, and every document that records it names Q25.
 
 ## Adding a question
 
