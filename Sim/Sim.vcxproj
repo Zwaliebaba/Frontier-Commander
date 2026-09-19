@@ -109,6 +109,9 @@
     <ClCompile Include="Movement.cpp" />
     <ClCompile Include="Steering.cpp" />
     <ClCompile Include="Targeting.cpp" />
+    <ClCompile Include="AiBlackboard.cpp" />
+    <ClCompile Include="AiDesigner.cpp" />
+    <ClCompile Include="AiSeat.cpp" />
     <ClCompile Include="Victory.cpp" />
     <ClCompile Include="Weapons.cpp" />
     <ClCompile Include="Projectiles.cpp" />
@@ -158,6 +161,9 @@
     <ClInclude Include="Movement.h" />
     <ClInclude Include="Steering.h" />
     <ClInclude Include="Targeting.h" />
+    <ClInclude Include="AiBlackboard.h" />
+    <ClInclude Include="AiDesigner.h" />
+    <ClInclude Include="AiSeat.h" />
     <ClInclude Include="Victory.h" />
     <ClInclude Include="Weapons.h" />
     <ClInclude Include="Damage.h" />

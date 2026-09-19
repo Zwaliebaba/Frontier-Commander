@@ -44,6 +44,15 @@
     <ClCompile Include="Targeting.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AiBlackboard.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AiDesigner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AiSeat.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Victory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -179,6 +188,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Targeting.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AiBlackboard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AiDesigner.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AiSeat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Victory.h">

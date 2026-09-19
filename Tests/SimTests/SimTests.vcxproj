@@ -118,6 +118,7 @@
     <ClCompile Include="MovementTests.cpp" />
     <ClCompile Include="DamageTests.cpp" />
     <ClCompile Include="CombatTests.cpp" />
+    <ClCompile Include="AiTests.cpp" />
     <ClCompile Include="VictoryTests.cpp" />
     <ClCompile Include="VisibilityTests.cpp" />
     <ClCompile Include="PathingTests.cpp" />

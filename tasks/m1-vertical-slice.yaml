@@ -1129,10 +1129,56 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
+      Sim/AiBlackboard observes, Sim/AiDesigner scores and Sim/AiSeat decides, at stage 11. The
+      blackboard is entirely DERIVED and rebuilt every decision, so the AI adds nothing to the state
+      hash and nothing to the snapshot - a blackboard that were state would be a second copy of the
+      world two hosts could disagree about. No wall time, no float, no thread; two Sims from one
+      seed agree hash for hash over 3,000 ticks of a real match, which is the test that would catch
+      any of the three.
+
+      THREE ORDERINGS IN THE BEHAVIOUR LIST COST A RUN EACH TO FIND, and they are the substance of
+      this task rather than the code around them. (1) A GENERATOR GOES UP BEFORE THE SECOND
+      EXTRACTOR: GameDesign.md §4 says an extractor earns nothing until a generator reaches it, and
+      the first version claimed four deposits first - four extractors' worth of power spent on an
+      income of nothing, and a match where neither commander ever extracted a single unit. (2)
+      NOTHING NEW IS PLACED while there are more unfinished sites than builders to work them, with a
+      slack of one: without the rule one truck is spread over six plans and finishes none, and
+      without the slack a site no builder can reach - a deposit on a summit - stops the commander
+      building anything else for the rest of the match. (3) THE ATTACK BEHAVIOUR IS EVALUATED EVERY
+      DECISION rather than taking its turn: idle fighters are not a resource the base is competing
+      for, and behind the queue it never ran at all, because a factory with something to produce
+      answers first every decision for the whole match.
+
+      TWO THINGS THE SIMULATION MADE THE AI LEARN. A deposit it has never SEEN cannot be built on -
+      CheckPlacement refuses an unexplored footprint - so a builder walks to it first, which is a
+      scouting behaviour the acceptance did not ask for and the placement rule requires. And a group
+      is sent FOUR CELLS SHORT of what it attacks: the cell a commander starts on is where his
+      command post stands, a structure's cells are impassable, and a route into the middle of a base
+      comes back unreachable, so an army ordered at one stands where it was built. A group and not
+      the whole army, too: the planner's budget is 2,000 nodes a tick shared across every request,
+      so thirty cross-map searches at once each get seventy nodes and none of them finishes.
+
+      NOTHING IN THE TREE OWNS BASE-LEVEL PLACEMENT YET. GameDesign.md §2's "nothing but a builder
+      and a command post" is placed by the TEST here, because m1-vertical-slice/G1 is the task that
+      starts a match. The test also has to put the builder on ground its drive can stand on: a
+      device dropped on a cliff has no component in the cluster graph, every route it is given comes
+      back unreachable, and it stands there for the whole match - which looked like an AI fault for
+      three runs and was a placement one.
+
+      MEASURED, on GameData/Landscapes/Slice.json from seed 20260919 with the real GameData tables:
+      first contact on tick 6,003; at 12,000 ticks both commanders hold a served extractor, a
+      generator, a factory, a lab and devices they built themselves, and both have completed
+      research. The 36,000-tick run reaches a decided victory state with 20,318 and 40,533 power
+      extracted. DURATION, as the acceptance asks: 14 s for the 12,000-tick run and 54 s for the
+      36,000-tick one, on the Linux harness at -O0; CI's MSVC Debug build is the number to watch,
+      and the suite's step was 2m45s before this task.
+
       The behaviour list and the blackboard's fields are documented in the header comment of
       AiSeat.h, not in a prose file: project directories are flat (AGENTS.md §2).
+
+      Measured: SimTests 148 passed, 0 failed, of which AiTests is 5.
 
   - id: N1
     title: Net wire records and encodings

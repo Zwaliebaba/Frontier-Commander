@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "Sim.h"
+#include "AiSeat.h"
 #include "Construction.h"
 #include "Damage.h"
 #include "Movement.h"
@@ -557,7 +558,10 @@ void Sim::ResolveDamage()
   Frontier::ResolveDamage(*this);
 }
 
-void Sim::AdvanceAiSeats() {}
+void Sim::AdvanceAiSeats()
+{
+  Frontier::AdvanceAiSeats(*this);
+}
 
 // ── Stage 12 ────────────────────────────────────────────────────────────────────────────────
 
