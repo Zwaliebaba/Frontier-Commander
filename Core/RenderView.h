@@ -3,6 +3,8 @@
 #include "BinaryAngle.h"
 #include "FixedPoint.h"
 
+#include <array>
+
 #include <cstdint>
 #include <numbers>
 #include <vector>
@@ -115,6 +117,24 @@ struct FogView
   std::vector<std::uint32_t> changedRows; ///< Ascending, without repeats; empty when nothing moved
   std::uint32_t cellsPerSide;
 };
+
+/// The three axes an instance is drawn at: its row's authored size, with the vertical cut back by
+/// how far a construction site has got.
+///
+/// A SITE RISES OUT OF THE GROUND, which is a choice and not a ruling. The design says a structure
+/// under construction "is a thing on the landscape" (GameDesign.md §3) and that the selection panel
+/// shows it a barBuild bar (Interface.md §8); neither says what it looks like in the world, and
+/// m1-vertical-slice/R2's acceptance says only "a construction site scales". Rising is the reading
+/// taken: it is what "scales" most naturally means for a building going up, and a site squashed
+/// flat on every axis would read as a small finished building rather than as an unfinished one.
+///
+/// HERE RATHER THAN IN THE VERTEX SHADER, so that it is a unit test. It is two multiplies either
+/// way; the difference is that a shader cannot be run on a machine with no GPU and this can.
+[[nodiscard]] constexpr std::array<float, 3> InstanceScale(const RenderInstance& _instance) noexcept
+{
+  const float built = _instance.buildPercent >= 100 ? 1.0f : static_cast<float>(_instance.buildPercent) / 100.0f;
+  return {_instance.scale, _instance.scale * built, _instance.scale};
+}
 
 /// What the executable builds each frame from the replica and Client draws (ADR-001): the
 /// instances, the terrain chunks whose heights changed since the last frame, by chunk index, and

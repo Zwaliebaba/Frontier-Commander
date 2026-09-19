@@ -1649,8 +1649,28 @@ tasks:
       cell to show at all. The other two survived because the code is genuinely redundant: the clamp
       to the landscape's last cell and the off-landscape refusal both fall out of the loop bound, so
       the comment says which guards are load-bearing and which are there to keep the rule visible.
-      STILL TO WRITE: the draw scale's way through GeometryInstance and
-      Client/Shaders/GeometryVS.hlsl, and a full-stack case for the walk.
+      THE DRAW SCALE REACHES THE SHADER, which was the gap this task's file list did not name:
+      GeometryVS.hlsl's instance attributes were origin, heading and teamColor, and every content
+      row carries a modelScaleHundredths. GeometryInstance gains three floats and the vertex shader
+      multiplies before it turns - the scale is in the model's own axes, so a row drawn at another
+      size has to be scaled where its vertices are and not after they are placed in the world.
+      A SITE RISES, AND THAT IS A READING RATHER THAN A RULING. The design says a structure under
+      construction "is a thing on the landscape" and that the panel shows it a barBuild bar; neither
+      says what it looks like in the world, and this task's acceptance says only "a construction
+      site scales". Rising is what "scales" most naturally means for a building going up, and
+      scaling all three axes would read as a small finished building rather than an unfinished one.
+      The combination is Core/RenderView.h's InstanceScale rather than two lines of HLSL, BECAUSE
+      THAT MAKES IT A UNIT TEST: it is two multiplies either way, and a shader cannot be run on a
+      machine with no GPU.
+      THE NORMAL IS NOT SCALED and that is stated rather than hidden. For a non-uniform scale the
+      correct transform is the inverse transpose, which would buy correct lighting on a building for
+      the seconds it is going up and cost an inverse transpose per instance on every instance in the
+      frame for the whole match. A construction site is lit a little flat; nothing else is wrong.
+      THE INSTANCE BUFFER'S OFFSETS ARE STATIC_ASSERTED beside the struct now. The input layout is
+      written from them and nothing checks the two agree: a mismatched element reads whatever lies
+      at that byte and DRAWS it, so the failure is a model at the wrong size rather than a
+      diagnostic. A member inserted above `scale` fails the build instead of the frame.
+      STILL TO WRITE: a full-stack case for the walk, beside ConvergenceTests.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals

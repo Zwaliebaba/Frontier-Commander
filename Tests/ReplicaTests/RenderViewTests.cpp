@@ -3,6 +3,7 @@
 #include "ModelComposer.h"
 #include "RenderViewBuilder.h"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <numbers>
@@ -439,6 +440,53 @@ public:
     Frontier::ChunksOfFootprint(4, 4, 2, 2, 128, 0, chunks);
     Frontier::ChunksOfFootprint(4, 4, 2, 2, 0, 32, chunks);
     Assert::IsTrue(chunks.empty(), L"rather than dividing by zero or naming chunk 0 of no landscape");
+  }
+
+  /// A SITE RISES OUT OF THE GROUND. The design does not rule the world visual - it says only that
+  /// a structure under construction "is a thing on the landscape" and that the panel shows it a
+  /// barBuild bar - so R2 reads "a construction site scales" as the vertical, and this is where
+  /// that reading is written down. Scaling all three axes would read as a small finished building
+  /// rather than as an unfinished one.
+  TEST_METHOD(AConstructionSiteRisesAndAFinishedOneStandsAtItsRowsSize)
+  {
+    Neuron::RenderInstance instance{};
+    instance.scale = 1.0f;
+    instance.buildPercent = 100;
+    const std::array<float, 3> finished = Neuron::InstanceScale(instance);
+    AssertNear(1.0f, finished[0], L"");
+    AssertNear(1.0f, finished[1], L"a finished structure is its own height");
+    AssertNear(1.0f, finished[2], L"");
+
+    instance.buildPercent = 40;
+    const std::array<float, 3> going = Neuron::InstanceScale(instance);
+    AssertNear(1.0f, going[0], L"the footprint does not shrink, or it would leave its own ground");
+    AssertNear(0.4f, going[1], L"and it is four tenths of the way up");
+    AssertNear(1.0f, going[2], L"");
+
+    instance.buildPercent = 0;
+    AssertNear(0.0f, Neuron::InstanceScale(instance)[1], L"a site just begun is flat");
+  }
+
+  /// The row's own draw factor multiplies into it, so a model shipped at half size is half as tall
+  /// when finished and a quarter as tall at half built.
+  TEST_METHOD(TheRowsDrawScaleAndTheBuildProgressBothReachTheInstance)
+  {
+    Neuron::RenderInstance instance{};
+    instance.scale = 0.5f;
+    instance.buildPercent = 50;
+    const std::array<float, 3> scale = Neuron::InstanceScale(instance);
+    AssertNear(0.5f, scale[0], L"");
+    AssertNear(0.25f, scale[1], L"half a row at half built");
+    AssertNear(0.5f, scale[2], L"");
+  }
+
+  /// A device is never under construction, and the default says so without anybody setting it.
+  TEST_METHOD(ADefaultInstanceIsDrawnAtItsAuthoredSize)
+  {
+    const std::array<float, 3> scale = Neuron::InstanceScale(Neuron::RenderInstance{});
+    AssertNear(1.0f, scale[0], L"");
+    AssertNear(1.0f, scale[1], L"");
+    AssertNear(1.0f, scale[2], L"");
   }
 
   /// A wreck and a projectile are one model each and carry their kind, which is what picking and

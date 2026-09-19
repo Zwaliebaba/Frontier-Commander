@@ -8,6 +8,8 @@
 
 #include "ModelDesc.h"
 
+#include <array>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -70,8 +72,19 @@ struct GeometryInstance
   float z;
   float headingCos;
   float headingSin;
-  std::uint32_t teamColor; ///< RGBA8, R in the low byte
+  std::uint32_t teamColor;                      ///< RGBA8, R in the low byte
+  std::array<float, 3> scale{1.0f, 1.0f, 1.0f}; ///< Core/RenderView.h's InstanceScale
 };
+
+// THE INPUT LAYOUT IS WRITTEN FROM THESE OFFSETS and there is no compiler to tell it apart from a
+// wrong one: a mismatched element reads whatever is at that byte and draws it, so the failure is a
+// model at the wrong size or in the wrong place rather than a diagnostic. Pinned here, beside the
+// struct, so that a member inserted above `scale` fails the build instead of the frame.
+static_assert(offsetof(GeometryInstance, x) == 0);
+static_assert(offsetof(GeometryInstance, headingCos) == 12);
+static_assert(offsetof(GeometryInstance, teamColor) == 20);
+static_assert(offsetof(GeometryInstance, scale) == 24);
+static_assert(sizeof(GeometryInstance) == 36);
 
 /// What BuildModelMesh makes of a ModelDesc: the split vertices, indices into them, and the two
 /// numbers that say whether the model is what it claims to be.
