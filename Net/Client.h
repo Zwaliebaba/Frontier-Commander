@@ -153,6 +153,12 @@ private:
 
   Join m_join{}; ///< Kept so that a Join can be sent again while no answer has come back
   std::uint32_t m_lastJoinTick = 0;
+  /// Set when this client has applied a frame the host may not know about, or has SKIPPED one -
+  /// a skip means the host is encoding against a baseline this client has already moved past, and
+  /// the only way out of that is to tell it again. Cleared by the datagram that carries the
+  /// acknowledgement. Without the skip half, a lost acknowledgement leaves the two encoding and
+  /// discarding past each other until the next heartbeat.
+  bool m_acknowledgementDue = false;
 
   Counters m_counters;
   Neuron::FramingCounters m_framing;

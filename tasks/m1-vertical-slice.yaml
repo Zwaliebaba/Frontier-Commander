@@ -1242,7 +1242,41 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
+    notes: >
+      Net/Host is the host end, Net/Interest the filter it publishes through, Net/FrameEncoder what
+      turns a simulation and an interest set into one client's frame, Net/ClientHistory the 32 it
+      keeps, and Net/Fragmenter what splits a frame too large for a datagram. ADR-012 records the
+      model and every number, measured.
+
+      THE INTEREST SET IS THE SECURITY BOUNDARY AND THE ENCODER IS SHAPED AROUND IT. The encoder
+      reads the simulation only for ids the interest set names, so the only way a record of an
+      unseen object could reach a frame is through a set that named it - which is what makes the
+      guarantee testable rather than reviewable. InterestTests plays a scripted match with two
+      commanders who never see each other and asserts that neither was told of a seat, a device, a
+      structure or a seat state but his own, and that the fog each was sent equals HIS OWN grid cell
+      for cell rather than the alliance's union.
+
+      ONE THING §5.3 DOES NOT HAVE AND THE PROTOCOL NEEDED. The acknowledgement rides every datagram
+      the client sends, and a frame the client DISCARDS now forces another one. Without it: the
+      client applies frame N, its acknowledgement is lost, the host goes on encoding against N-1,
+      the client goes on discarding what arrives because the baseline is not what it holds, and the
+      two talk past each other until the next heartbeat twenty ticks later. A discarded frame is
+      evidence the host's idea of this client is stale, so it is exactly what should make the client
+      say so again. Found by a test that dropped a third of the link, not by reading.
+
+      MEASURED, and it is what ADR-012 quotes: a full frame at 100 visible objects is 3,653 bytes
+      and a delta with half of them moving 637 (6 KB/s at 10 Hz); at 600 objects, 19,153 and 3,387
+      (33 KB/s). A fifth under TechnicalDesign.md §5.7's arithmetic, because a device that did not
+      move sends nothing and a changed one sends only what its mask names. The 32-frame history is
+      therefore 600 KB a client at 600 objects, which is the figure to reopen the history length
+      against.
+
+      MatchSettings gains rejoinGraceTicks, which the acceptance asks for and the lobby had no field
+      for; GameDesign.md §10 asks for a grace period and gives no number, so the default is two
+      minutes. Snapshot version 15 carries it.
+
+      Measured: NetTests 49 passed, 0 failed; SimTests still 143.
 
   - id: N3
     title: Net client endpoint - frames in, acknowledgements, the reliable order stream

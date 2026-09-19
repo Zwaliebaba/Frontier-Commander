@@ -245,6 +245,15 @@ Records are the plain aggregates of `Net`: `DeviceState` (id, design, seat, posi
 
 Datagrams carry frames unreliably. Orders (§5.5) are the one reliable stream.
 
+**What `m1-vertical-slice/N2` had to settle, recorded in [`ADR-012`](ADR/ADR-012-replication-protocol.md) with the measurements.** The
+history is **32 frames** a client, 3.2 seconds: a client that has acknowledged nothing for longer has lost thirty consecutive datagrams,
+which is a link that is down. A fragment carries **1,189 bytes** — the datagram payload less the Fragment header — and a frame needs at
+most 64 of them. And the acknowledgement rides every datagram the client sends, with one addition §5.3 does not have: **a frame the client
+DISCARDS forces another acknowledgement**, because a discarded frame is evidence the host is encoding against a baseline the client has
+already moved past, and without it a single lost acknowledgement leaves the two encoding and discarding past each other until the next
+heartbeat. Measured on 2026-09-19: a full frame at 600 visible objects is 19,153 bytes and a delta with half of them moving is 3,387 —
+a fifth under §5.7's arithmetic below, because a device that did not move sends nothing at all.
+
 ### 5.4 Joining, leaving, resuming
 
 - **Join**: protocol version, content hash, player name, join token. The host answers with a seat, the settings, the landscape definition, the current tick and a full frame, or a refusal with a reason (version, content hash, no seat).

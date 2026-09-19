@@ -54,6 +54,9 @@ inline constexpr std::array<std::uint32_t, 3> DEVICE_CAPS = {100, 200, 300};
 /// and a commander who wants more structures is answered by the stockpile cap rather than by this.
 inline constexpr std::uint32_t STRUCTURE_CAP = 300;
 
+/// Two minutes at 20 ticks a second.
+inline constexpr std::uint32_t DEFAULT_REJOIN_GRACE_TICKS = 2400;
+
 enum class VictoryCondition : std::uint8_t
 {
   Annihilation,
@@ -93,6 +96,12 @@ struct MatchSettings
   VictoryCondition victory;
   std::uint32_t survivalTicks;   ///< The clock of the Survival condition, in ticks; unread otherwise.
   DeviceCapLevel deviceCapLevel; ///< Indexes DEVICE_CAPS; the structure cap is STRUCTURE_CAP for every match.
+
+  /// How long a seat whose player has dropped is held for him before it goes under AI control
+  /// (GameDesign.md §10: "kept as a seat under AI control for a grace period and may rejoin").
+  /// A lobby setting because how long a match waits for a player is the host's to decide and not
+  /// the protocol's; the default is two minutes, which is long enough for a router to come back.
+  std::uint32_t rejoinGraceTicks = DEFAULT_REJOIN_GRACE_TICKS;
   std::array<SeatSettings, MAX_SEATS> seats;
 
   [[nodiscard]] constexpr bool operator==(const MatchSettings&) const noexcept = default;

@@ -106,6 +106,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ClientTests.cpp" />
+    <ClCompile Include="FragmenterTests.cpp" />
+    <ClCompile Include="HostTests.cpp" />
+    <ClCompile Include="InterestTests.cpp" />
     <ClCompile Include="RecordsTests.cpp" />
     <ClCompile Include="ReliableStreamTests.cpp" />
     <ClCompile Include="pch.cpp">

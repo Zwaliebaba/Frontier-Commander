@@ -212,6 +212,7 @@ void Client::TakeFrame(const Frame& _frame, FrameSink& _sink)
   if (!full && _frame.baselineSequence != m_appliedSequence)
   {
     ++m_counters.framesSkipped;
+    m_acknowledgementDue = true;
     return;
   }
   if (_frame.sequence <= m_appliedSequence)
@@ -221,6 +222,7 @@ void Client::TakeFrame(const Frame& _frame, FrameSink& _sink)
   }
   m_appliedSequence = _frame.sequence;
   m_simulationTick = _frame.tick;
+  m_acknowledgementDue = true;
   ++m_counters.framesApplied;
   _sink.Apply(_frame);
 }
@@ -230,7 +232,12 @@ void Client::SendOrdersAndAck(std::uint32_t _tick)
   std::vector<OrderMessage> due;
   m_orders.Due(_tick, due);
   const bool heartbeat = m_liveness.HeartbeatDue(_tick);
-  if (due.empty() && !heartbeat)
+  // A frame applied and not yet acknowledged is the third reason to send. It is the important one:
+  // the host encodes against the newest frame this client has acknowledged, so a client that only
+  // spoke on the heartbeat would be sent a full frame every time instead of a delta - the whole
+  // saving of §5.3 - and would age its own baseline out of the history within four seconds.
+  const bool acknowledgementDue = m_acknowledgementDue;
+  if (due.empty() && !heartbeat && !acknowledgementDue)
   {
     return;
   }
@@ -261,6 +268,7 @@ void Client::SendOrdersAndAck(std::uint32_t _tick)
     Write(payload, orders);
   }
   SendPayload(payload, _tick);
+  m_acknowledgementDue = false;
 }
 
 } // namespace Frontier

@@ -16,7 +16,7 @@ namespace Frontier
 
 /// "FCSP", little-endian, at the head of every snapshot.
 inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
-/// 14 since 2026-09-19: 4 brought the world's five object maps and the seat's economy, research,
+/// 15 since 2026-09-19: 4 brought the world's five object maps and the seat's economy, research,
 /// designs, caps, fog grid and ghost store (m1-vertical-slice/S1); 5 brought a device's primary
 /// order and stances and a seat's dropped orders (S2); 6 brought the content hash the stream is
 /// bound to (OpenQuestions.md Q20); 7 brought the lobby's device cap (S3); 8 brought the fog grid's
@@ -26,8 +26,8 @@ inline constexpr std::uint32_t SNAPSHOT_MAGIC = 0x50534346u;
 /// walked and how long it has been stuck, and the planning queue itself (S8); 13 brings a
 /// structure's weapon reload and the chance and damage a shell in flight was fired with (S10); 14
 /// brings a seat's victory state in place of its defeated flag, the power it has extracted and
-/// whether it ever held a base (S11).
-inline constexpr std::uint16_t SNAPSHOT_VERSION = 14;
+/// whether it ever held a base (S11); 15 brings the lobby's rejoin grace period (N2).
+inline constexpr std::uint16_t SNAPSHOT_VERSION = 15;
 
 /// The full serialisation of a Sim through the versioned byte stream (TechnicalDesign.md §4.9),
 /// in the layout ADR-003 fixes: the header, the settings, the tick, the Random state, the seats,

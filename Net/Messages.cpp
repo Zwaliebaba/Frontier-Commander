@@ -174,6 +174,7 @@ void WriteSettings(Neuron::ByteWriter& _writer, const MatchSettings& _settings)
   _writer.Write(_settings.victory);
   _writer.Write(_settings.survivalTicks);
   _writer.Write(_settings.deviceCapLevel);
+  _writer.Write(_settings.rejoinGraceTicks);
   for (const SeatSettings& seat : _settings.seats)
   {
     _writer.Write(seat.kind);
@@ -187,7 +188,8 @@ void WriteSettings(Neuron::ByteWriter& _writer, const MatchSettings& _settings)
   MatchSettings settings{};
   if (!_reader.Read(settings.seed) || !ReadEnum(_reader, settings.sizeClass, SIZE_CLASS_COUNT) || !_reader.Read(settings.seatCount) ||
       !ReadEnum(_reader, settings.baseLevel, 3) || !ReadEnum(_reader, settings.powerLevel, 3) || !_reader.Read(settings.technologyTiers) ||
-      !ReadEnum(_reader, settings.victory, 3) || !_reader.Read(settings.survivalTicks) || !ReadEnum(_reader, settings.deviceCapLevel, 3))
+      !ReadEnum(_reader, settings.victory, 3) || !_reader.Read(settings.survivalTicks) || !ReadEnum(_reader, settings.deviceCapLevel, 3) ||
+      !_reader.Read(settings.rejoinGraceTicks))
   {
     return false;
   }

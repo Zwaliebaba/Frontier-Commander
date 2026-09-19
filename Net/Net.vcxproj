@@ -99,6 +99,10 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Client.cpp" />
+    <ClCompile Include="FrameEncoder.cpp" />
+    <ClCompile Include="Fragmenter.cpp" />
+    <ClCompile Include="Host.cpp" />
+    <ClCompile Include="Interest.cpp" />
     <ClCompile Include="Messages.cpp" />
     <ClCompile Include="Reassembler.cpp" />
     <ClCompile Include="Records.cpp" />
@@ -109,6 +113,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
+    <ClInclude Include="ClientHistory.h" />
+    <ClInclude Include="FrameEncoder.h" />
+    <ClInclude Include="Fragmenter.h" />
+    <ClInclude Include="Host.h" />
+    <ClInclude Include="Interest.h" />
     <ClInclude Include="Messages.h" />
     <ClInclude Include="Reassembler.h" />
     <ClInclude Include="Records.h" />

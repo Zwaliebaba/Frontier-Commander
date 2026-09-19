@@ -14,6 +14,18 @@
     <ClCompile Include="Client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="FrameEncoder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Fragmenter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Host.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Interest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="Messages.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -32,6 +44,21 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientHistory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="FrameEncoder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Fragmenter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Host.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Interest.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Messages.h">
