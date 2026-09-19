@@ -200,7 +200,12 @@ UiEventResult UiPanel::OnPointerUp(std::int32_t _x, std::int32_t _y, bool _leftB
   case UiWidgetKind::Label:
   case UiWidgetKind::ProgressBar:
   case UiWidgetKind::Icon:
-    break; // Not interactive, so MutableAt never returns one.
+    // A READOUT IS NOT A HIT. MutableAt tests Interactive(), so none of these three ever arrives
+    // here; what the branch says is what should happen if that ever stopped being true. Naming a
+    // bar the caller cannot act on is worse than naming nothing, which is exactly what the empty
+    // space under a list's last row does above - so the widget is cleared rather than reported.
+    result.widget = 0;
+    break;
   }
   return result;
 }

@@ -25,12 +25,12 @@ TEST_CLASS(UiLayoutTests)
 public:
   TEST_METHOD(ARectangleIsHalfOpenSoTwoThatTouchShareNoPixel)
   {
-    constexpr Neuron::UiRect left{0, 0, 10, 10};
-    constexpr Neuron::UiRect right{10, 0, 10, 10};
-    Assert::IsTrue(left.Contains(9, 0), L"the last pixel inside");
-    Assert::IsFalse(left.Contains(10, 0), L"and the first outside");
-    Assert::IsTrue(right.Contains(10, 0), L"which is the next rectangle's first");
-    Assert::AreEqual(10, left.Right());
+    constexpr Neuron::UiRect LEFT{0, 0, 10, 10};
+    constexpr Neuron::UiRect RIGHT{10, 0, 10, 10};
+    Assert::IsTrue(LEFT.Contains(9, 0), L"the last pixel inside");
+    Assert::IsFalse(LEFT.Contains(10, 0), L"and the first outside");
+    Assert::IsTrue(RIGHT.Contains(10, 0), L"which is the next rectangle's first");
+    Assert::AreEqual(10, LEFT.Right());
     Assert::IsTrue(Neuron::UiRect{}.Empty());
   }
 
@@ -91,11 +91,11 @@ public:
 
   TEST_METHOD(AColumnThatDividesEvenlyHasNoRemainderToSpend)
   {
-    constexpr Neuron::UiRect area{0, 0, 400, 20};
+    constexpr Neuron::UiRect AREA{0, 0, 400, 20};
     for (std::int32_t index = 0; index < 4; ++index)
     {
-      Assert::AreEqual(100, Neuron::ColumnIn(area, index, 4, 0).width);
-      Assert::AreEqual(index * 100, Neuron::ColumnIn(area, index, 4, 0).x);
+      Assert::AreEqual(100, Neuron::ColumnIn(AREA, index, 4, 0).width);
+      Assert::AreEqual(index * 100, Neuron::ColumnIn(AREA, index, 4, 0).x);
     }
   }
 
@@ -103,23 +103,23 @@ public:
   /// thing worth pinning is the arithmetic - and the one reading that would be actively wrong.
   TEST_METHOD(ABarFillsFromTheLeftAndNothingOutOfNothingIsEmpty)
   {
-    constexpr Neuron::UiRect bar{100, 50, 200, Neuron::BAR_HEIGHT_PIXELS};
-    Assert::AreEqual(0, Neuron::FilledPartOf(bar, 0, 100).width);
-    Assert::AreEqual(100, Neuron::FilledPartOf(bar, 50, 100).width);
-    Assert::AreEqual(200, Neuron::FilledPartOf(bar, 100, 100).width);
-    Assert::AreEqual(200, Neuron::FilledPartOf(bar, 500, 100).width, L"over full is full");
-    Assert::AreEqual(100, Neuron::FilledPartOf(bar, 50, 100).x, L"and it fills from the left");
-    Assert::IsTrue(Neuron::FilledPartOf(bar, 5, 0).Empty(), L"nothing out of nothing is not everything");
-    Assert::IsTrue(Neuron::FilledPartOf(bar, -5, 100).Empty());
+    constexpr Neuron::UiRect BAR{100, 50, 200, Neuron::BAR_HEIGHT_PIXELS};
+    Assert::AreEqual(0, Neuron::FilledPartOf(BAR, 0, 100).width);
+    Assert::AreEqual(100, Neuron::FilledPartOf(BAR, 50, 100).width);
+    Assert::AreEqual(200, Neuron::FilledPartOf(BAR, 100, 100).width);
+    Assert::AreEqual(200, Neuron::FilledPartOf(BAR, 500, 100).width, L"over full is full");
+    Assert::AreEqual(100, Neuron::FilledPartOf(BAR, 50, 100).x, L"and it fills from the left");
+    Assert::IsTrue(Neuron::FilledPartOf(BAR, 5, 0).Empty(), L"nothing out of nothing is not everything");
+    Assert::IsTrue(Neuron::FilledPartOf(BAR, -5, 100).Empty());
   }
 
   /// A bar of a thousand pixels against a stockpile in hundredths of power leaves 32 bits behind,
   /// which is why the multiply is done in 64.
   TEST_METHOD(ABarDoesNotOverflowOnASimulationSizedValue)
   {
-    constexpr Neuron::UiRect bar{0, 0, 1000, 12};
-    Assert::AreEqual(500, Neuron::FilledPartOf(bar, 1000000, 2000000).width);
-    Assert::AreEqual(250, Neuron::FilledPartOf(bar, 500000000, 2000000000).width);
+    constexpr Neuron::UiRect BAR{0, 0, 1000, 12};
+    Assert::AreEqual(500, Neuron::FilledPartOf(BAR, 1000000, 2000000).width);
+    Assert::AreEqual(250, Neuron::FilledPartOf(BAR, 500000000, 2000000000).width);
   }
 
   TEST_METHOD(ATooltipGoesDownAndRightAndFlipsRatherThanLeavingTheFrame)

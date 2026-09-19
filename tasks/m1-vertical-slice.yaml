@@ -1744,6 +1744,21 @@ tasks:
       on, where the framework throws. It marks Fail [[noreturn]], throws on a failed assertion and
       builds with -Wunreachable-code now, and reproduces C4702 on the old guard - so this class of
       finding is caught here rather than in CI next time.
+      AND CLANG-TIDY FOUND TWO MORE, which is the third round CI caught and the session did not.
+      The five function-local constexpr rectangles in UiLayoutTests were camelCase, where
+      .clang-tidy sets ConstexprVariableCase to UPPER_CASE (R3) and every other function-local
+      constexpr in Tests already is; they are LEFT, RIGHT, AREA and BAR now. And OnPointerUp's
+      switch had TextField and the three readouts both ending in a bare break, which
+      bugprone-branch-clone reads as one branch written twice. MERGING THEM WOULD HAVE BEEN A LIE:
+      a text field is interactive and a bar is not, and a reader meeting the four kinds under one
+      label would conclude the opposite. They say different things now - the readouts clear
+      result.widget, for the reason the empty space under a list's last row does.
+      THE REAL FIX WAS TO THE SESSION, NOT THE CODE: clang-tidy runs on Linux after all, over the
+      same stripped sources the test harness builds, against this repository's own .clang-tidy with
+      ExcludeHeaderFilterRegex dropped (clang-tidy 18 does not know that key; the CI pin is 22.1.8).
+      It reproduced both findings before the fix and 217 checks come back clean over every file of
+      R1 and K3 after it. 18 is not 22 and will not catch everything 22 does, but "clang-tidy cannot
+      be run here" was wrong, and acting on it cost three CI rounds.
       STILL TO COME: UiPass and its two shaders, which need Direct3D and are CI's alone.
 
   - id: G1a
