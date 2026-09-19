@@ -3,7 +3,6 @@
 #include "Records.h"
 
 #include <cstdint>
-#include <deque>
 #include <span>
 #include <vector>
 
@@ -115,7 +114,13 @@ private:
   /// Delivers everything in the out-of-order buffer that has become the next one expected.
   void Drain(std::vector<Order>& _out);
 
-  std::deque<Pending> m_pending;    ///< Sent and not acknowledged, in sequence order
+  /// Sent and not acknowledged, in sequence order. A vector rather than a deque, and deliberately:
+  /// MSVC's std::deque reaches its allocator through a _Container_proxy whose construction the
+  /// pinned clang-tidy reports as a recursive call chain through this class's constructor, and the
+  /// gate is not narrowed for a standard library's shape (.clang-tidy). The cost is erasing at the
+  /// front of a window bounded at MAX_UNACKNOWLEDGED_ORDERS, which is a memmove of at most 256
+  /// small records on a datagram that already went through the kernel.
+  std::vector<Pending> m_pending;
   std::uint32_t m_nextSequence = 1; ///< 0 is never issued
 
   /// The estimate held in eighths of a tick, which is what keeps a smoothed average integer and

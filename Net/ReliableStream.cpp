@@ -47,9 +47,10 @@ void ReliableStream::Due(std::uint32_t _tick, std::vector<OrderMessage>& _out)
 
 void ReliableStream::Acknowledged(std::uint32_t _sequence, std::uint32_t _tick)
 {
-  while (!m_pending.empty() && m_pending.front().message.sequence <= _sequence)
+  std::size_t acknowledgedCount = 0;
+  while (acknowledgedCount < m_pending.size() && m_pending[acknowledgedCount].message.sequence <= _sequence)
   {
-    const Pending& acknowledged = m_pending.front();
+    const Pending& acknowledged = m_pending[acknowledgedCount];
     // Only an order sent ONCE measures a round trip: for one that was resent there is no telling
     // which copy the acknowledgement answers, and taking the last send would measure a trip that
     // never happened. This is Karn's rule, and without it a lossy link talks itself into an
@@ -60,8 +61,9 @@ void ReliableStream::Acknowledged(std::uint32_t _sequence, std::uint32_t _tick)
       const std::uint32_t estimate = m_roundTripEighths >> ROUND_TRIP_SMOOTHING_SHIFT;
       m_roundTripEighths = m_roundTripEighths - estimate + sample;
     }
-    m_pending.pop_front();
+    ++acknowledgedCount;
   }
+  m_pending.erase(m_pending.begin(), m_pending.begin() + static_cast<std::ptrdiff_t>(acknowledgedCount));
 }
 
 std::uint32_t ReliableStream::ResendTicks() const noexcept
