@@ -1,6 +1,7 @@
 #include "pch.h"
 
 #include "Replica.h"
+#include "RenderViewBuilder.h"
 
 #include "Host.h"
 #include "Interest.h"
@@ -8,6 +9,7 @@
 #include "LoopbackTransport.h"
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
 #include <span>
 #include <vector>
@@ -37,8 +39,27 @@ const Frontier::ContentTree& Tables()
   static const Frontier::ContentTree TREE = []
   {
     Frontier::ContentTree tree;
+    // MODELS, SO THAT THE RENDER-VIEW CASE HAS SOMETHING TO COMPOSE. The convergence cases do not
+    // care - a model is content and is never replicated - but a row naming no model composes
+    // nothing at all, and a render view that came back empty would pass a test that only counted.
+    Frontier::ModelDesc hull{};
+    hull.version = Frontier::MODEL_DESC_VERSION;
+    hull.id = "LightHull";
+    hull.vertices = {{-256, 0, -256}, {256, 0, -256}, {0, 512, 0}};
+    hull.markers = {Frontier::ModelMarker{"MarkerDrive1", {0, 0, 0}, 0, 0}};
+    Frontier::ModelDesc wheel{};
+    wheel.version = Frontier::MODEL_DESC_VERSION;
+    wheel.id = "Wheel";
+    wheel.vertices = {{-64, 0, -64}, {64, 0, 64}};
+    Frontier::ModelDesc postHull{};
+    postHull.version = Frontier::MODEL_DESC_VERSION;
+    postHull.id = "PostHull";
+    postHull.vertices = {{-512, 0, -512}, {512, 1024, 512}};
+    tree.models = {hull, wheel, postHull};
+
     Frontier::StructureDesc post{};
     post.id = "CommandPost";
+    post.model = "PostHull";
     post.role = Frontier::StructureRole::CommandPost;
     post.footprintCellsX = 3;
     post.footprintCellsY = 3;
@@ -57,6 +78,7 @@ const Frontier::ContentTree& Tables()
     // A SPEED, unlike the fixture NetTests uses. Nothing there ever walks, so a chassis at zero
     // subunits a tick was never noticed; the walking test below needs a device that can actually go.
     light.baseSpeedSubunitsPerTick = 1024;
+    light.model = "LightHull";
     tree.components.chassis = {light};
 
     Frontier::DriveDesc wheels{};
@@ -65,6 +87,7 @@ const Frontier::ContentTree& Tables()
     wheels.speedFactorHundredths = 100;
     wheels.maxSlopePercent = 40;
     wheels.hitPointFactorHundredths = 100;
+    wheels.model = "Wheel";
     wheels.costHundredths = 3000;
     tree.components.drives = {wheels};
 
@@ -375,6 +398,23 @@ public:
     Assert::AreEqual(Frontier::GHOST_HIT_POINTS, remembered->second.state.hitPoints,
                      L"a ghost carries no hit points: he has no idea what it has taken");
 
+    // A GHOST IS DRAWN AND NOT PICKED, which is the rule RenderViewBuilder carries and which only
+    // shows where there IS a ghost - the render-view case has none, so with the check removed there
+    // it passed. Interface.md §5's inspection is for what is visible; a click on a remembered
+    // building would select something that may no longer be there.
+    const Frontier::ModelComposer composer(Tables());
+    Frontier::RenderViewSettings settings{};
+    settings.cellsPerSide = Ground().cellsPerSide;
+    Frontier::RenderViewBuilder builder(Tables(), composer, settings);
+    Neuron::RenderView view;
+    Frontier::PickSet picks;
+    builder.Build(match.replica, match.replica.RenderTimeAtNewestFrame(), std::span<const std::uint32_t>{}, view, picks);
+    Assert::IsFalse(view.instances.empty(), L"the ghost is still drawn");
+    for (const Frontier::PickCandidate& candidate : picks.candidates)
+    {
+      Assert::IsTrue(candidate.id != watched.value, L"but nothing can click it");
+    }
+
     // He looks back, and the damage he never saw is there when he arrives.
     Reveal(match.sim, 0, 10, 10, 30);
     match.RunAndSettle(6);
@@ -526,6 +566,86 @@ public:
 
   /// The replica is one publish interval behind by design, and its own timeline says so. This is
   /// the number the executable draws at (TechnicalDesign.md §3 step 4).
+  /// THE RENDER VIEW BUILT FROM A CONVERGED REPLICA, which is the one part of
+  /// Replica/RenderViewBuilder.h that needs the whole stack: Build takes a Replica, a Replica needs
+  /// a Net::Client, and a Client needs a host to have sent it a JoinAccepted. The arithmetic the
+  /// builder does on its own - the chunks a footprint touches - is a free function with its own
+  /// cases in RenderViewTests; what is here is the walk, which can only be exercised against a
+  /// replica that a real host filled.
+  TEST_METHOD(TheRenderViewHoldsWhatTheConvergedReplicaDoes)
+  {
+    Match match;
+    DeviceAt(match.sim, 0, 16, 16);
+    DeviceAt(match.sim, 0, 18, 16);
+    const Frontier::ObjectId post = StructureAt(match.sim, 0, 14, 14);
+    // A SECOND STRUCTURE, for the reason the removal case gives: razing a commander's last one
+    // annihilates him, S11 ends the match, and the frames this case waits for never come.
+    StructureAt(match.sim, 0, 20, 20);
+    Reveal(match.sim, 0, 10, 10, 20);
+    match.Join(0);
+    match.RunAndSettle(6);
+    AssertConverged(match.sim, 0, match.replica, L"before anything is drawn from it");
+
+    const Frontier::ModelComposer composer(Tables());
+    Frontier::RenderViewSettings settings{};
+    settings.cellsPerSide = Ground().cellsPerSide;
+    settings.chunkCells = 32;
+    Frontier::RenderViewBuilder builder(Tables(), composer, settings);
+
+    Neuron::RenderView view;
+    Frontier::PickSet picks;
+    const std::uint32_t selected = match.replica.Devices().begin()->first;
+    const std::array<std::uint32_t, 1> selection{selected};
+    builder.Build(match.replica, match.replica.RenderTimeAtNewestFrame(), selection, view, picks);
+
+    Assert::AreEqual(std::uint32_t{0}, builder.LastUnresolvedObjects(), L"every object resolved to content");
+    Assert::AreEqual(std::size_t{2}, match.replica.Devices().size(), L"the two devices arrived");
+    // Two devices, each a hull and a wheel at its one MarkerDrive, and a command post: five.
+    Assert::AreEqual(std::size_t{6}, view.instances.size(), L"a hull and a drive each, and two posts");
+    Assert::AreEqual(std::size_t{4}, picks.candidates.size(), L"two devices and two structures");
+
+    std::size_t selectedInstances = 0;
+    for (const Neuron::RenderInstance& instance : view.instances)
+    {
+      Assert::AreEqual(std::uint8_t{0}, instance.colorIndex, L"everything visible here is seat 0's");
+      selectedInstances += instance.selected ? 1 : 0;
+    }
+    Assert::AreEqual(std::size_t{2}, selectedInstances, L"BOTH parts of the one selected device, and no other");
+
+    // The fog reaches the view whole, which is what the fog pass and the minimap both read.
+    Assert::AreEqual(match.replica.FogCellsPerSide(), view.fog.cellsPerSide);
+    Assert::AreEqual(match.replica.Fog().size(), view.fog.cells.size());
+    Assert::IsTrue(view.fog.cellsPerSide > 0, L"and there is a grid at all");
+
+    // THE CHUNKS ARE REPORTED ONCE. The post arrived this frame, so its chunk is in the list; a
+    // second build with nothing new reports none, which is the whole reason the builder remembers
+    // what it flattened rather than re-flattening a base on every frame of the match.
+    Assert::IsFalse(view.changedChunks.empty(), L"the post flattened its ground");
+    Neuron::RenderView again;
+    Frontier::PickSet againPicks;
+    builder.Build(match.replica, match.replica.RenderTimeAtNewestFrame(), selection, again, againPicks);
+    Assert::IsTrue(again.changedChunks.empty(), L"and nothing changed the second time");
+    Assert::AreEqual(view.instances.size(), again.instances.size(), L"though everything is still drawn");
+
+    // A RAZED BUILDING LEAVES ITS GROUND AS IT LEFT IT, so its chunks change when it goes just as
+    // they did when it arrived. Nothing else in this file removes a structure while a render view
+    // is being built, and with this branch taken out the case above still passed.
+    Assert::IsTrue(match.sim.Objects().Remove(post));
+    match.RunAndSettle(6);
+    Neuron::RenderView afterRazing;
+    Frontier::PickSet afterRazingPicks;
+    builder.Build(match.replica, match.replica.RenderTimeAtNewestFrame(), selection, afterRazing, afterRazingPicks);
+    Assert::IsFalse(afterRazing.changedChunks.empty(), L"the ground under it has to be rebuilt");
+    Assert::AreEqual(std::size_t{5}, afterRazing.instances.size(), L"and the post is no longer drawn");
+
+    // And forgetting brings them all back, which is what a rejoin's full frame needs.
+    builder.ForgetTerrain();
+    Neuron::RenderView afterRejoin;
+    Frontier::PickSet afterPicks;
+    builder.Build(match.replica, match.replica.RenderTimeAtNewestFrame(), selection, afterRejoin, afterPicks);
+    Assert::IsFalse(afterRejoin.changedChunks.empty(), L"the terrain is rebuilt from nothing");
+  }
+
   TEST_METHOD(TheReplicasRenderTimeIsOnePublishIntervalBehindItsNewestFrame)
   {
     Match match;

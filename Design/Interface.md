@@ -351,7 +351,7 @@ Each of these is a real gap found while writing this document, with the task tha
 | # | What is missing | Owner |
 |---|---|---|
 | 1 | `AuthoredFromClient`, the inverse of `FitAuthored`, with its round-trip test | `K3` |
-| 2 | `Core/RenderView.h` must carry a selection flag, construction progress, a commander colour index rather than a packed colour, the fog grid, and a wreck-or-projectile distinction | `R2` — **blocks K4** |
+| 2 | ~~`Core/RenderView.h` must carry a selection flag, construction progress, a commander colour index rather than a packed colour, the fog grid, and a wreck-or-projectile distinction~~ | **Done 2026-09-19 by `R2`**: `RenderInstance` carries all five, and `GeometryPass` takes `C6`'s eight commander colours once a match and resolves the index, so the palette is a table rather than a number copied into every instance of every frame |
 | 3 | ~~A wire record carrying the per-seat order rejections `S2` already records, so §6 can show them~~ | **Done 2026-09-19 by `N4`**: `SeatState` carries the seat's last refusal as a sequence, a kind and a reason |
 | 4 | `GameData\Interface.json`, the chrome palette of §3, and its loader row | `C6` — **blocks K4** |
 | 5 | The eight commander colours, as a content table | Ruled in `GameDesign.md` §11 (owner, 2026-09-19); `C6` carries the table, and `R2` reads an index into it |

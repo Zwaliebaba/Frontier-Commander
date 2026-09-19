@@ -1543,7 +1543,7 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
     notes: >
       DONE SO FAR: Core/RenderView.h carries everything Design/Interface.md §11 row 2 asks of it -
       RenderInstanceKind, a commander colour INDEX in place of the packed teamColor, buildPercent,
@@ -1670,7 +1670,24 @@ tasks:
       written from them and nothing checks the two agree: a mismatched element reads whatever lies
       at that byte and DRAWS it, so the failure is a model at the wrong size rather than a
       diagnostic. A member inserted above `scale` fails the build instead of the frame.
-      STILL TO WRITE: a full-stack case for the walk, beside ConvergenceTests.
+      THE WALK IS COVERED FROM THE STACK, beside ConvergenceTests, which is where the fixture that
+      can build one lives: a match is run to convergence and the render view built from it, then
+      the instances, the pick candidates, the selection, the fog and the chunk list are asserted
+      against what the host actually put there. The convergence fixture's rows gained models for it
+      - a row naming no model composes nothing, and a render view that came back empty would pass a
+      case that only counted.
+      MUTATION TESTING FOUND THREE HOLES IN THAT ONE CASE, each of them a branch no match in the
+      file reached: a GHOST as a pick candidate (this match makes none, so the rule now sits in the
+      ghost case where there is one), ForgetTerrain, and a RAZED structure's chunks. All eight
+      mutations are caught now.
+      AND THE PROBE HARNESS WAS LYING. Its runner listed the cases by name, so the render-view case
+      simply did not run and the suite still reported every test passing - the same shape of fault
+      as the stale binary the Client harness had. It is generated from the file's own TEST_METHODs
+      now, so a case that is added cannot be silently skipped.
+      DONE: the four acceptance lines hold, Design/Interface.md §11 row 2 is struck, and the two
+      things this task asked for that have no content behind them are C7 and C8 with rows of their
+      own. What CI has verified: runs 112 (picking), 114 (the builder) and 115 (the draw scale and
+      the shader), the last of which is the only part this session could not compile.
 
   - id: K1
     title: Client geometry pass - model buffers, instancing, team colour unlit, per-face normals
