@@ -150,7 +150,7 @@ void Economy::CollectSites(const World& _world, const ContentTree& _content, std
   _world.ForEachStructure(
     [this, &_content, _seat, _extractorRatePercent](ObjectId _id, const Structure& _structure)
     {
-      if (_structure.seat != _seat || _structure.state != StructureState::Standing)
+      if (_structure.seat != _seat || _structure.state != StructurePhase::Standing)
       {
         return;
       }
@@ -261,7 +261,7 @@ void Economy::Advance(const World& _world, std::span<Seat> _seats, const Content
       // refused against, so a cap that ignored plans could be walked past by placing them.
       ++structures[_structure.seat];
       const StructureDesc* row = RowOf(_content, _structure);
-      if (row != nullptr && row->role == StructureRole::Generator && _structure.state == StructureState::Standing)
+      if (row != nullptr && row->role == StructureRole::Generator && _structure.state == StructurePhase::Standing)
       {
         ++generators[_structure.seat];
       }
@@ -288,7 +288,7 @@ void Economy::Advance(const World& _world, std::span<Seat> _seats, const Content
     _world.ForEachStructure(
       [&income, &_content, seatIndex](ObjectId, const Structure& _structure)
       {
-        if (_structure.seat != seatIndex || _structure.state != StructureState::Standing)
+        if (_structure.seat != seatIndex || _structure.state != StructurePhase::Standing)
         {
           return;
         }

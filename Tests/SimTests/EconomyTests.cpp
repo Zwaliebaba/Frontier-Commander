@@ -134,7 +134,7 @@ Frontier::ObjectId Standing(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, s
   structure.design = static_cast<std::uint32_t>(_row);
   structure.cellX = _cellX;
   structure.cellY = _cellY;
-  structure.state = Frontier::StructureState::Standing;
+  structure.state = Frontier::StructurePhase::Standing;
   structure.hitPoints = 100;
   structure.buildEffortHundredths = 10000;
   structure.working = Frontier::NO_OBJECT;
@@ -288,7 +288,7 @@ public:
     building.design = static_cast<std::uint32_t>(Row::Generator);
     building.cellX = 40;
     building.cellY = 40;
-    building.state = Frontier::StructureState::UnderConstruction;
+    building.state = Frontier::StructurePhase::UnderConstruction;
     building.working = Frontier::NO_OBJECT;
     static_cast<void>(sim.Objects().Create(building));
     sim.Advance();
@@ -395,7 +395,7 @@ public:
     plan.design = static_cast<std::uint32_t>(Row::Factory);
     plan.cellX = 30;
     plan.cellY = 30;
-    plan.state = Frontier::StructureState::Plan;
+    plan.state = Frontier::StructurePhase::Plan;
     plan.working = Frontier::NO_OBJECT;
     static_cast<void>(sim.Objects().Create(plan));
     sim.Advance();

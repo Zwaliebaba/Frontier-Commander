@@ -50,7 +50,7 @@ namespace
 [[nodiscard]] bool IsLab(const ContentTree& _content, const Structure& _structure, std::uint8_t _seat) noexcept
 {
   const StructureDesc* row = RowOf(_content, _structure);
-  return _structure.seat == _seat && _structure.state == StructureState::Standing && row != nullptr &&
+  return _structure.seat == _seat && _structure.state == StructurePhase::Standing && row != nullptr &&
          row->role == StructureRole::ResearchLab;
 }
 

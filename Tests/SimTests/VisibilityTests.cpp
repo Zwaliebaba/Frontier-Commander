@@ -129,7 +129,7 @@ Frontier::ObjectId Watcher(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, st
   structure.design = static_cast<std::uint32_t>(_row);
   structure.cellX = _cellX;
   structure.cellY = _cellY;
-  structure.state = Frontier::StructureState::Standing;
+  structure.state = Frontier::StructurePhase::Standing;
   structure.hitPoints = 100;
   structure.buildEffortHundredths = 10000;
   structure.working = Frontier::NO_OBJECT;

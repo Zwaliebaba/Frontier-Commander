@@ -132,7 +132,7 @@ void Populate(Frontier::Sim& _sim)
   structure.cellX = 17;
   structure.cellY = 42;
   structure.y = 128;
-  structure.state = Frontier::StructureState::Standing;
+  structure.state = Frontier::StructurePhase::Standing;
   structure.hitPoints = 600;
   structure.buildEffortHundredths = 10000;
   structure.modules = {1, 2, 3, 0};

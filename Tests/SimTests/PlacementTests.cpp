@@ -134,7 +134,7 @@ void Reveal(Frontier::Sim& _sim, std::uint8_t _seat, std::uint32_t _cellX, std::
 }
 
 Frontier::ObjectId Placed(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, std::uint32_t _cellX, std::uint32_t _cellY,
-                          Frontier::StructureState _state)
+                          Frontier::StructurePhase _state)
 {
   Frontier::Structure structure{};
   structure.seat = _seat;
@@ -186,10 +186,10 @@ public:
     Assert::IsTrue(sim.CreateLandscape(Ground({{32, 32}, {33, 33}})));
     Assert::IsTrue(Level(sim, 28, 28, 10, 10, 40));
     Reveal(sim, 0, 28, 28, 10, 10);
-    const Frontier::ObjectId plan = Placed(sim, 0, Row::Factory, 30, 30, Frontier::StructureState::Plan);
+    const Frontier::ObjectId plan = Placed(sim, 0, Row::Factory, 30, 30, Frontier::StructurePhase::Plan);
     Assert::IsTrue(Frontier::PlacementFault::Accepted == FaultAt(sim, Row::Factory, 30, 30), L"two plans may share ground");
 
-    sim.Objects().FindStructure(plan)->state = Frontier::StructureState::UnderConstruction;
+    sim.Objects().FindStructure(plan)->state = Frontier::StructurePhase::UnderConstruction;
     Assert::IsTrue(Frontier::PlacementFault::Occupied == FaultAt(sim, Row::Factory, 30, 30), L"the moment a builder begins it");
     Assert::IsTrue(Frontier::PlacementFault::Occupied == FaultAt(sim, Row::Extractor, 32, 32), L"the far corner of a three by three");
     Assert::IsTrue(Frontier::PlacementFault::Accepted == FaultAt(sim, Row::Extractor, 33, 33), L"and one cell past it is free");

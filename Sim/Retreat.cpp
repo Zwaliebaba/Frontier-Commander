@@ -62,7 +62,7 @@ bool RepairPointNear(const Sim& _sim, std::uint8_t _seat, std::int32_t _x, std::
   _sim.Objects().ForEachStructure(
     [&](ObjectId, const Structure& _structure)
     {
-      if (_structure.seat != _seat || _structure.state != StructureState::Standing ||
+      if (_structure.seat != _seat || _structure.state != StructurePhase::Standing ||
           _structure.design >= content.structures.structures.size() ||
           content.structures.structures[_structure.design].role != StructureRole::RepairBay)
       {

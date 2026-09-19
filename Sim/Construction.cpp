@@ -169,7 +169,7 @@ std::uint32_t PlanCount(const World& _world, std::uint8_t _seat)
   _world.ForEachStructure(
     [&plans, _seat](ObjectId, const Structure& _structure)
     {
-      if (_structure.seat == _seat && _structure.state == StructureState::Plan)
+      if (_structure.seat == _seat && _structure.state == StructurePhase::Plan)
       {
         ++plans;
       }
@@ -188,7 +188,7 @@ bool PlaceStructurePlan(Sim& _sim, std::uint8_t _seat, std::uint32_t _row, std::
   structure.design = _row;
   structure.cellX = _cellX;
   structure.cellY = _cellY;
-  structure.state = StructureState::Plan;
+  structure.state = StructurePhase::Plan;
   structure.hitPoints = 0; // A plan is not there yet: nothing can shoot it and nothing repairs it.
   structure.working = NO_OBJECT;
   structure.moduleUnderConstruction = NO_STRUCTURE_MODULE;
@@ -207,12 +207,12 @@ bool CancelStructure(Sim& _sim, std::uint8_t _seat, ObjectId _structure)
   {
     return false;
   }
-  if (structure->state != StructureState::Plan && structure->state != StructureState::UnderConstruction)
+  if (structure->state != StructurePhase::Plan && structure->state != StructurePhase::UnderConstruction)
   {
     return false; // A standing structure is demolished, not cancelled.
   }
   const StructureDesc* row = RowOf(_sim.Content(), *structure);
-  if (structure->state == StructureState::UnderConstruction)
+  if (structure->state == StructurePhase::UnderConstruction)
   {
     if (row != nullptr)
     {
@@ -227,7 +227,7 @@ bool CancelStructure(Sim& _sim, std::uint8_t _seat, ObjectId _structure)
 bool DemolishStructure(Sim& _sim, std::uint8_t _seat, ObjectId _structure)
 {
   Structure* structure = _sim.Objects().FindStructure(_structure);
-  if (structure == nullptr || structure->seat != _seat || structure->state != StructureState::Standing)
+  if (structure == nullptr || structure->seat != _seat || structure->state != StructurePhase::Standing)
   {
     return false;
   }
@@ -242,7 +242,7 @@ bool DemolishStructure(Sim& _sim, std::uint8_t _seat, ObjectId _structure)
 bool BeginModule(Sim& _sim, std::uint8_t _seat, ObjectId _structure, std::uint32_t _module)
 {
   Structure* structure = _sim.Objects().FindStructure(_structure);
-  if (structure == nullptr || structure->seat != _seat || structure->state != StructureState::Standing)
+  if (structure == nullptr || structure->seat != _seat || structure->state != StructurePhase::Standing)
   {
     return false;
   }
@@ -328,8 +328,8 @@ void AdvanceConstruction(Sim& _sim)
   world.ForEachStructure(
     [&sites](ObjectId _id, const Structure& _structure)
     {
-      if (_structure.state == StructureState::Plan || _structure.state == StructureState::UnderConstruction ||
-          (_structure.state == StructureState::Standing && _structure.moduleUnderConstruction != NO_STRUCTURE_MODULE))
+      if (_structure.state == StructurePhase::Plan || _structure.state == StructurePhase::UnderConstruction ||
+          (_structure.state == StructurePhase::Standing && _structure.moduleUnderConstruction != NO_STRUCTURE_MODULE))
       {
         sites.push_back(_id);
       }
@@ -355,7 +355,7 @@ void AdvanceConstruction(Sim& _sim)
       continue; // Nobody is there; a site waits rather than decaying.
     }
 
-    if (structure->state == StructureState::Plan)
+    if (structure->state == StructurePhase::Plan)
     {
       // The ground may have been built over since the plan was placed, so the rule is asked again
       // rather than trusted; a plan that can no longer be built stays a plan until it is cancelled.
@@ -387,21 +387,21 @@ void AdvanceConstruction(Sim& _sim)
         continue;
       }
       structure->y = mean * Neuron::SUBUNITS_PER_WORLD_UNIT;
-      structure->state = StructureState::UnderConstruction;
+      structure->state = StructurePhase::UnderConstruction;
       structure->buildEffortHundredths = 0;
       structure->hitPoints = 1; // Proportional to progress, and never zero while it stands
       MarkFootprint(_sim, footprint, OBSTRUCTION_STRUCTURE);
       continue; // The tick that begins it puts in no effort; the next one does.
     }
 
-    if (structure->state == StructureState::UnderConstruction)
+    if (structure->state == StructurePhase::UnderConstruction)
     {
       structure->buildEffortHundredths = static_cast<std::int32_t>(std::min<std::int64_t>(
         static_cast<std::int64_t>(structure->buildEffortHundredths) + power, RequiredEffortHundredths(row->buildTimeTicks)));
       const std::int32_t progress = ProgressHundredths(structure->buildEffortHundredths, row->buildTimeTicks);
       if (progress >= 10000)
       {
-        structure->state = StructureState::Standing;
+        structure->state = StructurePhase::Standing;
         structure->hitPoints = row->hitPoints;
       }
       else

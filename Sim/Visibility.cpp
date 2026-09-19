@@ -221,7 +221,7 @@ void Visibility::CollectViewers(const World& _world, std::span<const Seat> _seat
     [this, &_seats, &_content, side](ObjectId _id, const Structure& _structure)
     {
       // A structure sees only once it stands: a plan and a building site are not eyes.
-      if (_structure.seat >= _seats.size() || _structure.state != StructureState::Standing)
+      if (_structure.seat >= _seats.size() || _structure.state != StructurePhase::Standing)
       {
         return;
       }
@@ -356,7 +356,7 @@ void Visibility::RefreshGhosts(const World& _world, std::span<Seat> _seats, cons
   _world.ForEachStructure(
     [&_seats, &_content, _tick](ObjectId _id, const Structure& _structure)
     {
-      if (StructureRow(_content, _structure.design) == nullptr || _structure.state == StructureState::Plan)
+      if (StructureRow(_content, _structure.design) == nullptr || _structure.state == StructurePhase::Plan)
       {
         return;
       }

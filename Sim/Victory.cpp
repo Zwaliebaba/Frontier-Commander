@@ -51,7 +51,7 @@ struct Holdings
   _sim.Objects().ForEachStructure(
     [&held](ObjectId, const Structure& _structure)
     {
-      if (_structure.seat < MAX_SEATS && _structure.state != StructureState::Plan)
+      if (_structure.seat < MAX_SEATS && _structure.state != StructurePhase::Plan)
       {
         held.structures[_structure.seat] = true;
       }

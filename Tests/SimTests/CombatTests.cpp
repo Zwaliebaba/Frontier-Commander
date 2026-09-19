@@ -274,7 +274,7 @@ Frontier::ObjectId Standing(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, s
   structure.design = static_cast<std::uint32_t>(_row);
   structure.cellX = _cellX;
   structure.cellY = _cellY;
-  structure.state = Frontier::StructureState::Standing;
+  structure.state = Frontier::StructurePhase::Standing;
   structure.hitPoints = Tables().structures.structures[static_cast<std::size_t>(_row)].hitPoints;
   structure.buildEffortHundredths = Frontier::RequiredEffortHundredths(600);
   structure.moduleUnderConstruction = Frontier::NO_STRUCTURE_MODULE;

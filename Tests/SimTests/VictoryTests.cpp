@@ -138,7 +138,7 @@ Frontier::ObjectId Standing(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, s
   structure.design = static_cast<std::uint32_t>(_row);
   structure.cellX = _cellX;
   structure.cellY = _cellY;
-  structure.state = Frontier::StructureState::Standing;
+  structure.state = Frontier::StructurePhase::Standing;
   structure.hitPoints = 100;
   structure.buildEffortHundredths = 10000;
   structure.working = Frontier::NO_OBJECT;
@@ -223,12 +223,12 @@ public:
     Standing(sim, 0, Row::CommandPost, 16, 16);
     const Frontier::ObjectId building = Standing(sim, 1, Row::CommandPost, 100, 100);
     Frontier::Structure* raising = sim.Objects().FindStructure(building);
-    raising->state = Frontier::StructureState::UnderConstruction;
+    raising->state = Frontier::StructurePhase::UnderConstruction;
     sim.Advance();
     Assert::IsTrue(sim.Seats()[1].victory == Frontier::VictoryState::Playing, L"a half-built base is a base");
 
     // A plan occupies nothing and nothing has been built: a commander left with one has nothing.
-    sim.Objects().FindStructure(building)->state = Frontier::StructureState::Plan;
+    sim.Objects().FindStructure(building)->state = Frontier::StructurePhase::Plan;
     Assert::IsTrue(Frontier::Annihilated(sim, 1));
     sim.Advance();
     Assert::IsTrue(sim.Seats()[1].victory == Frontier::VictoryState::Eliminated);

@@ -94,7 +94,7 @@ struct Fixture
     structure.seat = 0;
     structure.cellX = 18;
     structure.cellY = 18;
-    structure.state = Frontier::StructureState::Standing;
+    structure.state = Frontier::StructurePhase::Standing;
     myStructure = sim.Objects().Create(structure);
     structure.seat = 1;
     structure.cellX = 92;
@@ -194,9 +194,9 @@ public:
         [&fixture]
         {
           // Seat 1's only structure is still a plan, so it has nothing standing to build from.
-          fixture.sim.Objects().FindStructure(fixture.theirStructure)->state = Frontier::StructureState::Plan;
+          fixture.sim.Objects().FindStructure(fixture.theirStructure)->state = Frontier::StructurePhase::Plan;
           const Frontier::RejectReason reason = fixture.Judge(Ordered(Kind::PlaceStructure, 1, 0, 30, 30));
-          fixture.sim.Objects().FindStructure(fixture.theirStructure)->state = Frontier::StructureState::Standing;
+          fixture.sim.Objects().FindStructure(fixture.theirStructure)->state = Frontier::StructurePhase::Standing;
           return reason;
         }(),
       L"NoCommandPost: nothing standing to build from");

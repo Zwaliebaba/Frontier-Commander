@@ -24,13 +24,18 @@ inline constexpr std::uint32_t MAX_STRUCTURE_MODULES = 4;
 inline constexpr std::uint32_t NO_STRUCTURE_MODULE = 0xFFFFFFFFu;
 
 /// What a structure is doing, which is all a tick needs to tell apart. S4 owns the transitions.
-enum class StructureState : std::uint8_t
+/// Where a structure is in its life (GameDesign.md §5). Named for the phase rather than the state
+/// because Net's wire record for a structure is StructureState (TechnicalDesign.md §5.3), and one
+/// namespace cannot hold both.
+enum class StructurePhase : std::uint8_t
 {
   Plan, ///< Placed by the commander, no builder has started; occupies nothing
   UnderConstruction,
   Standing,
   Demolishing
 };
+
+inline constexpr std::uint8_t STRUCTURE_PHASE_COUNT = 4;
 
 struct Structure
 {
@@ -41,7 +46,7 @@ struct Structure
   std::uint32_t cellY;
   std::int32_t y; ///< The flattened height under the footprint, in subunits
 
-  StructureState state;
+  StructurePhase state;
   std::int32_t hitPoints;
   /// What the attending builders have put in, in hundredths of build power summed over ticks
   /// (Sim/Construction.h): complete at the row's buildTimeTicks times the reference builder's

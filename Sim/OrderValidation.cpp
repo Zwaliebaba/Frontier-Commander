@@ -109,7 +109,7 @@ namespace
   _context.world->ForEachStructure(
     [&found, &_order, &_context](ObjectId, const Structure& _structure)
     {
-      if (found || _structure.seat != _order.seat || _structure.state != StructureState::Standing)
+      if (found || _structure.seat != _order.seat || _structure.state != StructurePhase::Standing)
       {
         return;
       }
@@ -361,7 +361,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
       return Accept(_order); // Without the tables the role and the design cannot be judged.
     }
     const std::vector<StructureDesc>& rows = _context.content->structures.structures;
-    if (structure->state != StructureState::Standing || structure->design >= rows.size() ||
+    if (structure->state != StructurePhase::Standing || structure->design >= rows.size() ||
         rows[structure->design].role != StructureRole::Factory)
     {
       return Reject(_order, RejectReason::InvalidTarget);
@@ -394,7 +394,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
                : Accept(_order);
     }
     const std::vector<StructureDesc>& rows = _context.content->structures.structures;
-    if (structure->state != StructureState::Standing || structure->design >= rows.size() ||
+    if (structure->state != StructurePhase::Standing || structure->design >= rows.size() ||
         rows[structure->design].role != StructureRole::ResearchLab)
     {
       return Reject(_order, RejectReason::InvalidTarget);
@@ -427,7 +427,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     }
     // A standing structure is demolished, not cancelled; the two refund different shares and the
     // commander pressed different buttons.
-    return structure->state == StructureState::Plan || structure->state == StructureState::UnderConstruction
+    return structure->state == StructurePhase::Plan || structure->state == StructurePhase::UnderConstruction
              ? Accept(_order)
              : Reject(_order, RejectReason::InvalidTarget);
   }
@@ -439,7 +439,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::NotOwned);
     }
-    return structure->state == StructureState::Standing ? Accept(_order) : Reject(_order, RejectReason::InvalidTarget);
+    return structure->state == StructurePhase::Standing ? Accept(_order) : Reject(_order, RejectReason::InvalidTarget);
   }
 
   case OrderKind::BuildModule:
@@ -449,7 +449,7 @@ OrderCheck ValidateOrder(const Order& _order, const OrderContext& _context)
     {
       return Reject(_order, RejectReason::NotOwned);
     }
-    if (structure->state != StructureState::Standing || structure->moduleUnderConstruction != NO_STRUCTURE_MODULE)
+    if (structure->state != StructurePhase::Standing || structure->moduleUnderConstruction != NO_STRUCTURE_MODULE)
     {
       return Reject(_order, RejectReason::InvalidTarget);
     }

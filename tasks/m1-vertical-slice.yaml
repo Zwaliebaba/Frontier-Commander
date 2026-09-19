@@ -1166,7 +1166,38 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: in_progress
+    status: done
+    notes: >
+      Net/Records.h is the wire form of a device, a structure, a wreck, a feature, a seat, a design,
+      an event and a run of fog, and Net/Messages.h the eight datagrams they travel in. Positions
+      quantise to a quarter of a world unit by FLOOR division, so that the step is uniform across
+      zero rather than double-width at it, and come back as the middle of the quarter they named, so
+      the round trip errs by half a step either way instead of a whole step downwards.
+
+      A DEVICE'S ORDER AND ITS FOUR STANCES ARE ONE BYTE, and that is what makes TechnicalDesign.md
+      §5.7's fourteen-byte changed record fit: seven orders times three fire, two range, three
+      retreat and two movement stances is 252 of the 256 values a byte has, where the same five as
+      bit fields need nine bits and would cost a second byte on every device that turned round. The
+      four unused values are refused on read. Fourteen is then exactly the id, the six-byte position
+      delta, the heading, the hit points and that byte, which a static_assert pins. The fields NOT
+      in the mask - design, seat, rank and target - are the ones that rarely change, and a device
+      whose rank or target changed is re-sent whole rather than widening every frame's worst case.
+
+      A NAME COLLISION THAT HAD TO BE SETTLED. TechnicalDesign.md §5.3 names the wire record
+      StructureState and Sim already had an enumeration of that name; one namespace cannot hold
+      both. The simulation's is now StructurePhase, which is the better name for what it is, and the
+      wire keeps the name the design gives it. A mechanical rename over 22 files, no behaviour
+      changed, SimTests unchanged at 143 passing.
+
+      THE WIRE DOES NOT SHARE THE SNAPSHOT'S WRITER, deliberately. Net writes the settings and the
+      landscape definition itself: they are two streams with two versions, so a snapshot that gained
+      a field would otherwise break every client of a host that can save, and they carry different
+      payloads - a snapshot carries the flatten deltas and the wire must not, because the terrain
+      under an unscouted base is not public (§5.2).
+
+      Measured: NetTests 14 passed, 0 failed. Every record's bytes are pinned by hand from the
+      layout rather than recorded from a run, every record round-trips, and every prefix shorter
+      than a whole record is refused - 211 truncation cases across the nine.
 
   - id: N2
     title: Net host endpoint - interest sets, delta frames against acked baselines, history, fragmentation, join and rejoin; the network ADR

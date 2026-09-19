@@ -182,7 +182,7 @@ void ShootStructure(Sim& _sim, ObjectId _id, Structure& _structure)
 {
   const ContentTree& content = _sim.Content();
   WeaponMount weapon{};
-  if (_structure.state != StructureState::Standing || !WeaponOf(content, _structure, weapon))
+  if (_structure.state != StructurePhase::Standing || !WeaponOf(content, _structure, weapon))
   {
     return;
   }

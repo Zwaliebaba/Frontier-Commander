@@ -46,7 +46,7 @@ Frontier::Structure Building(std::uint8_t _seat, std::uint32_t _cell)
   structure.cellX = _cell;
   structure.cellY = _cell + 1;
   structure.y = 32;
-  structure.state = Frontier::StructureState::UnderConstruction;
+  structure.state = Frontier::StructurePhase::UnderConstruction;
   structure.hitPoints = 400;
   structure.buildEffortHundredths = 4250;
   structure.modules = {1, 2, 0, 0};

@@ -98,11 +98,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Messages.cpp" />
+    <ClCompile Include="Records.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Messages.h" />
+    <ClInclude Include="Records.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

@@ -223,7 +223,7 @@ bool SetProduction(Sim& _sim, std::uint8_t _seat, ObjectId _factory, std::uint32
 {
   Seat& seat = _sim.SeatAt(_seat);
   const Structure* factory = _sim.Objects().FindStructure(_factory);
-  if (factory == nullptr || factory->seat != _seat || factory->state != StructureState::Standing)
+  if (factory == nullptr || factory->seat != _seat || factory->state != StructurePhase::Standing)
   {
     return false;
   }
@@ -292,7 +292,7 @@ void AdvanceProduction(Sim& _sim)
     [&factories, &content](ObjectId _id, const Structure& _structure)
     {
       const StructureDesc* row = RowOf(content, _structure);
-      if (_structure.state == StructureState::Standing && row != nullptr && row->role == StructureRole::Factory)
+      if (_structure.state == StructurePhase::Standing && row != nullptr && row->role == StructureRole::Factory)
       {
         factories.push_back(_id);
       }

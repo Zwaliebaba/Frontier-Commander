@@ -164,7 +164,7 @@ Frontier::ObjectId Standing(Frontier::Sim& _sim, std::uint8_t _seat, Row _row, s
   structure.design = static_cast<std::uint32_t>(_row);
   structure.cellX = _cellX;
   structure.cellY = _cellY;
-  structure.state = Frontier::StructureState::Standing;
+  structure.state = Frontier::StructurePhase::Standing;
   structure.hitPoints = 800;
   structure.buildEffortHundredths = Frontier::RequiredEffortHundredths(FACTORY_TICKS);
   structure.working = Frontier::NO_OBJECT;
@@ -186,7 +186,7 @@ struct Site
     sim.Objects().ForEachStructure(
       [this](Frontier::ObjectId _id, const Frontier::Structure& _structure)
       {
-        if (_structure.state == Frontier::StructureState::Plan)
+        if (_structure.state == Frontier::StructurePhase::Plan)
         {
           plan = _id;
         }
@@ -218,10 +218,10 @@ public:
     Site site(false);
     const std::int32_t before = site.sim.SeatAt(0).powerHundredths;
     site.sim.Advance();
-    Assert::IsTrue(Frontier::StructureState::Plan == site.Structure().state, L"nobody is there");
+    Assert::IsTrue(Frontier::StructurePhase::Plan == site.Structure().state, L"nobody is there");
     Assert::AreEqual(before, site.sim.SeatAt(0).powerHundredths, L"and nothing has been drawn");
     Assert::AreEqual(std::uint8_t{0}, site.sim.Terrain().CellAt(41, 41).obstruction);
-    Assert::IsFalse(Frontier::Occupies(Frontier::StructureState::Plan));
+    Assert::IsFalse(Frontier::Occupies(Frontier::StructurePhase::Plan));
   }
 
   TEST_METHOD(ABuilderInRangeBeginsItAndTheCostIsDrawnAtThatMoment)
@@ -231,7 +231,7 @@ public:
     Frontier::Seat& seat = site.sim.SeatAt(0);
     seat.powerHundredths = 40000;
     site.sim.Advance();
-    Assert::IsTrue(Frontier::StructureState::UnderConstruction == site.Structure().state);
+    Assert::IsTrue(Frontier::StructurePhase::UnderConstruction == site.Structure().state);
     Assert::AreEqual(0, seat.powerHundredths, L"the factory's 400 power, exactly");
     Assert::AreEqual(Frontier::OBSTRUCTION_STRUCTURE, site.sim.Terrain().CellAt(41, 41).obstruction, L"and the ground is taken");
     Assert::AreEqual(1, site.Structure().hitPoints, L"proportional to progress, and never nothing");
@@ -242,7 +242,7 @@ public:
     Site site;
     site.sim.SeatAt(0).powerHundredths = 39900;
     site.sim.Advance();
-    Assert::IsTrue(Frontier::StructureState::Plan == site.Structure().state);
+    Assert::IsTrue(Frontier::StructurePhase::Plan == site.Structure().state);
     Assert::AreEqual(std::uint8_t{0}, site.sim.Terrain().CellAt(41, 41).obstruction);
   }
 
@@ -255,7 +255,7 @@ public:
     one.sim.SeatAt(0).powerHundredths = 40000;
     std::uint32_t ticks = 0;
     while (one.sim.Objects().FindStructure(one.plan) != nullptr &&
-           one.sim.Objects().FindStructure(one.plan)->state != Frontier::StructureState::Standing && ticks < 200)
+           one.sim.Objects().FindStructure(one.plan)->state != Frontier::StructurePhase::Standing && ticks < 200)
     {
       one.sim.Advance();
       ++ticks;
@@ -268,7 +268,7 @@ public:
     (void)Builder(two.sim, 0, 38, 38);
     ticks = 0;
     while (two.sim.Objects().FindStructure(two.plan) != nullptr &&
-           two.sim.Objects().FindStructure(two.plan)->state != Frontier::StructureState::Standing && ticks < 200)
+           two.sim.Objects().FindStructure(two.plan)->state != Frontier::StructurePhase::Standing && ticks < 200)
     {
       two.sim.Advance();
       ++ticks;
@@ -282,7 +282,7 @@ public:
     // The builder module reaches eight cells; twenty away is twenty away.
     (void)Builder(site.sim, 0, 60, 60);
     site.sim.Advance();
-    Assert::IsTrue(Frontier::StructureState::Plan == site.Structure().state);
+    Assert::IsTrue(Frontier::StructurePhase::Plan == site.Structure().state);
   }
 
   TEST_METHOD(TheTerrainUnderTheFootprintIsLevelledToItsMeanWhenItBegins)
