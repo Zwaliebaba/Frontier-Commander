@@ -110,6 +110,7 @@ exit /b 0</Command>
     <ClCompile Include="App.cpp" />
     <ClCompile Include="LocalHost.cpp" />
     <ClCompile Include="Match.cpp" />
+    <ClCompile Include="StartingBase.cpp" />
     <ClCompile Include="CameraController.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -120,6 +121,7 @@ exit /b 0</Command>
     <ClInclude Include="App.h" />
     <ClInclude Include="LocalHost.h" />
     <ClInclude Include="Match.h" />
+    <ClInclude Include="StartingBase.h" />
     <ClInclude Include="CameraController.h" />
   </ItemGroup>
   <ItemGroup>

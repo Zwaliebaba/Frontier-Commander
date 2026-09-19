@@ -2,10 +2,13 @@
 
 #include "Match.h"
 
+#include "StartingBase.h"
+
 #include "FixedPoint.h"
 #include "Log.h"
 
 #include <algorithm>
+#include <string>
 
 namespace Frontier
 {
@@ -60,6 +63,33 @@ bool Match::Start(const LandscapeDefinition& _landscape, std::string_view _comma
   settings.cellsPerSide = m_sim.Terrain().CellsPerSide();
   settings.chunkCells = m_chunkCells;
   m_builder.Settings(settings);
+
+  // WHAT IS ALREADY STANDING WHEN THE MATCH BEGINS (GameDesign.md §5): "the base level in the
+  // lobby decides", and until M2's lobby that is the fixed pair of seats G1a names. It happens
+  // HERE, before the host thread exists, because every seat has to be set up before tick 0 - a
+  // base placed on a running simulation would be a structure that appeared out of nothing in a
+  // frame some commander was already watching.
+  //
+  // A SEAT THE LANDSCAPE HAS NO START FOR IS REFUSED rather than dropped. Two commanders and one
+  // start is a landscape that cannot hold this lobby, and a match that began anyway would put the
+  // second commander nowhere and look like the game losing him.
+  if (_landscape.starts.size() < m_sim.Settings().seatCount)
+  {
+    Neuron::Log::Write(Neuron::LogLevel::Error, "match: the landscape names " + std::to_string(_landscape.starts.size()) +
+                                                  " start(s) and the lobby seats " + std::to_string(m_sim.Settings().seatCount));
+    return false;
+  }
+  for (std::uint8_t seat = 0; seat < m_sim.Settings().seatCount; ++seat)
+  {
+    if (m_sim.Settings().seats[seat].kind == SeatKind::Empty)
+    {
+      continue; // An empty seat is nobody; it gets no base and costs the landscape no start.
+    }
+    if (!PlaceStartingBase(m_sim, seat, _landscape.starts[seat], m_sim.Settings().baseLevel))
+    {
+      return false; // PlaceStartingBase has logged which of its faults it was.
+    }
+  }
 
   // THE HOST STARTS BEFORE THE JOIN, and it has to: the join is a datagram, and a datagram is
   // answered by a host that is running. Starting the thread last would leave the first join to sit

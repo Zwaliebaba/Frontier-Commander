@@ -4,10 +4,17 @@
 
 #include "App.h"
 
+#include "Match.h"
+
 #include "Camera.h"
 #include "CameraController.h"
+#include "ContentHash.h"
+#include "ContentLoader.h"
+#include "FogPass.h"
 #include "FrameCapture.h"
 #include "FrameInput.h"
+#include "FrameTimer.h"
+#include "GeometryPass.h"
 #include "GraphicsDevice.h"
 #include "HeightView.h"
 #include "InputQueue.h"
@@ -15,14 +22,14 @@
 #include "LandscapeDefinition.h"
 #include "Lighting.h"
 #include "Log.h"
+#include "RenderView.h"
 #include "MatchSettings.h"
-#include "ContentLoader.h"
+#include "ModelBuffers.h"
+#include "Movement.h"
 #include "Paths.h"
 #include "PresentPass.h"
 #include "ScaleMode.h"
 #include "SceneTarget.h"
-#include "Sim.h"
-#include "FrameTimer.h"
 #include "SwapChain.h"
 #include "TerrainChunk.h"
 #include "TerrainPass.h"
@@ -38,9 +45,11 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <optional>
 #include <span>
 #include <string>
 #include <system_error>
+#include <thread>
 #include <vector>
 
 namespace Frontier
@@ -54,31 +63,40 @@ constexpr std::array<float, 4> CLEAR_COLOR = {0.0f, 0.0f, 0.0f, 1.0f};
 constexpr std::uint32_t CAPTURE_EVERY_FRAMES = 100;
 constexpr float PI = 3.14159265358979323846f;
 
-/// The Small landscape of M0: seed 1's recipe, as Tools/LandscapeTool.py --define wrote it to
-/// Tests/SimTests/Fixtures/Landscape/small-0001.json. The JSON loader of M1 replaces this.
-[[nodiscard]] LandscapeDefinition SmallLandscape()
+/// Where the camera sits over the commander's base at the first frame, in world units: far enough
+/// back that the command post and the ground around it are both in the frame, and high enough that
+/// the look-down angle reads as an RTS camera rather than a chase one. Not a rule anywhere - the
+/// design gives the camera's rates (SpeciesLook.md §7) and not its opening pose - so these are
+/// this task's choice and G3's run is where the owner says whether they are right.
+/// How long the capture waits for the loopback join before calling it a fault, and how often it
+/// looks. Generous against a cold WARP start and short enough that a CI job never sits on it.
+constexpr std::chrono::seconds JOIN_WAIT{10};
+constexpr std::chrono::milliseconds JOIN_POLL{2};
+
+constexpr float CAMERA_SETBACK = 420.0f;
+constexpr float CAMERA_ELEVATION = 340.0f;
+
+/// The landscape the slice is played on, from the content tree by its file stem
+/// (m1-vertical-slice/G1a). Null when GameData carries no such file, which is a content fault and
+/// not something to substitute a built-in for: M0's hard-coded recipe is gone, and a match played
+/// on a landscape nobody authored is a match whose bases stand where nobody put them.
+[[nodiscard]] const LandscapeDefinition* SliceLandscape(const ContentTree& _content) noexcept
 {
-  LandscapeDefinition definition{};
-  definition.version = LANDSCAPE_DEFINITION_VERSION;
-  definition.sizeClass = SizeClass::Small;
-  definition.cellsPerSide = SIZE_CLASS_CELLS[static_cast<std::size_t>(SizeClass::Small)];
-  definition.seed = 1;
-  definition.palette = "Default";
-  // The last member of each is the tile's own palette, empty for the landscape's (Q18).
-  definition.tiles = {
-    {0, 0, 512, 170, 90, 100, 48, 70, 1, 32, ""},   {58, -24, 256, 190, 90, 60, 0, 80, 0, 16, ""},
-    {311, 61, 256, 190, 90, 90, 0, 80, 0, 16, ""},  {36, 209, 256, 210, 90, 75, 0, 80, 0, 16, ""},
-    {269, 220, 256, 230, 90, 90, 0, 80, 0, 16, ""}, {113, 189, 128, 290, 90, 130, 0, 87, 1, 16, ""},
-    {-23, 34, 128, 270, 90, 130, 0, 87, 1, 16, ""}, {65, 246, 128, 270, 90, 130, 0, 87, 1, 16, ""},
-  };
-  definition.starts = {{36, 92}, {108, 20}};
-  return definition;
+  for (std::size_t index = 0; index < _content.landscapeIds.size() && index < _content.landscapes.size(); ++index)
+  {
+    if (_content.landscapeIds[index] == SLICE_LANDSCAPE)
+    {
+      return &_content.landscapes[index];
+    }
+  }
+  return nullptr;
 }
 
 /// The tables a match is played by (OpenQuestions.md Q20), read once from the game-data directory
-/// beside the executable. A tree that does not load leaves the match on an empty one and says so,
-/// rather than refusing to start: getting GameData beside the executable is the owner's step (C2),
-/// and until it is taken every stage that reads a row is one that does not exist yet.
+/// beside the executable. A tree that does not load is returned EMPTY and logged, and the caller
+/// refuses the match: C2's tables are authored now, so an empty tree is GameData missing from
+/// beside the executable rather than content nobody has written yet, and a match on no tables has
+/// no command post to start either commander with.
 [[nodiscard]] const Frontier::ContentTree& MatchContent()
 {
   static const Frontier::ContentTree TREE = []
@@ -101,19 +119,33 @@ constexpr float PI = 3.14159265358979323846f;
   return TREE;
 }
 
-/// A two-seat lobby, the least a match needs.
+/// The fixed lobby of M1, until M2's lobby lets the owner choose: this commander in seat 0 and the
+/// scripted AI of S12 in seat 1, at the defaults GameDesign.md §2 names.
+///
+/// SEAT 0 IS HUMAN IN THE CAPTURE TOO, AND THAT IS NOT AN OVERSIGHT. G2's acceptance asks the
+/// capture to run "with two AI seats", and a client cannot have one: Net/Host.cpp's FreeSeat hands
+/// a joining client only a seat whose kind is Human, so an all-AI lobby refuses the join with
+/// NoSeat and there is no replica to draw from. Proved here, not reasoned about - the probe of this
+/// task ran it and got six failures and an empty view. So the capture watches an unattended human
+/// seat, whose base stands still while the AI opposite it plays; making it a match of two playing
+/// commanders needs either a scripted order stream for seat 0 or an observer connection in Net, and
+/// that decision is G2's rather than something to settle inside this file.
 [[nodiscard]] MatchSettings Lobby()
 {
   MatchSettings settings{};
   settings.seed = 1;
   settings.sizeClass = SizeClass::Small;
   settings.seatCount = 2;
+  // "Nothing is a builder and a command post" (GameDesign.md §2). It is the only level
+  // FrontierCommander/StartingBase.h places; Small and Established arrive with the lobby that can
+  // ask for them.
   settings.baseLevel = BaseLevel::Nothing;
   settings.powerLevel = PowerLevel::Medium;
   settings.technologyTiers = 0;
   settings.victory = VictoryCondition::Annihilation;
   settings.survivalTicks = 0;
   settings.deviceCapLevel = DeviceCapLevel::Medium; // 200 devices, the figure GameDesign.md §4 names
+  settings.rejoinGraceTicks = 400;
   for (SeatSettings& seat : settings.seats)
   {
     seat = {SeatKind::Empty, NO_ALLIANCE};
@@ -121,6 +153,45 @@ constexpr float PI = 3.14159265358979323846f;
   settings.seats[0] = {SeatKind::Human, 0};
   settings.seats[1] = {SeatKind::Ai, 1};
   return settings;
+}
+
+/// The passes that cannot be built until there is a landscape, and the view over it.
+///
+/// M0 BUILT THESE AT STARTUP AND M1 CANNOT. The landscape arrives with the join (Match.h), which
+/// is a datagram answered by a thread, so there are frames - one over loopback, a second or more
+/// over a network - in which the device, the swap chain and the scene target exist and the terrain
+/// does not. Those frames present the cleared target, which is the Species sky, rather than
+/// nothing: a window that stays black until a join lands is indistinguishable from one that hung.
+struct MatchScene
+{
+  Neuron::HeightView heights{};
+  std::optional<Neuron::TerrainPass> terrain;
+  std::optional<Neuron::WaterPass> water;
+  std::optional<Neuron::FogPass> fog;
+
+  [[nodiscard]] bool Ready() const noexcept
+  {
+    return terrain.has_value();
+  }
+};
+
+/// Where the camera starts: over this commander's own base, high enough to see it and the ground
+/// it has to expand into, looking down and inward toward the middle of the landscape so that the
+/// first frame is the picture a player expects rather than a corner of sea.
+void PoseOverBase(Neuron::Camera& _camera, const CellPosition& _start, float _extent, float _groundHeight) noexcept
+{
+  const float baseX = (static_cast<float>(_start.x) + 0.5f) * static_cast<float>(Neuron::WORLD_UNITS_PER_CELL);
+  const float baseZ = (static_cast<float>(_start.y) + 0.5f) * static_cast<float>(Neuron::WORLD_UNITS_PER_CELL);
+  const float center = _extent * 0.5f;
+  // Back off along the line from the middle of the landscape to the base, so that "inward" is the
+  // same direction whichever corner the seat starts in.
+  const float awayX = baseX - center;
+  const float awayZ = baseZ - center;
+  const float distance = std::sqrt(awayX * awayX + awayZ * awayZ);
+  const float unitX = distance > 1.0f ? awayX / distance : 0.0f;
+  const float unitZ = distance > 1.0f ? awayZ / distance : -1.0f;
+  _camera.SetPosition(baseX + unitX * CAMERA_SETBACK, _groundHeight + CAMERA_ELEVATION, baseZ + unitZ * CAMERA_SETBACK);
+  _camera.LookAt(baseX, _groundHeight, baseZ);
 }
 
 /// The renderer's view over the simulation's landscape (TechnicalDesign.md §6.3): the one place
@@ -175,6 +246,32 @@ constexpr float PI = 3.14159265358979323846f;
   return Neuron::TerrainPalette::BuiltIn();
 }
 
+/// Builds the passes that needed the landscape, once it has arrived, and puts the camera over the
+/// commander's base. Everything here reads the CLIENT'S landscape (Match::Terrain) and never the
+/// host's, which is the fog boundary of TechnicalDesign.md §5.2.
+void OpenScene(Neuron::GraphicsDevice& _device, const Neuron::SceneTarget& _scene, const Match& _match, const CellPosition& _start,
+               MatchScene& _outScene, Neuron::Camera& _outCamera)
+{
+  _outScene.heights = ViewOf(_match.Terrain());
+  _outScene.terrain.emplace(_device, _outScene.heights, LoadTerrainPalette(), _scene.SampleCount());
+  _outScene.water.emplace(_device, _outScene.heights, _scene.SampleCount());
+  _outScene.fog.emplace(_device, _scene, _match.Terrain().CellsPerSide());
+
+  const float extent = _outScene.terrain->ExtentWorldUnits();
+  _outCamera.SetFarPlane(extent * Neuron::FAR_PLANE_EXTENT_FACTOR);
+  // The ground the base actually stands on, read off the commander's own landscape rather than
+  // guessed from the highest sample: a camera parked at half the island's height is underground on
+  // a peak and in orbit over a beach.
+  const std::int32_t baseSubunitsX = static_cast<std::int32_t>(_start.x) * Neuron::SUBUNITS_PER_CELL + Neuron::SUBUNITS_PER_CELL / 2;
+  const std::int32_t baseSubunitsZ = static_cast<std::int32_t>(_start.y) * Neuron::SUBUNITS_PER_CELL + Neuron::SUBUNITS_PER_CELL / 2;
+  const float ground = Neuron::WorldUnitsOfSubunits(GroundHeightSubunits(_match.Terrain(), baseSubunitsX, baseSubunitsZ));
+  PoseOverBase(_outCamera, _start, extent, ground);
+  _outCamera.ClampHeight(_outScene.heights);
+  Neuron::Log::Write(Neuron::LogLevel::Info, "match: the landscape arrived - " + std::to_string(_outScene.heights.samplesPerSide) +
+                                               " samples a side, " + std::to_string(_match.Terrain().CellsPerSide()) + " cells, highest " +
+                                               std::to_string(_outScene.heights.highest));
+}
+
 /// The fog range is the landscape's no longer (ADR-007): it is absolute, so a Frontier landscape's
 /// horizon reads exactly as a Small one's.
 [[nodiscard]] Neuron::TerrainPass::Frame FrameOf(Neuron::FogMode _fog) noexcept
@@ -191,9 +288,14 @@ constexpr float PI = 3.14159265358979323846f;
 }
 
 /// The capture's scripted path (TechnicalDesign.md §6.1): a hundred frames of a descending half
-/// orbit round the island, then the vantage ADR-005 compares its two frames from, held: frame 100
-/// under the Species fog, frame 200 under the desaturation. Returns the frame's fog mode.
-Neuron::FogMode PoseFor(std::uint32_t _frame, float _extent, Neuron::Camera& _camera) noexcept
+/// orbit round the island, then the commander's own base, held: frame 100 under the Species fog,
+/// frame 200 under the desaturation, which is the pair ADR-005 compares. Returns the frame's fog
+/// mode.
+///
+/// THE HELD VANTAGE IS THE BASE AND NOT A CORNER. M0 held a fixed point because there was nothing
+/// on the island to hold on; there is now, and a capture of a match whose frames show no commander
+/// in them proves only that the terrain still draws.
+Neuron::FogMode PoseFor(std::uint32_t _frame, float _extent, const CellPosition& _start, Neuron::Camera& _camera) noexcept
 {
   const float center = _extent * 0.5f;
   if (_frame < 100)
@@ -205,9 +307,28 @@ Neuron::FogMode PoseFor(std::uint32_t _frame, float _extent, Neuron::Camera& _ca
     _camera.LookAt(center, 0.0f, center);
     return Neuron::FogMode::LinearToColor;
   }
-  _camera.SetPosition(_extent * 0.12f, 320.0f, _extent * 0.12f);
-  _camera.LookAt(_extent * 0.55f, 0.0f, _extent * 0.55f);
+  const float baseX = (static_cast<float>(_start.x) + 0.5f) * static_cast<float>(Neuron::WORLD_UNITS_PER_CELL);
+  const float baseZ = (static_cast<float>(_start.y) + 0.5f) * static_cast<float>(Neuron::WORLD_UNITS_PER_CELL);
+  _camera.SetPosition(baseX, CAMERA_ELEVATION * 1.5f, baseZ - CAMERA_SETBACK);
+  _camera.LookAt(baseX, 0.0f, baseZ);
   return _frame < 200 ? Neuron::FogMode::LinearToColor : Neuron::FogMode::Desaturation;
+}
+
+/// One frame of the world, in the order TechnicalDesign.md §6.2 gives: the ground, the water over
+/// it, the commanders' things on it, and the fog over everything. Shared by the window and the
+/// capture so that the two cannot drift into showing different pictures of the same match - which
+/// they would, because the capture is the only one anybody reviews.
+void DrawMatch(ID3D12GraphicsCommandList* _list, const Neuron::SceneTarget& _scene, MatchScene& _parts, Neuron::GeometryPass& _geometry,
+               const Neuron::Camera& _camera, const Match& _match, Neuron::FogMode _fog)
+{
+  const Neuron::TerrainPass::Frame frame = FrameOf(_fog);
+  _parts.terrain->Draw(_list, _camera, frame);
+  // AFTER the draw and not before: TerrainPass::Draw is what writes this frame's constants and sets
+  // the address to the slot it wrote, so an address read first is the previous frame's.
+  const D3D12_GPU_VIRTUAL_ADDRESS constants = _parts.terrain->ConstantsAddress();
+  _parts.water->Draw(_list, constants);
+  _geometry.Draw(_list, constants, _match.View().instances);
+  _parts.fog->Draw(_list, _scene, _camera, frame.aspect, _match.View().fog);
 }
 
 [[nodiscard]] std::string Describe(const winrt::hresult_error& _error)
@@ -296,6 +417,14 @@ int App::RunWindowed()
   {
     Neuron::Log::Write(Neuron::LogLevel::Warning, "the log file could not be opened; logging to the debugger only");
   }
+  const ContentTree& content = MatchContent();
+  const LandscapeDefinition* landscape = SliceLandscape(content);
+  if (landscape == nullptr)
+  {
+    Neuron::Log::Write(Neuron::LogLevel::Error,
+                       std::string("GameData carries no landscape called ") + SLICE_LANDSCAPE + "; there is nothing to play on");
+    return EXIT_FAILED;
+  }
   Neuron::Window window;
   Neuron::InputQueue inputQueue;
   Neuron::FrameInput inputState;
@@ -305,21 +434,26 @@ int App::RunWindowed()
   Neuron::SwapChain swapChain(device, window.Handle(), window.ClientWidth(), window.ClientHeight());
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::PresentPass present(device, scene);
-  Sim sim(Lobby(), MatchContent());
-  if (!sim.CreateLandscape(SmallLandscape()))
+
+  // THE MODEL SET AND THE GEOMETRY PASS NEED NO LANDSCAPE, so they are built now rather than with
+  // the rest: the models are content and the commander colours are content, and both are known
+  // before a single datagram has been sent.
+  Neuron::ModelBuffers models(device, content.models);
+  Neuron::GeometryPass geometry(device, models, scene.SampleCount(), content.ui.commanders);
+
+  // The two loops (TechnicalDesign.md §3). Everything from here to the draw is Match's; this
+  // function keeps steps 1, 6 and 7 - the window's messages, the input routing and the drawing -
+  // because those are the three that need a window and a device.
+  Match match(content, Lobby(), ContentHash(content), Neuron::CHUNK_CELLS);
+  if (!match.Start(*landscape, "Commander"))
   {
-    Neuron::Log::Write(Neuron::LogLevel::Error, "the built-in landscape was refused");
-    return EXIT_FAILED;
+    return EXIT_FAILED; // Match::Start has logged which of its faults it was.
   }
-  const Neuron::HeightView heights = ViewOf(sim.Terrain());
-  Neuron::TerrainPass terrain(device, heights, LoadTerrainPalette(), scene.SampleCount());
-  Neuron::WaterPass water(device, heights, scene.SampleCount());
+
+  MatchScene sceneParts;
   Neuron::Camera camera;
-  camera.SetFarPlane(terrain.ExtentWorldUnits() * Neuron::FAR_PLANE_EXTENT_FACTOR);
-  PoseFor(100, terrain.ExtentWorldUnits(), camera); // The capture's vantage; the fog is the ADR's, not the script's
-  const Neuron::FogMode fog = Neuron::DEFAULT_FOG_MODE;
-  camera.ClampHeight(heights);
   const CameraController controller;
+  const Neuron::FogMode fog = Neuron::DEFAULT_FOG_MODE;
   // The frame time is measured over the whole loop body, present included, which is what a player
   // waits for. With --novsync and a display that allows tearing it is the renderer's cost; without
   // either it is the refresh interval, and the title says which so that a figure read off it is
@@ -334,12 +468,14 @@ int App::RunWindowed()
     Neuron::Log::Write(Neuron::LogLevel::Warning,
                        "--novsync: this output does not allow tearing, so frames are still paced by the display");
   }
-  auto lastFrame = std::chrono::steady_clock::now();
+  const auto matchStarted = std::chrono::steady_clock::now();
+  bool joinWarned = false;
+  auto lastFrame = matchStarted;
   while (window.Pump())
   {
     const auto frameStart = std::chrono::steady_clock::now();
-    // The frame's input (TechnicalDesign.md §6.5): derive what the frame saw, offer it to the sinks,
-    // mask what they took, fire the subscriptions, and only then read the view.
+    // 1 and 6. The frame's input (TechnicalDesign.md §6.5): derive what the frame saw, offer it to
+    // the sinks, mask what they took, fire the subscriptions, and only then read the view.
     const std::size_t consumed = Neuron::DeriveFrameInput(inputQueue.Events(), inputState);
     inputRouter.Dispatch(inputQueue.Events().first(consumed));
     Neuron::FrameInput inputView = inputState;
@@ -347,9 +483,32 @@ int App::RunWindowed()
     inputRouter.FireSubscriptions(inputView);
     inputQueue.Erase(consumed);
     const auto now = std::chrono::steady_clock::now();
-    const float seconds = std::min(std::chrono::duration<float>(now - lastFrame).count(), 0.1f);
+    const auto sinceLastFrame = now - lastFrame;
     lastFrame = now;
-    controller.Advance(camera, inputView, heights, seconds, window.ClientWidth(), window.ClientHeight());
+    const float seconds = std::min(std::chrono::duration<float>(sinceLastFrame).count(), 0.1f);
+
+    // 2 to 5. Drain, apply, interpolate, build the render view. Given the WALL TIME and not the
+    // clamped seconds: the clamp above is the camera's, so that a frame that took a second does not
+    // fly it across the map, and the liveness clock must not be shortened by it - a timeout that
+    // ran slow whenever the display hitched is a timeout that cannot be trusted.
+    match.Advance(std::chrono::duration_cast<std::chrono::nanoseconds>(sinceLastFrame));
+    if (!sceneParts.Ready() && match.TerrainReady())
+    {
+      OpenScene(device, scene, match, landscape->starts.front(), sceneParts, camera);
+    }
+    if (sceneParts.Ready())
+    {
+      controller.Advance(camera, inputView, sceneParts.heights, seconds, window.ClientWidth(), window.ClientHeight());
+    }
+    else if (!joinWarned && now - matchStarted > JOIN_WAIT)
+    {
+      // Said once, because a window of nothing but sky is indistinguishable from a window that
+      // hung, and the log is the only place that can tell them apart.
+      Neuron::Log::Write(Neuron::LogLevel::Warning, "match: the host has not answered the join after " + std::to_string(JOIN_WAIT.count()) +
+                                                      " seconds; the frame is the sky");
+      joinWarned = true;
+    }
+
     if (window.TakeResized())
     {
       swapChain.Resize(device, window.ClientWidth(), window.ClientHeight());
@@ -359,10 +518,14 @@ int App::RunWindowed()
       WaitMessage();
       continue;
     }
+    // 7. Draw and present. A frame before the join has landed presents the cleared target, which is
+    // the Species sky; it is a picture rather than a hang.
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);
-    terrain.Draw(list, camera, FrameOf(fog));
-    water.Draw(list, terrain.ConstantsAddress());
+    if (sceneParts.Ready())
+    {
+      DrawMatch(list, scene, sceneParts, geometry, camera, match, fog);
+    }
     scene.Resolve(list);
     present.Draw(
       list, swapChain.CurrentBackBuffer(), swapChain.CurrentRenderTargetView(),
@@ -379,17 +542,22 @@ int App::RunWindowed()
       std::wstring title = L"Frontier Commander - ";
       title += pacing;
       title += L" - mean " + Micros(frameTimer.MeanMicroseconds()) + L" ms, median " + Micros(frameTimer.MedianMicroseconds()) +
-               L", 99th " + Micros(frameTimer.PercentileMicroseconds(99)) + L" - " + std::to_wstring(terrain.LastTriangleCount()) +
-               L" triangles in " + std::to_wstring(terrain.LastChunkCount()) + L" chunks";
+               L", 99th " + Micros(frameTimer.PercentileMicroseconds(99)) + L" - tick " + std::to_wstring(match.HostSide().Tick()) + L", " +
+               std::to_wstring(geometry.LastInstanceCount()) + L" instances in " + std::to_wstring(geometry.LastDrawCount()) + L" draws";
       window.SetTitle(title.c_str());
     }
   }
   device.WaitForIdle();
   device.DrainDebugMessages();
   window.AttachInput(nullptr);
+  // The host thread is stopped and joined before the device goes, because a host that was still
+  // publishing into a transport whose client end had been destroyed is a race nobody would find.
+  match.Stop();
   Neuron::Log::Write(Neuron::LogLevel::Info, "exit: " + std::to_string(device.FramesBegun()) + " frames, " +
                                                std::to_string(device.DebugMessageCount()) + " debug-layer messages, " +
-                                               std::to_string(inputQueue.Dropped()) + " input events dropped");
+                                               std::to_string(inputQueue.Dropped()) + " input events dropped, host tick " +
+                                               std::to_string(match.HostSide().Tick()) + ", " +
+                                               std::to_string(match.HostSide().SlowedTicks()) + " tick(s) of wall time given away");
   return ExitCodeOf(device);
 }
 
@@ -405,30 +573,69 @@ int App::RunCapture()
   Neuron::Log::Write(Neuron::LogLevel::Info, "capture: " + std::to_string(m_options.captureFrames) + " frames on " +
                                                (m_options.warp ? "WARP" : "the first hardware adapter") + " into " +
                                                m_options.captureDirectory.string());
+  const ContentTree& content = MatchContent();
+  const LandscapeDefinition* landscape = SliceLandscape(content);
+  if (landscape == nullptr)
+  {
+    Neuron::Log::Write(Neuron::LogLevel::Error,
+                       std::string("GameData carries no landscape called ") + SLICE_LANDSCAPE + "; there is nothing to capture");
+    return EXIT_FAILED;
+  }
   Neuron::GraphicsDevice device(m_options.warp);
   Neuron::SceneTarget scene(device, CLEAR_COLOR);
   Neuron::FrameCapture capture(device, Neuron::AUTHORED_WIDTH_PIXELS, Neuron::AUTHORED_HEIGHT_PIXELS, Neuron::SCENE_COLOR_FORMAT);
-  Sim sim(Lobby(), MatchContent());
-  if (!sim.CreateLandscape(SmallLandscape()))
+  Neuron::ModelBuffers models(device, content.models);
+  Neuron::GeometryPass geometry(device, models, scene.SampleCount(), content.ui.commanders);
+
+  Match match(content, Lobby(), ContentHash(content), Neuron::CHUNK_CELLS);
+  if (!match.Start(*landscape, "Capture"))
   {
-    Neuron::Log::Write(Neuron::LogLevel::Error, "the built-in landscape was refused");
     return EXIT_FAILED;
   }
-  const Neuron::HeightView heights = ViewOf(sim.Terrain());
-  Neuron::Log::Write(Neuron::LogLevel::Info, "landscape: " + std::to_string(heights.samplesPerSide) + " samples a side, highest " +
-                                               std::to_string(heights.highest));
-  Neuron::TerrainPass terrain(device, heights, LoadTerrainPalette(), scene.SampleCount());
-  Neuron::WaterPass water(device, heights, scene.SampleCount());
+  MatchScene sceneParts;
   Neuron::Camera camera;
-  camera.SetFarPlane(terrain.ExtentWorldUnits() * Neuron::FAR_PLANE_EXTENT_FACTOR);
+
+  // THE JOIN IS WAITED FOR BEFORE THE FIRST FRAME IS COUNTED, and the window deliberately is not.
+  // A window shows the sky for the frame or two a loopback join takes and nobody minds; a capture
+  // whose frame 0 is the cleared target has written a BLACK BMP as its first artefact, and the one
+  // thing the agent ever sees of this game is those files. The wait is bounded: a join that never
+  // lands is a fault to report rather than a capture to hang on.
+  {
+    const auto until = std::chrono::steady_clock::now() + JOIN_WAIT;
+    auto last = std::chrono::steady_clock::now();
+    while (!match.TerrainReady() && std::chrono::steady_clock::now() < until)
+    {
+      const auto now = std::chrono::steady_clock::now();
+      match.Advance(std::chrono::duration_cast<std::chrono::nanoseconds>(now - last));
+      last = now;
+      std::this_thread::sleep_for(JOIN_POLL);
+    }
+    if (!match.TerrainReady())
+    {
+      Neuron::Log::Write(Neuron::LogLevel::Error, "capture: the host did not answer the join; there is nothing to capture");
+      return EXIT_FAILED;
+    }
+    OpenScene(device, scene, match, landscape->starts.front(), sceneParts, camera);
+  }
+
+  // THE CAPTURE RUNS THE MATCH IN WALL TIME, WHICH IS WHAT G1a CAN PROVE AND NO MORE. The host
+  // thread is driven by the clock, so a capture of N frames advances the simulation by however long
+  // N frames took on WARP and not by a tick count anybody chose. G2 is the task that makes this a
+  // scripted number of TICKS run as fast as the simulation allows; until then the frames show the
+  // opening of a real match rather than M0's empty island, which is the step this task owes.
+  auto lastFrame = std::chrono::steady_clock::now();
   for (std::uint32_t frame = 0; frame < m_options.captureFrames; ++frame)
   {
-    const Neuron::FogMode fog = PoseFor(frame, terrain.ExtentWorldUnits(), camera);
-    camera.ClampHeight(heights);
+    const auto now = std::chrono::steady_clock::now();
+    const auto elapsed = now - lastFrame;
+    lastFrame = now;
+    match.Advance(std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed));
+    const Neuron::FogMode fog = PoseFor(frame, sceneParts.terrain->ExtentWorldUnits(), landscape->starts.front(), camera);
+    camera.ClampHeight(sceneParts.heights);
+
     ID3D12GraphicsCommandList* list = device.BeginFrame();
     scene.Begin(list);
-    terrain.Draw(list, camera, FrameOf(fog));
-    water.Draw(list, terrain.ConstantsAddress());
+    DrawMatch(list, scene, sceneParts, geometry, camera, match, fog);
     scene.Resolve(list);
     const bool captured = frame % CAPTURE_EVERY_FRAMES == 0;
     if (captured)
@@ -447,18 +654,21 @@ int App::RunCapture()
       const DirectX::XMFLOAT3 position = camera.Position();
       Neuron::Log::Write(Neuron::LogLevel::Info,
                          "capture: wrote " + file.filename().string() + " from (" + std::to_string(static_cast<int>(position.x)) + ", " +
-                           std::to_string(static_cast<int>(position.y)) + ", " + std::to_string(static_cast<int>(position.z)) + "), fog " +
-                           (fog == Neuron::FogMode::LinearToColor ? "linear to black" : "desaturation") + ", " +
-                           std::to_string(terrain.LastChunkCount()) + " chunks, " + std::to_string(terrain.LastTriangleCount()) +
-                           " triangles, " + std::to_string(water.QuadCount()) + " water quads");
+                           std::to_string(static_cast<int>(position.y)) + ", " + std::to_string(static_cast<int>(position.z)) +
+                           "), host tick " + std::to_string(match.HostSide().Tick()) + ", " + std::to_string(geometry.LastInstanceCount()) +
+                           " instances in " + std::to_string(geometry.LastDrawCount()) + " draws, " +
+                           std::to_string(geometry.LastUnknownModelCount()) + " naming no model, fog " +
+                           (fog == Neuron::FogMode::LinearToColor ? "linear to black" : "desaturation"));
     }
     device.DrainDebugMessages();
   }
   device.WaitForIdle();
   device.DrainDebugMessages();
+  match.Stop();
   Neuron::Log::Write(Neuron::LogLevel::Info, "capture: " + std::to_string(device.FramesBegun()) + " frames, " +
                                                std::to_string(device.DebugMessageCount()) + " debug-layer messages, debug layer " +
-                                               (device.DebugLayerActive() ? "on" : "off"));
+                                               (device.DebugLayerActive() ? "on" : "off") + ", host tick " +
+                                               std::to_string(match.HostSide().Tick()));
   return ExitCodeOf(device);
 }
 
