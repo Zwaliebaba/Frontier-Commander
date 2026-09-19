@@ -116,6 +116,8 @@
     <ClCompile Include="ProductionTests.cpp" />
     <ClCompile Include="ResearchTests.cpp" />
     <ClCompile Include="MovementTests.cpp" />
+    <ClCompile Include="DamageTests.cpp" />
+    <ClCompile Include="CombatTests.cpp" />
     <ClCompile Include="VisibilityTests.cpp" />
     <ClCompile Include="PathingTests.cpp" />
     <ClCompile Include="OrderValidationTests.cpp" />

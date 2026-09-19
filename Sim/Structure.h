@@ -54,6 +54,12 @@ struct Structure
   std::array<std::uint32_t, MAX_STRUCTURE_MODULES> modules; ///< Row indices; the first moduleCount count
   std::uint8_t moduleCount;
 
+  /// Ticks until the one weapon this structure's row names may fire again (Sim/Weapons.h). A
+  /// field of its own rather than a second use of workRemainingTicks below, which is a factory's
+  /// production countdown: a mod that puts a weapon on a factory would otherwise have the two
+  /// share one counter and each reset the other.
+  std::uint32_t reloadTicks;
+
   /// The module a builder is putting onto this standing structure, or NO_STRUCTURE_MODULE, and
   /// what has gone into it, in the unit buildEffortHundredths uses. A module is built onto a
   /// STANDING structure, so this cannot share the field above: that one reads 10,000 for the

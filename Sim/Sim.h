@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ClusterGraph.h"
+#include "Damage.h"
 #include "Economy.h"
 #include "HeightDelta.h"
 #include "Landscape.h"
@@ -60,8 +61,9 @@ protected:
   ClusterGraph m_clusters;
   PathPlanner m_planner;
   OrderQueue m_orders;
-  std::vector<Order> m_thisTick; ///< Stage 1's scratch; empty between ticks and never state.
-  std::uint32_t m_lastRoll = 0;  ///< Stage 8's draw, kept so that the hash covers the stream.
+  std::vector<Order> m_thisTick;     ///< Stage 1's scratch; empty between ticks and never state.
+  std::vector<DamageEvent> m_damage; ///< Stages 8 and 9's scratch, spent by stage 10; never state.
+  std::uint32_t m_lastRoll = 0;      ///< Stage 8's draw, kept so that the hash covers the stream.
   std::uint32_t m_appliedOrders = 0;
   std::uint32_t m_droppedOrders = 0;
   bool m_finished = false;
@@ -191,6 +193,14 @@ public:
     return m_world;
   }
 
+  /// This tick's damage: what stages 8 and 9 decided and stage 10 applies (Sim/Damage.h). Scratch
+  /// and not state - it is filled and emptied inside one Advance - so it is neither hashed nor
+  /// carried by a snapshot, exactly as stage 1's order scratch is not.
+  [[nodiscard]] std::vector<DamageEvent>& Damage() noexcept
+  {
+    return m_damage;
+  }
+
   /// The mutable world and a mutable seat exist for the same reason FlattenTerrain does: the
   /// systems that will own them are S2 to S11, and until they exist the host and the tests are
   /// what put a match into a state worth hashing. Every stage of Advance reaches m_world and
@@ -204,6 +214,12 @@ public:
     FRONTIER_ASSERT(_seat < m_seats.size());
     return m_seats[_seat];
   }
+
+  /// One draw from the simulation's stream, uniform in [0, _bound), and the record of it that the
+  /// state hash covers. EVERY roll the simulation makes goes through here: the stream is the one
+  /// thing two hosts must advance identically, so there is one door to it rather than a search for
+  /// every call of Random::Below. _bound is at least 1.
+  [[nodiscard]] std::uint32_t Roll(std::uint32_t _bound) noexcept;
 
   [[nodiscard]] const Neuron::Random& Stream() const noexcept
   {

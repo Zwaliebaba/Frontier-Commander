@@ -964,7 +964,74 @@ tasks:
       - msbuild FrontierCommander.slnx /p:Configuration=Debug /p:Platform=x64 /m /warnaserror
       - vstest.console.exe x64\Debug\*Tests.dll /Platform:x64
     parallel_safe: true
-    status: todo
+    status: done
+    notes: >
+      Stages 8, 9 and 10 of the tick are no longer empty. Sim/Targeting acquires and fires,
+      Sim/Weapons holds what a weapon is and flies the shells, Sim/Damage applies what the two
+      decided, Sim/Retreat decides who leaves, and Sim/Experience says what a kill is worth.
+      DAMAGE IS A QUEUE AND NOT A WRITE AT THE SHOT, which is the one structural decision here.
+      Two shooters that both fire at one device in a tick both fired while it was alive, because
+      both fired before either shot landed; a write at the shot makes the second shooter's tick
+      depend on which of the two the walk reached first. Stages 8 and 9 queue, stage 10 applies,
+      and the order of the walk stops mattering. The queue is scratch - filled and emptied inside
+      one Advance - so it is neither hashed nor carried.
+      ONE VISIBILITY TEST IS BOTH THE SIGHT RULE AND THE SPOTTER RULE. GameDesign.md 8 asks that a
+      target be visible to someone on the commander's side, and that indirect fire "additionally"
+      need a spotter. The fog grid of S9 is already the union of every viewer of the alliance, so
+      the two are one subscript. What makes them bite differently is the tables: a cannon reaches
+      16 cells on a chassis that sees 20, so a direct shooter always sees its own target; a mortar
+      reaches 28 and sees 20, so it cannot fire at its longest range unless something else of its
+      commander's is looking. The test that proves it is the one that takes the spotter away.
+      THE OPTIMAL RANGE STANCE HAD TO BE DEFINED AND NOT JUST IMPLEMENTED, and the mortar is why.
+      Optimal means "hold fire until the short band", and the mortar's short range IS its minimum
+      range - both six cells - so the first rule written made it unable to fire at all. A weapon
+      with no short band to close into opens at its long range under both stances: "engage at
+      optimal range" cannot mean "engage inside the range you may not fire within". Caught by the
+      spotter test, not by reading.
+      THE TARGET PRIORITY IS THIS TASK'S AND IT IS NOW OpenQuestions.md Q24, OPEN. GameDesign.md 8
+      says structures "take a target-priority stance only" and never says what the priorities are,
+      and there is no such axis in the four the order set carries. The rule shipped is one for
+      every shooter: keep the target you have while it is alive, visible and in range - a weapon
+      that re-chose every tick would spray a crowd and kill nothing - and otherwise the nearest,
+      devices before structures, ties to the lower id. Whether a commander may CHOOSE a priority
+      is the open half, and it is an axis, an operand and a panel control, so it is m2-skirmish's.
+      SPLASH HITS ENEMIES AND NOT THE SHOOTER'S OWN SIDE. The acceptance says an impact "damages
+      everything within its splash radius", which reads as area-rather-than-target; GameDesign.md
+      nowhere names friendly fire, and an area weapon is not where one arrives by implication. One
+      condition in Sim/Weapons.cpp if the owner wants it the other way, and it is called out there.
+      A SHELL CARRIES WHAT IT WAS FIRED WITH rather than looking it up when it lands: the chance
+      and the damage are on the Projectile, so a shot fired by a device that dies in the two
+      seconds it is in the air still lands as it was fired. Snapshot version 13, which also brings
+      a structure's weapon reload - a field of its own and not a second use of the production
+      countdown, which a mod that armed a factory would otherwise have the two share.
+      MEASURED: two scouts four cells apart settle it on tick 156, against the ~160 the tables
+      allow (100 hit points, 4 damage a hit through 5 armour, 80 percent every five ticks); eight
+      scouts in a line fight down to four in 400 ticks, and two Sims agree on every one of them.
+      SimTests is 134 methods and green; the snapshot of the three-seat fixture is 1,689 bytes.
+      TWO INHERITED TESTS HAD TO CHANGE, both because a placeholder became real. SimTests asserted
+      "stage 8 draws once a tick", which was the unconditional draw S1 put there to exercise the
+      stream from M0; stage 8 now draws only when it has a hit to roll for, so the test asserts
+      that instead and that Sim::Roll is the one door to the stream. And SnapshotTests' fixture
+      gave its projectile nine ticks of flight and then ran fifty ticks, so stage 9 landed it and
+      the hash test dereferenced a shell that was gone - the same class of fault as the furnishing
+      S6 had to move after the ticks. It carries nine hundred now, and the fixture covers the two
+      fields version 13 added.
+      THE MORTAR TEST IS WHY S7's ABSTRACTION IS WORTH KNOWING ABOUT. The first version had the
+      target run north half a cluster from a doorway, so its route detoured ten cells toward the
+      mortar; a shell fired over fourteen cells leads its target by less than the splash and
+      connects, and the test read as "the miss rule is broken" when the miss rule was fine. The run
+      is along a cluster's own first column now, where the doorways are, and the test asserts the
+      device really did run straight - so the day the route changes, it says so rather than
+      quietly measuring something else.
+      ALSO DONE HERE: the duty S8 wrote down for this task - a destroyed device's planner request
+      is cancelled, so a job does not outlive its device and take budget from the ones still alive.
+      Attack and ReturnToRepair now walk, which needed Sim/Movement.cpp: what makes them different
+      from a Move is only who sets the destination, so the walk needs no case of its own.
+      NOT DONE, and it is the content's rather than this task's: M1 ships neither a repair bay nor
+      a repair module, so RepairPointNear always answers no on shipped content and every device
+      holds and fights. The rule is written and tested against a fixture that defines both, which
+      is what the acceptance asks for. The repairing itself, and the walk back to the guard
+      position afterwards, belong to the task that ships the bay.
 
   - id: S11
     title: Sim victory and match flow - annihilation, the survival clock, surrender

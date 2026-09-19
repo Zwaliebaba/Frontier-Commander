@@ -2,11 +2,14 @@
 
 #include "Sim.h"
 #include "Construction.h"
+#include "Damage.h"
 #include "Movement.h"
 #include "OrderValidation.h"
 #include "Production.h"
 #include "Research.h"
 #include "StateHash.h"
+#include "Targeting.h"
+#include "Weapons.h"
 
 #include <algorithm>
 #include <array>
@@ -110,6 +113,12 @@ void Sim::Rebind() noexcept
   // handed back by Snapshot::Read go on planning where the one it was read into left off.
   m_clusters.Rebind(&m_landscape);
   m_planner.Rebind(&m_clusters);
+}
+
+std::uint32_t Sim::Roll(std::uint32_t _bound) noexcept
+{
+  m_lastRoll = m_random.Below(_bound == 0 ? 1 : _bound);
+  return m_lastRoll;
 }
 
 void Sim::SetObstruction(std::uint32_t _cellX, std::uint32_t _cellY, std::uint8_t _obstruction)
@@ -429,11 +438,56 @@ bool Sim::Apply(const Order& _order)
     return CancelResearch(*this, order.seat, {static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Structure});
 
   case OrderKind::Attack:
-  case OrderKind::ReturnToRepair:
-    // Validated here and applied by the task that owns the system (m1-vertical-slice/S2): the
-    // order passed every check this task can make, and there is nothing yet to apply it to. It
-    // counts as applied rather than dropped, because nothing was wrong with it.
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    // Validation has already turned an Attack on something the commander cannot see into an
+    // AttackMove to where it was last seen (GameDesign.md §8), so reaching here means the target
+    // is visible and is somebody else's. The destination is where it stands now; stage 8 keeps it
+    // current while the order lasts.
+    const ObjectId aim{static_cast<std::uint32_t>(order.operands[1]), static_cast<ObjectKind>(order.operands[2])};
+    TargetPoint point{};
+    if (!TargetAt(*this, aim, point))
+    {
+      return false;
+    }
+    target->primaryOrder = PrimaryOrder::Attack;
+    target->target = aim;
+    target->destinationX = point.x;
+    target->destinationZ = point.z;
+    m_planner.Cancel(ObjectId{static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device});
+    target->pathIndex = NO_PATH_INDEX;
+    target->stalledTicks = 0;
     return true;
+  }
+
+  case OrderKind::ReturnToRepair:
+  {
+    Device* target = device;
+    if (target == nullptr)
+    {
+      return false;
+    }
+    // A commander may send a device back by hand as well as its retreat stance sending it
+    // (Sim/Retreat.cpp). With nothing in reach it stays where it is rather than walking nowhere.
+    std::int32_t x = 0;
+    std::int32_t z = 0;
+    if (!RepairPointNear(*this, order.seat, target->x, target->z, x, z))
+    {
+      return true;
+    }
+    target->primaryOrder = PrimaryOrder::ReturnToRepair;
+    target->destinationX = x;
+    target->destinationZ = z;
+    target->target = NO_OBJECT;
+    m_planner.Cancel(ObjectId{static_cast<std::uint32_t>(order.operands[0]), ObjectKind::Device});
+    target->pathIndex = NO_PATH_INDEX;
+    target->stalledTicks = 0;
+    return true;
+  }
   }
   return false;
 }
@@ -474,21 +528,19 @@ void Sim::RefreshVisibility()
 
 void Sim::ResolveTargeting()
 {
-  // One draw per tick until the roll has a target, so that the stream is exercised from M0 and
-  // the determinism tests cover it (m0-foundation/T15 notes).
-  m_lastRoll = m_random.Next();
+  Frontier::AdvanceTargeting(*this);
 }
 
 // ── Stages 9 to 11 ──────────────────────────────────────────────────────────────────────────
 
-void Sim::AdvanceProjectiles() {}
+void Sim::AdvanceProjectiles()
+{
+  Frontier::AdvanceProjectiles(*this);
+}
 
 void Sim::ResolveDamage()
 {
-  // S10 adds the damage, the destruction and the experience around this. What is here is the tail
-  // of a wreck's life, which belongs to this stage (TechnicalDesign.md §4.8 names it "wrecks") and
-  // is implemented by S4 because S4 is what makes one.
-  AdvanceWrecks(m_world);
+  Frontier::ResolveDamage(*this);
 }
 
 void Sim::AdvanceAiSeats() {}

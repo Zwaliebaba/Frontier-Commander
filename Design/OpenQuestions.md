@@ -1,6 +1,6 @@
 # Open questions — answered
 
-**Status: none open. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q23 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
+**Status: one open — Q24, on what a weapon shoots at when it has a choice. Answered: the twenty-two of 2026-09-17, the six the external review raised included, and Q17 through Q23 of 2026-09-18.** Every question the drafts left open was put to the owner on 2026-09-17 with the options and a recommendation, and every answer is written into the document it belongs to, dated. This file keeps the record: the question, the answer, whether it followed the recommendation, and where it now lives. Of the original sixteen, nothing is open; the engineering choices deferred to ADRs — hierarchical A\* against flow fields, the fog and sky scaling, per-triangle normals, the authored resolution — are listed in `TechnicalDesign.md` §12 and are decided by measurement, not by the owner. One of those, the sky's scaling, turned out to carry a look decision the owner should take rather than a measurement, and it is Q17 below, answered 2026-09-18; ADR-005 settled the fog half of that pair on 2026-09-17 and left the sky untouched. A new question is added in the form the old ones had — the question, why it blocks, the options, a recommendation — and put to the owner; the six the external review raised are recorded below in the same form.
 
 | # | Question | Answer (owner, 2026-09-17) | Followed the recommendation | Recorded in |
 |---|---|---|---|---|
@@ -215,6 +215,23 @@ The shape is the argument. The thresholds double, so a rank costs about as much 
 **Answer (owner, 2026-09-18): option 1.** `Sim/Movement.h`'s `TerrainFactorPercent` is that curve and `TERRAIN_FACTOR_AT_LIMIT_PERCENT` is the 50; `GameDesign.md` §6 records it under the drive table. Measured against nothing, like the rank curve of Q22, and re-opened by the same thing: `m2-skirmish` has AI-versus-AI matches to measure a hillside fight on, and the rule is one function with one constant.
 
 **Recommendation: option 1.** It is the only one of the three that makes the max slope column buy two things, and a column that buys two things is a column worth paying for. It costs nothing over option 2 — the same arithmetic with a different denominator — and option 3 costs a pillar.
+
+
+## Open
+
+### Q24 — What does a weapon shoot at when it has a choice? (raised 2026-09-19)
+
+`GameDesign.md` §8 lists the stances a device carries and then says, of buildings: "**Structures with weapons take a target-priority stance only.**" That is the only place a target priority appears in the design, and it names neither the priorities nor the axis. `Sim/Device.h`'s four stance axes are fire, range, retreat and movement; there is no fifth, and `SetStance` names a device (`Sim/Order.h`'s table), so a tower cannot be given one even if there were.
+
+**Why it does not block, and what it decides anyway.** `m1-vertical-slice/S10` needed *a* rule to ship stage 8 at all, and it has one — stated in `Sim/Targeting.h` and used by every shooter, device and structure alike: keep the target you have while it is alive, visible and in range; otherwise take the nearest, devices before structures, ties to the lower id. Keeping the target is not a preference but a requirement, because a weapon that re-chose every tick would spread its damage over a crowd and kill nothing. What is genuinely open is the rest: whether a commander may *choose* a priority, and what the choices are. That is a stance axis, an order operand and a panel control, so it is `m2-skirmish`'s to build and the owner's to specify.
+
+**The options.**
+
+1. **Leave it where S10 put it**: one fixed priority for everything, no axis, and revisit when M2 has AI-versus-AI matches to watch. The tower that ignores the sappers cutting through its wall to shoot the tank behind them is the failure mode, and it is a real one.
+2. **Three priorities on a new axis** — nearest, weakest (fewest hit points left), most dangerous (highest damage output) — set per device and per structure, defaulting to nearest. It is the *Warzone 2100* set and it is what the phrase "target-priority stance" most likely meant.
+3. **Priority by what the weapon is good against**: each shooter prefers the target its own damage matrix row scores highest on, so an anti-tank gun walks past the scouts. No stance and no order operand, and it makes the matrix do double duty — but a commander cannot override it, and it hides a decision inside a table.
+
+**Recommendation: option 2, in M2.** It is what the design's own phrase names, it costs one axis and one operand in an order record that has room, and it is the only one of the three a commander can see and change. Option 1 is what M1 ships either way, so taking option 2 costs nothing now; option 3 is clever and unteachable.
 
 
 ## Adding a question

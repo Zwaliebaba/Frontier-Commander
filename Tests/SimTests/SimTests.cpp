@@ -73,10 +73,21 @@ public:
     Assert::AreEqual(static_cast<std::uint32_t>(0), sim.Tick());
     sim.Advance();
     Assert::AreEqual(static_cast<std::uint32_t>(1), sim.Tick());
-    Assert::IsFalse(before == sim.Stream().GetState(), L"stage 8 draws once a tick");
-    Neuron::Random reference(before);
-    (void)reference.Next();
-    Assert::IsTrue(reference.GetState() == sim.Stream().GetState(), L"exactly one draw per tick");
+    // The stream advances when the simulation has something to roll for and not otherwise. Stage 8
+    // drew unconditionally until m1-vertical-slice/S10 gave it real hit rolls to make, which is
+    // what that draw was a placeholder for; a match with nothing shooting now leaves the stream
+    // where it was, and a draw on a tick that rolled for nothing would be a draw two hosts could
+    // fall out of step over for no reason at all.
+    Assert::IsTrue(before == sim.Stream().GetState(), L"an empty tick rolls for nothing");
+    for (std::uint32_t tick = 0; tick < 20; ++tick)
+    {
+      sim.Advance();
+    }
+    Assert::IsTrue(before == sim.Stream().GetState(), L"and goes on rolling for nothing");
+    // And when there IS a roll, it goes through Sim::Roll, which is the one door to the stream.
+    const std::uint32_t rolled = sim.Roll(100);
+    Assert::IsTrue(rolled < 100);
+    Assert::IsFalse(before == sim.Stream().GetState(), L"a roll advances it");
   }
 
   TEST_METHOD(AnOrderForAPastTickAppliesOnTheNextOne)

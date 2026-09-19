@@ -151,7 +151,12 @@ void Populate(Frontier::Sim& _sim)
   projectile.impactX = -4096;
   projectile.impactY = 256;
   projectile.impactZ = 0;
-  projectile.ticksToImpact = 9;
+  // Longer than the fixture's fifty ticks, because stage 9 is real now: a shell with nine ticks
+  // left lands on tick nine and is gone, and what this fixture is for is a shell IN FLIGHT
+  // (m1-vertical-slice/S10). The same reason Furnish runs after the ticks rather than before.
+  projectile.ticksToImpact = 900;
+  projectile.hitPercent = 80;
+  projectile.damage = 24;
   _sim.Objects().Create(projectile);
 
   Frontier::Feature feature{};
@@ -303,6 +308,21 @@ public:
     Frontier::Sim projectile = Busy();
     projectile.Objects().FindProjectile({4, Frontier::ObjectKind::Projectile})->impactZ += 1;
     moved(projectile, L"a projectile's impact");
+
+    // The two fields version 13 added (m1-vertical-slice/S10): what a shell was fired with, and a
+    // structure's weapon reload. A shell that hashed the same however hard it had been fired would
+    // land for different damage on two hosts.
+    Frontier::Sim shot = Busy();
+    shot.Objects().FindProjectile({4, Frontier::ObjectKind::Projectile})->damage += 1;
+    moved(shot, L"the damage a shell was fired with");
+
+    Frontier::Sim aimed = Busy();
+    aimed.Objects().FindProjectile({4, Frontier::ObjectKind::Projectile})->hitPercent += 1;
+    moved(aimed, L"the chance a shell was fired with");
+
+    Frontier::Sim emplacement = Busy();
+    emplacement.Objects().FindStructure({3, Frontier::ObjectKind::Structure})->reloadTicks += 1;
+    moved(emplacement, L"a structure's weapon reload");
 
     Frontier::Sim feature = Busy();
     feature.Objects().FindFeature({5, Frontier::ObjectKind::Feature})->facing += 1;

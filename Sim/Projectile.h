@@ -29,6 +29,13 @@ struct Projectile
   std::int32_t impactZ;
   std::uint32_t ticksToImpact;
 
+  /// What the shot was fired with, captured at the muzzle rather than looked up at the impact: the
+  /// chance it hits what the splash catches and the damage it carries, both already through the
+  /// shooter's rank and its commander's research (Sim/Weapons.h). A shell outlives its shooter, so
+  /// a shot fired by a device that dies in the two seconds it is in the air lands as it was fired.
+  std::int32_t hitPercent;
+  std::int32_t damage;
+
   [[nodiscard]] constexpr bool operator==(const Projectile&) const noexcept = default;
 };
 

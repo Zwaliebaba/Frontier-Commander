@@ -470,6 +470,7 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
       _writer.Write(_structure.state);
       _writer.Write(_structure.hitPoints);
       _writer.Write(_structure.buildEffortHundredths);
+      _writer.Write(_structure.reloadTicks);
       for (const std::uint32_t module : _structure.modules)
       {
         _writer.Write(module);
@@ -495,6 +496,8 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
       _writer.Write(_projectile.impactY);
       _writer.Write(_projectile.impactZ);
       _writer.Write(_projectile.ticksToImpact);
+      _writer.Write(_projectile.hitPercent);
+      _writer.Write(_projectile.damage);
     });
   _writer.Write(static_cast<std::uint32_t>(_world.Count(ObjectKind::Feature)));
   _world.ForEachFeature(
@@ -574,7 +577,7 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
     Structure structure{};
     if (!_reader.Read(id.value) || !_reader.Read(structure.seat) || !_reader.Read(structure.design) || !_reader.Read(structure.cellX) ||
         !_reader.Read(structure.cellY) || !_reader.Read(structure.y) || !ReadEnum(_reader, structure.state, 4) ||
-        !_reader.Read(structure.hitPoints) || !_reader.Read(structure.buildEffortHundredths))
+        !_reader.Read(structure.hitPoints) || !_reader.Read(structure.buildEffortHundredths) || !_reader.Read(structure.reloadTicks))
     {
       return false;
     }
@@ -603,7 +606,8 @@ void WriteWorld(Neuron::ByteWriter& _writer, const World& _world)
     if (!_reader.Read(id.value) || !_reader.Read(projectile.seat) || !ReadObjectId(_reader, projectile.shooter) ||
         !_reader.Read(projectile.module) || !_reader.Read(projectile.x) || !_reader.Read(projectile.y) || !_reader.Read(projectile.z) ||
         !_reader.Read(projectile.impactX) || !_reader.Read(projectile.impactY) || !_reader.Read(projectile.impactZ) ||
-        !_reader.Read(projectile.ticksToImpact) || !_world.Restore(id, projectile))
+        !_reader.Read(projectile.ticksToImpact) || !_reader.Read(projectile.hitPercent) || !_reader.Read(projectile.damage) ||
+        !_world.Restore(id, projectile))
     {
       return false;
     }

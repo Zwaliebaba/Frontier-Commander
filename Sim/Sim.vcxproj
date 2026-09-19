@@ -108,6 +108,11 @@
     <ClCompile Include="Research.cpp" />
     <ClCompile Include="Movement.cpp" />
     <ClCompile Include="Steering.cpp" />
+    <ClCompile Include="Targeting.cpp" />
+    <ClCompile Include="Weapons.cpp" />
+    <ClCompile Include="Projectiles.cpp" />
+    <ClCompile Include="Damage.cpp" />
+    <ClCompile Include="Retreat.cpp" />
     <ClCompile Include="Deposit.cpp" />
     <ClCompile Include="FogGrid.cpp" />
     <ClCompile Include="GhostStore.cpp" />
@@ -151,6 +156,10 @@
     <ClInclude Include="Research.h" />
     <ClInclude Include="Movement.h" />
     <ClInclude Include="Steering.h" />
+    <ClInclude Include="Targeting.h" />
+    <ClInclude Include="Weapons.h" />
+    <ClInclude Include="Damage.h" />
+    <ClInclude Include="Experience.h" />
     <ClInclude Include="Deposit.h" />
     <ClInclude Include="Order.h" />
     <ClInclude Include="OrderQueue.h" />

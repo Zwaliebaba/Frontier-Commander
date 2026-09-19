@@ -119,6 +119,7 @@ void StateHash::AddStructure(ObjectId _id, const Structure& _structure) noexcept
   Add(_structure.state);
   Add(_structure.hitPoints);
   Add(_structure.buildEffortHundredths);
+  Add(_structure.reloadTicks);
   AddSpan(std::span<const std::uint32_t>(_structure.modules));
   Add(_structure.moduleCount);
   Add(_structure.moduleUnderConstruction);
@@ -140,6 +141,8 @@ void StateHash::AddProjectile(ObjectId _id, const Projectile& _projectile) noexc
   Add(_projectile.impactY);
   Add(_projectile.impactZ);
   Add(_projectile.ticksToImpact);
+  Add(_projectile.hitPercent);
+  Add(_projectile.damage);
 }
 
 void StateHash::AddFeature(ObjectId _id, const Feature& _feature) noexcept

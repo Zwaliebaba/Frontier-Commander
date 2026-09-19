@@ -119,12 +119,10 @@ void Walk(Sim& _sim, ObjectId _id, Device& _device, const Mover& _mover)
     DropRoute(_sim, _id, _device);
     return;
   }
-  if (_device.primaryOrder == PrimaryOrder::Attack || _device.primaryOrder == PrimaryOrder::ReturnToRepair)
-  {
-    // Both are S10's: one closes on a target and one falls back to a repair bay, and neither has
-    // anywhere to walk until the system that chooses those places exists. They hold their ground.
-    return;
-  }
+  // Attack and ReturnToRepair walk like a Move: what makes them different is who sets the
+  // destination. Stage 8 keeps an Attack's on the target it is closing with and Sim/Retreat.cpp
+  // puts a ReturnToRepair's on the bay (m1-vertical-slice/S10); both are already on the record by
+  // the time this stage runs, so the walk needs no case of its own.
 
   if (Neuron::LengthSquared(_device.destinationX - _device.x, _device.destinationZ - _device.z) <=
       static_cast<std::int64_t>(ARRIVAL_SUBUNITS) * ARRIVAL_SUBUNITS)

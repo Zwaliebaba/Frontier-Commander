@@ -44,6 +44,12 @@
     <ClCompile Include="MovementTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DamageTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="CombatTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
     <ClCompile Include="VisibilityTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
