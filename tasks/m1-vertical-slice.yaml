@@ -1705,6 +1705,38 @@ tasks:
     notes: >
       The toolkit's rules are documented in the header comment of UiPanel.h, not in a prose
       file: project directories are flat (AGENTS.md §2).
+      THE ACCEPTANCE AND THE DESIGN DISAGREED ABOUT THE FONT, and the design won. This task's
+      acceptance quotes SpeciesCanvas.md §4's "glyph advance 0.6 of the size"; Design/Interface.md
+      §3 rules 16 pixels a glyph box with a 16-pixel advance and states that a line of n characters
+      is exactly 16n, "which is the arithmetic every layout in this document uses", and §12 records
+      it as a ruling the owner's merge accepted. 0.6 of 16 is 9.6 - a glyph on a fraction of a pixel,
+      resampled - which is the one thing ADR-004's authored resolution and pillar 3 exist to
+      prevent. Species scaled its whole interface to the window and this game does not, so the
+      acceptance line is Species's rule quoted before §3 ruled against it. The implementation
+      follows §3 and a test pins the 16 by name so that a return to 0.6 fails rather than blurs.
+      THE AUTHORED RESOLUTION MOVED FILES. AUTHORED_WIDTH_PIXELS and AUTHORED_HEIGHT_PIXELS were in
+      SceneTarget.h, which cannot be included without Direct3D; the whole interface layout is
+      authored against them, so they are in ScaleMode.h now and SceneTarget.h includes it. That is
+      what makes the layout, the font and the consume rule testable on a machine with no GPU, which
+      is the difference between this task's first three pieces being verified and being guessed at.
+      UiLayout NAMES NO PANEL, against the obvious reading of "the M1 panels". Minimap, Selection
+      and Command are game concepts and an engine that knew them would be in the wrong layer
+      (AGENTS.md R9); §2's table of rectangles is K4's. What is here is the arithmetic any panel
+      needs.
+      A THIRD TEST FILE. The file list names UiLayoutTests and BitmapFontTests; the consume rule is
+      neither layout nor text, so it is UiInputSinkTests. ScaleModeTests grows the round trip
+      Design/Interface.md §11 row 1 asks for.
+      A TEST THAT CRASHED RATHER THAN FAILED, found by running the suite: BitmapFontTests reads the
+      shipped atlas from the tree, and the case that pokes its width field indexed a vector that was
+      empty when the file could not be read. It asserts and RETURNS now - the return is not belt and
+      braces, because a harness that only counted a failure would carry straight on into the same
+      read.
+      Verified in the session on Linux by BUILDING AND RUNNING all four test files against the real
+      sources: 41 tests, zero failures, including the shipped SpectrumFont.dds at 256x224, the §2
+      client-area and column arithmetic, AuthoredFromClient's round trip at all three scale modes
+      (lossless at Exact and Integer, within one authored pixel at Bilinear) and the whole consume
+      rule with stub events. With the atlas removed the suite fails cleanly rather than crashing.
+      STILL TO COME: UiPass and its two shaders, which need Direct3D and are CI's alone.
 
   - id: G1a
     title: FrontierCommander application - the client loop and the host thread over loopback

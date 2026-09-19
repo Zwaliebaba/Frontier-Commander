@@ -138,6 +138,9 @@
     <ClCompile Include="FogPass.cpp" />
     <ClCompile Include="UiLayout.cpp" />
     <ClCompile Include="BitmapFont.cpp" />
+    <ClCompile Include="UiWidgets.cpp" />
+    <ClCompile Include="UiPanel.cpp" />
+    <ClCompile Include="UiInputSink.cpp" />
     <ClCompile Include="WaterPass.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
@@ -149,6 +152,9 @@
     <ClInclude Include="FrameCapture.h" />
     <ClInclude Include="UiLayout.h" />
     <ClInclude Include="BitmapFont.h" />
+    <ClInclude Include="UiWidgets.h" />
+    <ClInclude Include="UiPanel.h" />
+    <ClInclude Include="UiInputSink.h" />
     <ClInclude Include="GraphicsDevice.h" />
     <ClInclude Include="PresentPass.h" />
     <ClInclude Include="ScaleMode.h" />

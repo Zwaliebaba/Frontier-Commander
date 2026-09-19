@@ -113,6 +113,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ScaleModeTests.cpp" />
+    <ClCompile Include="UiLayoutTests.cpp" />
+    <ClCompile Include="BitmapFontTests.cpp" />
+    <ClCompile Include="UiInputSinkTests.cpp" />
     <ClCompile Include="FrameInputTests.cpp" />
     <ClCompile Include="InputRouterTests.cpp" />
     <ClCompile Include="InputSubscriptionTests.cpp" />
